@@ -3417,9 +3417,11 @@ public class AtgenShopGiftList
 {
     public int dragon_gift_id { get; set; }
     public int price { get; set; }
-    public int is_buy { get; set; }
 
-    public AtgenShopGiftList(int dragon_gift_id, int price, int is_buy)
+    [MessagePackFormatter(typeof(BoolToIntFormatter))]
+    public bool is_buy { get; set; }
+
+    public AtgenShopGiftList(int dragon_gift_id, int price, bool is_buy)
     {
         this.dragon_gift_id = dragon_gift_id;
         this.price = price;
@@ -5469,12 +5471,17 @@ public class DragonReliabilityList
 [MessagePackObject(true)]
 public class DragonRewardEntityList
 {
-    public int entity_type { get; set; }
+    public EntityTypes entity_type { get; set; }
     public int entity_id { get; set; }
     public int entity_quantity { get; set; }
     public int is_over { get; set; }
 
-    public DragonRewardEntityList(int entity_type, int entity_id, int entity_quantity, int is_over)
+    public DragonRewardEntityList(
+        EntityTypes entity_type,
+        int entity_id,
+        int entity_quantity,
+        int is_over
+    )
     {
         this.entity_type = entity_type;
         this.entity_id = entity_id;
@@ -6112,11 +6119,11 @@ public class GatherItemList
 [MessagePackObject(true)]
 public class GrowMaterialList
 {
-    public int type { get; set; }
-    public ulong id { get; set; }
+    public EntityTypes type { get; set; }
+    public int id { get; set; }
     public int quantity { get; set; }
 
-    public GrowMaterialList(int type, ulong id, int quantity)
+    public GrowMaterialList(EntityTypes type, int id, int quantity)
     {
         this.type = type;
         this.id = id;

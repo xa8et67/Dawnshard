@@ -549,6 +549,13 @@ public static class UpgradeMaterials
         { Materials.SucculentDragonfruit, 3500 }
     };
 
+    public readonly static Dictionary<int, int> dragonBuildupXp = new Dictionary<int, int>()
+    {
+        { 3, 50 },
+        { 4, 1000 },
+        { 5, 1500 },
+    };
+
     public readonly static Dictionary<UnitElement, Materials> tomes = new Dictionary<
         UnitElement,
         Materials

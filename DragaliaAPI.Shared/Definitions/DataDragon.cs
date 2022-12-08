@@ -1,4 +1,6 @@
-﻿namespace DragaliaAPI.Shared.Definitions;
+﻿using DragaliaAPI.Shared.Definitions.Enums;
+
+namespace DragaliaAPI.Shared.Definitions;
 
 public record DataDragon(
     int Id,
@@ -27,8 +29,9 @@ public record DataDragon(
     int Abilities26,
     int DmodePassiveAbilityId,
     int MaxLimitBreakCount,
-    int LimitBreakMaterialId,
-    int FavoriteType,
+    int LimitBreakTypeId,
+    Materials LimitBreakMaterialId,
+    int? FavoriteType,
     int SellCoin,
     int SellDewPoint,
     string Availability
