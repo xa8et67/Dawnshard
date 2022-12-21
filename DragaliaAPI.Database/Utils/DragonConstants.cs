@@ -159,6 +159,8 @@ public static class DragonConstants
         3365620
     }.ToImmutableArray();
 
+    public const int maxRelLevel = 30;
+
     public readonly static DragonGifts[] rotatingGifts = new DragonGifts[]
     {
         DragonGifts.GoldenChalice,
@@ -178,7 +180,8 @@ public static class DragonConstants
         { DragonGifts.FreshBread, 100 },
         { DragonGifts.TastyMilk, 300 },
         { DragonGifts.StrawberryTart, 600 },
-        { DragonGifts.JuicyMeat, 1000 },
+        { DragonGifts.HeartyStew, 1000 },
+        { DragonGifts.JuicyMeat, 1200 },
         { DragonGifts.Kaleidoscope, 1200 },
         { DragonGifts.FloralCirclet, 1200 },
         { DragonGifts.CompellingBook, 1200 },
@@ -188,6 +191,23 @@ public static class DragonConstants
         { DragonGifts.DragonyuleCake, 1000 },
         { DragonGifts.ValentinesCard, 1000 },
         { DragonGifts.PupGrub, 200 }
+    };
+
+    public readonly static Dictionary<DragonGifts, int> buyGiftPrices = new Dictionary<
+        DragonGifts,
+        int
+    >()
+    {
+        { DragonGifts.FreshBread, 0 },
+        { DragonGifts.TastyMilk, 1500 },
+        { DragonGifts.StrawberryTart, 4000 },
+        { DragonGifts.HeartyStew, 8000 },
+        { DragonGifts.JuicyMeat, 12000 },
+        { DragonGifts.Kaleidoscope, 12000 },
+        { DragonGifts.FloralCirclet, 12000 },
+        { DragonGifts.CompellingBook, 12000 },
+        { DragonGifts.ManaEssence, 12000 },
+        { DragonGifts.GoldenChalice, 15000 }
     };
 
     public const float favMulti = 1.5f;
@@ -225,4 +245,43 @@ public static class DragonConstants
         33100,
         36300
     }.ToImmutableArray();
+
+    public static readonly ImmutableArray<int> bondXpLimitsPuppy = new int[]
+    {
+        0,
+        100,
+        200,
+        300,
+        400,
+        500,
+        600,
+        700,
+        800,
+        900,
+        1000,
+        1100,
+        1200,
+        1300,
+        1400,
+        1500,
+        1600,
+        1700,
+        1800,
+        1900,
+        2000,
+        2100,
+        2200,
+        2300,
+        2400,
+        2500,
+        2600,
+        2700,
+        2800,
+        2900
+    }.ToImmutableArray();
+
+    public static readonly IImmutableSet<Dragons> fullBondDragons = new HashSet<Dragons>()
+    {
+        Dragons.Arsene
+    }.ToImmutableHashSet();
 }

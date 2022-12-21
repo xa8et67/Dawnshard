@@ -9,5 +9,7 @@ public interface ICharaDataService
 
     DataAdventurer GetData(Charas id);
     DataAdventurer GetData(int id);
+    int[] GetStoryData(Charas id);
+    int[] GetStoryData(int id);
     public IEnumerable<DataAdventurer> getByRarity(int rarity);
 }

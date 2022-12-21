@@ -29,9 +29,36 @@ public class UpdateDataService : IUpdateDataService
             )
             .Select(x => x.Entity);
 
+        Task<long> t = apiContext.PlayerWallet
+            .Where(
+                x =>
+                    x.DeviceAccountId == deviceAccountId
+                    && x.CurrencyType == Shared.Definitions.Enums.CurrencyTypes.FreeDiamantium
+            )
+            .Select(x => x.Quantity)
+            .FirstOrDefaultAsync();
+        t.Wait();
+
+        Task<long> t2 = apiContext.PlayerWallet
+            .Where(
+                x =>
+                    x.DeviceAccountId == deviceAccountId
+                    && x.CurrencyType == Shared.Definitions.Enums.CurrencyTypes.PaidDiamantium
+            )
+            .Select(x => x.Quantity)
+            .FirstOrDefaultAsync();
+        t2.Wait();
+
+        DiamondData diaData = new DiamondData()
+        {
+            free_diamond = (int)t.Result,
+            paid_diamond = (int)t2.Result
+        };
+
         return new()
         {
             chara_list = this.ConvertEntities<CharaList, DbPlayerCharaData>(updatedEntities),
+            diamond_data = diaData,
             dragon_list = this.ConvertEntities<DragonList, DbPlayerDragonData>(updatedEntities),
             dragon_reliability_list = this.ConvertEntities<
                 DragonReliabilityList,

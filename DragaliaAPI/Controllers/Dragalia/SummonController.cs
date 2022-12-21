@@ -80,29 +80,29 @@ public class SummonController : DragaliaControllerBase
                 {
                     new(
                         1020203,
-                        0,
                         (int)BannerTypes.Normal,
+                        0,
                         120,
                         120,
                         1200,
                         1200,
                         5,
                         30,
+                        0,
                         1,
                         2,
                         300,
                         1,
                         (int)DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                         (int)DateTimeOffset.UtcNow.AddDays(7).ToUnixTimeSeconds(),
-                        0,
                         1,
+                        0,
                         0,
                         0,
                         (int)SummonCampaignTypes.Normal,
                         0,
                         1,
                         1,
-                        0,
                         0
                     )
                 },
@@ -398,7 +398,9 @@ public class SummonController : DragaliaControllerBase
             {
                 lastIndexOfRare5 = i;
                 if (entityType == EntityTypes.Chara)
+                {
                     countOfRare5Char++;
+                }
                 else if (entityType == EntityTypes.Dragon)
                 {
                     countOfRare5Dragon++;

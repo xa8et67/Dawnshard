@@ -8,7 +8,9 @@
 
 	<ItemGroup>
 		<None Remove="Resources\adventurers.json" />
+		<None Remove="Resources\CharaStories.json" />
 		<None Remove="Resources\dragons.json" />
+		<None Remove="Resources\DragonStories.json" />
 		<None Remove="Resources\mananodes.json" />
 	</ItemGroup>
 
@@ -18,10 +20,16 @@
 			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
 			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
 		</Content>
+		<Content Include="Resources\CharaStories.json">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
 		<Content Include="Resources\dragons.json">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
 			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Resources\DragonStories.json">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 		<Content Include="Resources\mananodes.json">
 		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

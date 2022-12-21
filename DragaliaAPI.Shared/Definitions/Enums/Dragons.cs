@@ -134,7 +134,8 @@ public enum Dragons
     Yulong = 20050307,
     Zephyr = 20050301,
     ZephyrImp = 20030303,
-    Zodiark = 20040501
+    Zodiark = 20040501,
+    Puppy = 29900005
 }
 
 public enum DragonLimitBreakTypes

@@ -9,5 +9,7 @@ public interface IDragonDataService
 
     DataDragon GetData(Dragons id);
     DataDragon GetData(int id);
+    int[] GetStoryData(Dragons id);
+    int[] GetStoryData(int id);
     public IEnumerable<DataDragon> getByRarity(int rarity);
 }

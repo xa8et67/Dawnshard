@@ -11,4 +11,7 @@ public interface IInventoryRepository : IBaseRepository
     DbPlayerMaterial AddMaterial(string deviceAccountId, Materials type);
     Task<DbPlayerMaterial?> GetMaterial(string deviceAccountId, Materials materialId);
     IQueryable<DbPlayerMaterial> GetMaterials(string deviceAccountId);
+    DbPlayerDragonGift AddDragonGift(string deviceAccountId, DragonGifts type);
+    Task<DbPlayerDragonGift?> GetDragonGift(string deviceAccountId, DragonGifts materialId);
+    IQueryable<DbPlayerDragonGift> GetDragonGifts(string deviceAccountId);
 }

@@ -146,8 +146,8 @@ app.Use(
                 actionContext,
                 new OkObjectResult(
                     new DragaliaResponse<ResultCodeData>(
-                        new(ResultCode.SessionError),
-                        ResultCode.SessionError
+                        new(ResultCode.SESSION_SESSION_NOT_FOUND),
+                        ResultCode.SESSION_SESSION_NOT_FOUND
                     )
                 )
             );

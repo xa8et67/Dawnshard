@@ -1,4 +1,5 @@
-﻿using DragaliaAPI.Shared.Definitions.Enums;
+﻿using System.Text.Json.Serialization;
+using DragaliaAPI.Shared.Definitions.Enums;
 
 namespace DragaliaAPI.Shared.Definitions;
 
@@ -6,7 +7,7 @@ public record DataDragon(
     int Id,
     string FullName,
     int Rarity,
-    string ElementalType,
+    [property: JsonConverter(typeof(JsonStringEnumConverter))] UnitElement ElementalType,
     int MinHp,
     int MaxHp,
     int AddMaxHp1,

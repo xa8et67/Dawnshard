@@ -1,4 +1,7 @@
-﻿using System.Collections.Immutable;
+﻿using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Numerics;
+using System.Security;
 using AutoMapper;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
@@ -21,9 +24,11 @@ namespace DragaliaAPI.Controllers.Dragalia;
 public class DragonController : DragaliaControllerBase
 {
     private readonly IDragonDataService _dragonDataService;
+    private readonly IDragonService dragonService;
     private readonly IUserDataRepository userDataRepository;
     private readonly IUnitRepository unitRepository;
     private readonly IInventoryRepository inventoryRepository;
+    private readonly IStoryRepository storyRepository;
     private readonly IUpdateDataService updateDataService;
     private readonly IMapper mapper;
 
@@ -32,16 +37,20 @@ public class DragonController : DragaliaControllerBase
         IUnitRepository unitRepository,
         IInventoryRepository inventoryRepository,
         IUpdateDataService updateDataService,
+        IStoryRepository storyRepository,
         IMapper mapper,
-        IDragonDataService charaDataService
+        IDragonDataService charaDataService,
+        IDragonService dragonService
     )
     {
         this.userDataRepository = userDataRepository;
         this.unitRepository = unitRepository;
         this.inventoryRepository = inventoryRepository;
+        this.storyRepository = storyRepository;
         this.updateDataService = updateDataService;
         this.mapper = mapper;
         _dragonDataService = charaDataService;
+        this.dragonService = dragonService;
     }
 
     [Route("buildup")]
@@ -69,6 +78,7 @@ public class DragonController : DragaliaControllerBase
                 throw new ArgumentException("Invalid quantity for MaterialList");
             }
             if (mat.type != EntityTypes.Dragon)
+            {
                 if (
                     mat.type == EntityTypes.Material
                     && mat.id != (int)Materials.Dragonfruit
@@ -80,6 +90,7 @@ public class DragonController : DragaliaControllerBase
                 {
                     throw new ArgumentException("Invalid MaterialList in request");
                 }
+            }
             if (
                 mat.type == EntityTypes.Material
                 && (
@@ -388,66 +399,7 @@ public class DragonController : DragaliaControllerBase
         [FromBody] DragonGetContactDataRequest request
     )
     {
-        List<AtgenShopGiftList> giftList = new List<AtgenShopGiftList>()
-        {
-            new AtgenShopGiftList()
-            {
-                dragon_gift_id = (int)DragonGifts.FreshBread,
-                price = 0,
-                is_buy = true
-            },
-            new AtgenShopGiftList()
-            {
-                dragon_gift_id = (int)DragonGifts.TastyMilk,
-                price = 0,
-                is_buy = true
-            },
-            new AtgenShopGiftList()
-            {
-                dragon_gift_id = (int)DragonGifts.StrawberryTart,
-                price = 0,
-                is_buy = true
-            },
-            new AtgenShopGiftList()
-            {
-                dragon_gift_id = (int)DragonGifts.HeartyStew,
-                price = 0,
-                is_buy = true
-            },
-            new AtgenShopGiftList()
-            {
-                dragon_gift_id = (int)rotatingGifts[(int)DateTimeOffset.UtcNow.DayOfWeek],
-                price = 0,
-                is_buy = true
-            },
-        };
-        return Ok(new DragonGetContactDataData(giftList));
-    }
-
-    private async void IncreaseDragonReliability(Dragons dragon, IEnumerable<DragonGifts> gifts)
-    {
-        DbPlayerDragonReliability dragonReliability = await unitRepository
-            .GetAllDragonReliabilityData(DeviceAccountId)
-            .Where(x => x.DragonId == dragon)
-            .FirstAsync();
-        DataDragon dragonData = _dragonDataService.GetData(dragon);
-        IEnumerator<DragonGifts> enumerator = gifts.GetEnumerator();
-        while (enumerator.MoveNext() && dragonReliability.Exp < DragonConstants.bondXpLimits[^1])
-        {
-            dragonReliability.Exp = Math.Min(
-                DragonConstants.bondXpLimits[^1],
-                dragonReliability.Exp
-                    + (int)(
-                        favorVals[enumerator.Current]
-                        * (
-                            dragonData.FavoriteType != null
-                            && rotatingGifts[(int)dragonData.FavoriteType] == enumerator.Current
-                                ? favMulti
-                                : 1
-                        )
-                    )
-            );
-        }
+        return Ok(await DoDragonGetContactData(request));
     }
 
     [Route("buy_gift_to_send_multiple")]
@@ -456,51 +408,7 @@ public class DragonController : DragaliaControllerBase
         [FromBody] DragonBuyGiftToSendMultipleRequest request
     )
     {
-        IncreaseDragonReliability(
-            request.dragon_id,
-            request.dragon_gift_id_list.Select(x => (DragonGifts)x)
-        );
-
-        IEnumerable<AtgenShopGiftList> giftList = (
-            (DragonGetContactDataData)(await DragonGetContactData(new())).Value!.data
-        ).shop_gift_list;
-        UpdateDataList updateDataList = updateDataService.GetUpdateDataList(DeviceAccountId);
-
-        await unitRepository.SaveChangesAsync();
-
-        return Ok(
-            new DragonBuyGiftToSendMultipleData()
-            {
-                dragon_contact_free_gift_count = 0,
-                dragon_gift_reward_list = new List<AtgenDragonGiftRewardList>()
-                {
-                    new AtgenDragonGiftRewardList()
-                    {
-                        return_gift_list = new List<DragonRewardEntityList>
-                        {
-                            new DragonRewardEntityList()
-                            {
-                                entity_type = EntityTypes.FreeDiamantium,
-                                entity_id = 0,
-                                entity_quantity = 1200,
-                                is_over = 0
-                            },
-                            new DragonRewardEntityList()
-                            {
-                                entity_type = EntityTypes.Chara,
-                                entity_id = (int)Charas.Myriam,
-                                entity_quantity = 1,
-                                is_over = 0
-                            }
-                        },
-                        dragon_gift_id = 0,
-                        is_favorite = 1
-                    }
-                },
-                shop_gift_list = giftList,
-                update_data_list = updateDataList
-            }
-        );
+        return Ok(await DoDragonBuyGiftToSendMultiple(request));
     }
 
     [Route("buy_gift_to_send")]
@@ -509,7 +417,27 @@ public class DragonController : DragaliaControllerBase
         [FromBody] DragonBuyGiftToSendRequest request
     )
     {
-        return Ok(new DragonBuyGiftToSendData());
+        DragonBuyGiftToSendMultipleData resultData = await DoDragonBuyGiftToSendMultiple(
+            new DragonBuyGiftToSendMultipleRequest()
+            {
+                dragon_id = request.dragon_id,
+                dragon_gift_id_list = new List<DragonGifts>() { request.dragon_gift_id }
+            }
+        );
+        return Ok(
+            new DragonBuyGiftToSendData()
+            {
+                dragon_contact_free_gift_count = resultData.dragon_contact_free_gift_count,
+                entity_result = resultData.entity_result,
+                is_favorite = resultData.dragon_gift_reward_list.First().is_favorite,
+                return_gift_list = resultData.dragon_gift_reward_list.First().return_gift_list,
+                reward_reliability_list = resultData.dragon_gift_reward_list
+                    .First()
+                    .reward_reliability_list,
+                shop_gift_list = resultData.shop_gift_list,
+                update_data_list = resultData.update_data_list
+            }
+        );
     }
 
     [Route("send_gift_multiple")]
@@ -535,7 +463,7 @@ public class DragonController : DragaliaControllerBase
         (
             await this.unitRepository
                 .GetAllDragonData(this.DeviceAccountId)
-                .FirstAsync(dragon => (ulong)dragon.DragonKeyId == request.dragon_key_id)
+                .SingleAsync(dragon => (ulong)dragon.DragonKeyId == request.dragon_key_id)
         ).IsLock = request.is_lock;
 
         UpdateDataList updateDataList = updateDataService.GetUpdateDataList(DeviceAccountId);
@@ -548,6 +476,14 @@ public class DragonController : DragaliaControllerBase
     [HttpPost]
     public async Task<DragaliaResult> DragonSell([FromBody] DragonSellRequest request)
     {
+        DbPlayerDragonData? puppy = await unitRepository
+            .GetAllDragonData(DeviceAccountId)
+            .Where(x => x.DragonId == Dragons.Puppy)
+            .SingleOrDefaultAsync();
+        if (puppy != null && request.dragon_key_id_list.Contains((ulong)puppy.DragonKeyId))
+        {
+            return Ok(Models.ResultCode.DRAGON_SELL_LOCKED);
+        }
         await unitRepository.RemoveDragons(
             DeviceAccountId,
             request.dragon_key_id_list.Select(x => (long)x)

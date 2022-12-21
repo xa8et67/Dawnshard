@@ -23,6 +23,7 @@ public class LoadController : DragaliaControllerBase
     private readonly IPartyRepository partyRepository;
     private readonly IQuestRepository questRepository;
     private readonly ISessionService _sessionService;
+    private readonly IInventoryRepository _inventoryRepository;
     private readonly IMapper mapper;
 
     public LoadController(
@@ -31,6 +32,7 @@ public class LoadController : DragaliaControllerBase
         IPartyRepository partyRepository,
         IQuestRepository questRepository,
         ISessionService sessionService,
+        IInventoryRepository inventoryRepository,
         IMapper mapper
     )
     {
@@ -39,6 +41,7 @@ public class LoadController : DragaliaControllerBase
         this.partyRepository = partyRepository;
         this.questRepository = questRepository;
         _sessionService = sessionService;
+        _inventoryRepository = inventoryRepository;
         this.mapper = mapper;
     }
 
@@ -78,6 +81,10 @@ public class LoadController : DragaliaControllerBase
             await this.questRepository.GetQuestStoryList(deviceAccountId).ToListAsync()
         ).Select(mapper.Map<QuestStoryList>);
 
+        IEnumerable<MaterialList> materials = (
+            await this._inventoryRepository.GetMaterials(deviceAccountId).ToListAsync()
+        ).Select(mapper.Map<MaterialList>);
+
         LoadIndexData data =
             new()
             {
@@ -94,7 +101,7 @@ public class LoadController : DragaliaControllerBase
                 dragon_list = dragons,
                 party_list = parties,
                 server_time = DateTimeOffset.UtcNow,
-                material_list = new List<MaterialList>(),
+                material_list = materials,
                 functional_maintenance_list = new List<FunctionalMaintenanceList>()
             };
 

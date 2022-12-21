@@ -13,9 +13,11 @@ public class CharaDataService : ICharaDataService
 {
     private const string _filename = "adventurers.json";
     private const string _filenameManaNodes = "mananodes.json";
+    private const string _filenameStories = "CharaStories.json";
     private const string _folder = "Resources";
 
     private readonly Dictionary<int, DataAdventurer> _dictionary;
+    private readonly Dictionary<Charas, int[]> _charaStories;
 
     public IEnumerable<DataAdventurer> AllData => _dictionary.Values;
 
@@ -50,6 +52,17 @@ public class CharaDataService : ICharaDataService
             }
         });
         _dictionary = deserialized.ToDictionary(x => x.IdLong, x => x);
+
+        _charaStories =
+            JsonSerializer.Deserialize<Dictionary<Charas, int[]>>(
+                File.ReadAllText(
+                    Path.Join(
+                        Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
+                        _folder,
+                        _filenameStories
+                    )
+                )
+            ) ?? throw new JsonException("Deserialization failure");
     }
 
     public DataAdventurer GetData(Charas id)
@@ -61,6 +74,10 @@ public class CharaDataService : ICharaDataService
     {
         return _dictionary[id];
     }
+
+    public int[] GetStoryData(Charas id) => _charaStories[id];
+
+    public int[] GetStoryData(int id) => _charaStories[(Charas)id];
 
     public IEnumerable<DataAdventurer> getByRarity(int rarity) =>
         _dictionary.Values.Where(x => x.Rarity == rarity);
