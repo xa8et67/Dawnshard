@@ -1,5 +1,6 @@
 ﻿using DragaliaAPI.Database.Repositories;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -24,7 +25,7 @@ public static class DatabaseConfiguration
         logger.Information("Connecting to database using host {host}...", host);
 
         services = services
-            .AddDbContext<ApiContext>(options => options.UseNpgsql(connectionString))
+            .AddDbContext<ApiContext>(options => options.UseSqlite(GetConnectionString(null)))
             .AddScoped<IDeviceAccountRepository, DeviceAccountRepository>()
             .AddScoped<IUserDataRepository, UserDataRepository>()
             .AddScoped<IUnitRepository, UnitRepository>()
@@ -39,7 +40,7 @@ public static class DatabaseConfiguration
 
     public static string GetConnectionString(string? host)
     {
-        NpgsqlConnectionStringBuilder connectionStringBuilder =
+        /*NpgsqlConnectionStringBuilder connectionStringBuilder =
             new()
             {
                 Host = host ?? "postgres",
@@ -47,6 +48,11 @@ public static class DatabaseConfiguration
                 Password = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD"),
                 LogParameters = true,
             };
+
+        return connectionStringBuilder.ConnectionString;*/
+
+        SqliteConnectionStringBuilder connectionStringBuilder =
+            new() { DataSource = "DragaliaAPI.sqlite" };
 
         return connectionStringBuilder.ConnectionString;
     }
@@ -59,6 +65,9 @@ public static class DatabaseConfiguration
 
         ApiContext context = scope.ServiceProvider.GetRequiredService<ApiContext>();
 
+        context.Database.EnsureCreated();
+
+        /*
         if (!context.Database.IsRelational())
             return;
 
@@ -88,6 +97,6 @@ public static class DatabaseConfiguration
 
         logger.Information("Applying migrations {@migrations}", migrations);
 
-        context.Database.Migrate();
+        context.Database.Migrate();*/
     }
 }

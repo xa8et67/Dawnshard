@@ -11,11 +11,11 @@
         "DragaliaAPI": {
             "commandName": "Project",
             "launchBrowser": true,
-            "launchUrl": "swagger",
+            "launchUrl": "News",
             "environmentVariables": {
-                "ASPNETCORE_ENVIRONMENT": "Development"
-            },
-            "applicationUrl": "https://localhost:5001;http://localhost:5000"
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "ASPNETCORE_URLS": "http://+:5000"
+            }
         },
         "Docker": {
             "commandName": "Docker",
