@@ -4925,10 +4925,10 @@ public class DailyMissionList
     public int day_no { get; set; }
     public int weekly_mission_id { get; set; }
     public int week_no { get; set; }
-    public int end_date { get; set; }
-    public int start_date { get; set; }
-    public int is_lock_receive_reward { get; set; }
-    public int is_pickup { get; set; }
+    public DateTimeOffset end_date { get; set; }
+    public DateTimeOffset start_date { get; set; }
+    public bool is_lock_receive_reward { get; set; }
+    public bool is_pickup { get; set; }
 
     public DailyMissionList(
         int daily_mission_id,
@@ -4937,10 +4937,10 @@ public class DailyMissionList
         int day_no,
         int weekly_mission_id,
         int week_no,
-        int end_date,
-        int start_date,
-        int is_lock_receive_reward,
-        int is_pickup
+        DateTimeOffset end_date,
+        DateTimeOffset start_date,
+        bool is_lock_receive_reward,
+        bool is_pickup
     )
     {
         this.daily_mission_id = daily_mission_id;
@@ -6974,15 +6974,15 @@ public class NormalMissionList
     public int normal_mission_id { get; set; }
     public int progress { get; set; }
     public int state { get; set; }
-    public int end_date { get; set; }
-    public int start_date { get; set; }
+    public DateTimeOffset end_date { get; set; }
+    public DateTimeOffset start_date { get; set; }
 
     public NormalMissionList(
         int normal_mission_id,
         int progress,
         int state,
-        int end_date,
-        int start_date
+        DateTimeOffset end_date,
+        DateTimeOffset start_date
     )
     {
         this.normal_mission_id = normal_mission_id;
@@ -7338,15 +7338,15 @@ public class PeriodMissionList
     public int period_mission_id { get; set; }
     public int progress { get; set; }
     public int state { get; set; }
-    public int end_date { get; set; }
-    public int start_date { get; set; }
+    public DateTimeOffset end_date { get; set; }
+    public DateTimeOffset start_date { get; set; }
 
     public PeriodMissionList(
         int period_mission_id,
         int progress,
         int state,
-        int end_date,
-        int start_date
+        DateTimeOffset end_date,
+        DateTimeOffset start_date
     )
     {
         this.period_mission_id = period_mission_id;
@@ -9232,7 +9232,9 @@ public class UserSummonList
     public int summon_count { get; set; }
     public int campaign_type { get; set; }
     public int free_count_rest { get; set; }
-    public int is_beginner_campaign { get; set; }
+
+    [MessagePackFormatter(BoolToIntFormatter)]
+    public bool is_beginner_campaign { get; set; }
     public int beginner_campaign_count_rest { get; set; }
     public int consecution_campaign_count_rest { get; set; }
 
@@ -9241,7 +9243,7 @@ public class UserSummonList
         int summon_count,
         int campaign_type,
         int free_count_rest,
-        int is_beginner_campaign,
+        bool is_beginner_campaign,
         int beginner_campaign_count_rest,
         int consecution_campaign_count_rest
     )

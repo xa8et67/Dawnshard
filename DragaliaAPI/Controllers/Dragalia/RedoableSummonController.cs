@@ -18,7 +18,7 @@ namespace DragaliaAPI.Controllers.Dragalia;
 [ApiController]
 public class RedoableSummonController : DragaliaControllerBase
 {
-    private readonly ISummonService summonService;
+    private readonly Services.ISummonService summonService;
     private readonly IQuestRepository questRepository;
     private readonly IUserDataRepository userDataRepository;
     private readonly IUnitRepository unitRepository;
@@ -78,7 +78,7 @@ public class RedoableSummonController : DragaliaControllerBase
         new(null, new RedoableSummonOddsRateList(OddsRate, OddsRate));
 
     public RedoableSummonController(
-        ISummonService summonService,
+        Services.ISummonService summonService,
         IQuestRepository questRepository,
         IUserDataRepository userDataRepository,
         IUnitRepository unitRepository,

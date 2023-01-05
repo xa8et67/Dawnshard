@@ -131,64 +131,21 @@ public class SummonService : ISummonService
         return resultList;
     }
 
-    /// <summary>
-    /// Populate a summon result with is_new and eldwater values.
-    /// </summary>
-    public List<AtgenResultUnitList> GenerateRewardList(
-        string deviceAccountId,
-        IEnumerable<AtgenRedoableSummonResultUnitList> baseRewardList
-    )
+    public IEnumerable<UserSummonList> GetUserSummonList()
     {
-        List<AtgenResultUnitList> newUnits = new();
-
-        IEnumerable<Charas> ownedCharas = this.unitRepository
-            .GetAllCharaData(deviceAccountId)
-            .Select(x => x.CharaId);
-
-        IEnumerable<Dragons> ownedDragons = this.unitRepository
-            .GetAllDragonData(deviceAccountId)
-            .Select(x => x.DragonId);
-
-        foreach (AtgenRedoableSummonResultUnitList reward in baseRewardList)
+        // Stub
+        return new List<UserSummonList>()
         {
-            bool isNew = newUnits.All(x => x.id != reward.id);
-
-            switch (reward.entity_type)
+            new()
             {
-                case EntityTypes.Chara:
-                {
-                    isNew |= ownedCharas.All(x => x != (Charas)reward.id);
-
-                    AtgenResultUnitList toAdd =
-                        new(
-                            reward.entity_type,
-                            reward.id,
-                            reward.rarity,
-                            isNew,
-                            3,
-                            isNew ? 0 : DewValueData.DupeSummon[reward.rarity]
-                        );
-
-                    newUnits.Add(toAdd);
-                    break;
-                }
-                case EntityTypes.Dragon:
-                {
-                    isNew |= ownedDragons.All(x => x != (Dragons)reward.id);
-
-                    AtgenResultUnitList toAdd =
-                        new(reward.entity_type, reward.id, reward.rarity, isNew, 3, 0);
-
-                    newUnits.Add(toAdd);
-                    break;
-                }
-                default:
-                    throw new UnreachableException(
-                        "Invalid entity type for redoable summon result."
-                    );
+                summon_id = 1020055,
+                campaign_type = 2,
+                is_beginner_campaign = false,
+                free_count_rest = 1,
+                summon_count = 10,
+                beginner_campaign_count_rest = 10,
+                consecution_campaign_count_rest = 10,
             }
-        }
-
-        return newUnits;
+        };
     }
 }
