@@ -29,6 +29,10 @@ public class ApiContext : DbContext
             .HasKey(key => new { key.DeviceAccountId, key.CurrencyType });
 
         modelBuilder
+            .Entity<DbPlayerDragonGift>()
+            .HasKey(key => new { key.DeviceAccountId, key.DragonGiftId });
+
+        modelBuilder
             .Entity<DbPlayerMaterial>()
             .HasKey(key => new { key.DeviceAccountId, key.MaterialId });
 
@@ -129,4 +133,8 @@ public class ApiContext : DbContext
     public DbSet<DbFortBuild> PlayerFortBuilds { get; set; }
 
     public DbSet<DbWeaponSkin> PlayerWeaponSkins { get; set; }
+
+    public DbSet<DbWeaponPassiveAbility> PlayerPassiveAbilities { get; set; }
+
+    public DbSet<DbPlayerDragonGift> PlayerDragonGifts { get; set; }
 }

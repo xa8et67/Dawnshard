@@ -7,7 +7,9 @@ using DragaliaAPI.Models.Options;
 using DragaliaAPI.Services;
 using DragaliaAPI.Services.Health;
 using DragaliaAPI.Services.Helpers;
+using DragaliaAPI.Shared;
 using DragaliaAPI.Shared.Json;
+using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
 using Serilog.Core;
@@ -74,6 +76,7 @@ builder.Services.AddAuthentication(opts =>
 builder.Services
     .AddResponseCompression()
     .ConfigureDatabaseServices(builder.Configuration.GetConnectionString("PostgresHost"))
+    .ConfigureSharedServices()
     .AddAutoMapper(Assembly.GetExecutingAssembly())
     .AddStackExchangeRedisCache(options =>
     {
@@ -88,10 +91,14 @@ builder.Services
     .AddScoped<ISummonService, SummonService>()
     .AddScoped<IUpdateDataService, UpdateDataService>()
     .AddScoped<IDungeonService, DungeonService>()
+    .AddScoped<IDragonService, DragonService>()
     .AddScoped<ISavefileService, SavefileService>()
     .AddScoped<IHelperService, HelperService>()
     .AddScoped<IAuthService, AuthService>()
     .AddScoped<IBonusService, BonusService>()
+    .AddScoped<IWeaponService, WeaponService>()
+    .AddScoped<IQuestRewardService, QuestRewardService>()
+    .AddScoped<IStoryService, StoryService>()
     .AddTransient<ILogEventEnricher, AccountIdEnricher>()
     .AddTransient<ILogEventEnricher, PodNameEnricher>()
     .AddHttpClient<IBaasRequestHelper, BaasRequestHelper>();
@@ -112,6 +119,8 @@ app.UseSerilogRequestLogging(
             );
         }
 );
+
+Log.Logger.Information("App environment: {@env}", app.Environment);
 
 if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
 {
@@ -146,4 +155,7 @@ app.MapHealthChecks("/health");
 
 app.Run();
 
-public partial class Program { }
+namespace DragaliaAPI
+{
+    public partial class Program { }
+}

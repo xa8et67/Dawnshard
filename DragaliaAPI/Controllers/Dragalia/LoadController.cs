@@ -49,7 +49,7 @@ public class LoadController : DragaliaControllerBase
 
         this.logger.LogInformation("{time} ms: Load query complete", stopwatch.ElapsedMilliseconds);
 
-        FortBonusList bonusList = await bonusService.GetBonusList(DeviceAccountId);
+        FortBonusList bonusList = await bonusService.GetBonusList();
 
         this.logger.LogInformation("{time} ms: Bonus list acquired", stopwatch.ElapsedMilliseconds);
 
@@ -66,6 +66,9 @@ public class LoadController : DragaliaControllerBase
                 ability_crest_list = savefile.AbilityCrestList.Select(
                     this.mapper.Map<AbilityCrestList>
                 ),
+                dragon_gift_list = savefile.DragonGiftList
+                    .Where(x => x.DragonGiftId > DragonGifts.GoldenChalice)
+                    .Select(this.mapper.Map<DragonGiftList>),
                 talisman_list = savefile.TalismanList.Select(this.mapper.Map<TalismanList>),
                 weapon_body_list = savefile.WeaponBodyList.Select(this.mapper.Map<WeaponBodyList>),
                 party_list = savefile.PartyList.Select(this.mapper.Map<PartyList>),
@@ -73,7 +76,7 @@ public class LoadController : DragaliaControllerBase
                     .Where(x => x.StoryType == StoryTypes.Quest)
                     .Select(mapper.Map<QuestStoryList>),
                 unit_story_list = savefile.StoryStates
-                    .Where(x => x.StoryType == StoryTypes.Chara)
+                    .Where(x => x.StoryType == StoryTypes.Chara || x.StoryType == StoryTypes.Dragon)
                     .Select(mapper.Map<UnitStoryList>),
                 castle_story_list = savefile.StoryStates
                     .Where(x => x.StoryType == StoryTypes.Castle)
@@ -81,6 +84,9 @@ public class LoadController : DragaliaControllerBase
                 quest_list = savefile.QuestList.Select(mapper.Map<QuestList>),
                 material_list = savefile.MaterialList.Select(mapper.Map<MaterialList>),
                 weapon_skin_list = savefile.WeaponSkinList.Select(mapper.Map<WeaponSkinList>),
+                weapon_passive_ability_list = savefile.WeaponPassiveAbilityList.Select(
+                    mapper.Map<WeaponPassiveAbilityList>
+                ),
                 fort_bonus_list = bonusList,
                 party_power_data = new(999999),
                 friend_notice = new(0, 0),
@@ -94,6 +100,11 @@ public class LoadController : DragaliaControllerBase
                 quest_skip_point_system_max = 400,
                 quest_skip_point_use_limit_max = 30,
                 functional_maintenance_list = new List<FunctionalMaintenanceList>(),
+                multi_server = new()
+                {
+                    host = string.Empty,
+                    app_id = "4a84ccbe-ecd3-42b4-9570-4a8aa526a139"
+                }
             };
 
         this.logger.LogInformation("{time} ms: Mapping complete", stopwatch.ElapsedMilliseconds);

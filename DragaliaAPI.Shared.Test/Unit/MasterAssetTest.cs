@@ -172,6 +172,7 @@ public class MasterAssetTest
                     FavoriteType: 5,
                     SellCoin: 5000,
                     SellDewPoint: 8500,
+                    LimitBreakId: DragonLimitBreakTypes.Normal,
                     LimitBreakMaterialId: 0,
                     DefaultReliabilityLevel: 0,
                     DmodePassiveAbilityId: 0
@@ -298,34 +299,182 @@ public class MasterAssetTest
                     Rarity: 5,
                     ElementalType: UnitElement.Water,
                     MaxLimitOverCount: 1,
-                    MaxEquipableCount: 4,
-                    BaseHp: 45,
-                    MaxHp1: 151,
-                    MaxHp2: 216,
-                    MaxHp3: 0,
-                    BaseAtk: 97,
-                    MaxAtk1: 324,
-                    MaxAtk2: 590,
-                    MaxAtk3: 0,
-                    LimitOverCountPartyPower1: 100,
-                    LimitOverCountPartyPower2: 150,
-                    CrestSlotType1BaseCount: 2,
-                    CrestSlotType1MaxCount: 3,
-                    CrestSlotType2BaseCount: 2,
-                    CrestSlotType2MaxCount: 2,
-                    CrestSlotType3BaseCount: 0,
-                    CrestSlotType3MaxCount: 0,
                     WeaponPassiveAbilityGroupId: 10802,
                     WeaponBodyBuildupGroupId: 572,
                     MaxWeaponPassiveCharaCount: 1,
                     WeaponPassiveEffHp: 0.5f,
                     WeaponPassiveEffAtk: 0.5f,
+                    Abilities11: 137,
+                    Abilities12: 137,
+                    Abilities13: 137,
+                    Abilities21: 0,
+                    Abilities22: 0,
+                    Abilities23: 0,
+                    ChangeSkillId1: 0,
+                    ChangeSkillId2: 0,
+                    ChangeSkillId3: 0,
                     RewardWeaponSkinId1: 0,
                     RewardWeaponSkinId2: 0,
                     RewardWeaponSkinId3: 0,
                     RewardWeaponSkinId4: 0,
-                    RewardWeaponSkinId5: 0
+                    RewardWeaponSkinId5: 0,
+                    NeedFortCraftLevel: 7,
+                    NeedCreateWeaponBodyId1: 0,
+                    NeedCreateWeaponBodyId2: 0,
+                    CreateCoin: 80000,
+                    CreateEntityId1: Materials.BatsWing,
+                    CreateEntityQuantity1: 430,
+                    CreateEntityId2: Materials.SolidFungus,
+                    CreateEntityQuantity2: 35,
+                    CreateEntityId3: Materials.ShinySpore,
+                    CreateEntityQuantity3: 1,
+                    CreateEntityId4: Materials.StreamOrb,
+                    CreateEntityQuantity4: 8,
+                    CreateEntityId5: 0,
+                    CreateEntityQuantity5: 0
                 )
             );
+    }
+
+    [Fact]
+    public void WeaponBodyBuildupGroup_Get_ReturnsExpectedProperties()
+    {
+        int key = MasterAsset.MasterAsset.WeaponBody[WeaponBodies.Marmyadose].GetBuildupGroupId(
+            BuildupPieceTypes.Refine,
+            2
+        );
+
+        WeaponBodyBuildupGroup group = MasterAsset.MasterAsset.WeaponBodyBuildupGroup[key];
+
+        group
+            .Should()
+            .BeEquivalentTo(
+                new WeaponBodyBuildupGroup(
+                    Id: 8030202,
+                    WeaponBodyBuildupGroupId: 803,
+                    BuildupPieceType: BuildupPieceTypes.Refine,
+                    Step: 2,
+                    UnlockConditionLimitBreakCount: 0,
+                    RewardWeaponSkinNo: 1,
+                    BuildupCoin: 2_500_000,
+                    BuildupMaterialId1: Materials.EliminatingOnesMaskFragment,
+                    BuildupMaterialQuantity1: 40,
+                    BuildupMaterialId2: Materials.DespairingOnesMaskFragment,
+                    BuildupMaterialQuantity2: 30,
+                    BuildupMaterialId3: Materials.RebelliousOnesDesperation,
+                    BuildupMaterialQuantity3: 10,
+                    BuildupMaterialId4: Materials.RebelliousBirdsTide,
+                    BuildupMaterialQuantity4: 10,
+                    BuildupMaterialId5: Materials.Orichalcum,
+                    BuildupMaterialQuantity5: 10,
+                    BuildupMaterialId6: Materials.Empty,
+                    BuildupMaterialQuantity6: 0,
+                    BuildupMaterialId7: Materials.Empty,
+                    BuildupMaterialQuantity7: 0
+                )
+            );
+    }
+
+    [Fact]
+    public void WeaponBodyBuildupLevel_Get_ReturnsExpectedProperties()
+    {
+        int key = MasterAsset.MasterAsset.WeaponBody[WeaponBodies.Camelot].GetBuildupLevelId(40);
+
+        MasterAsset.MasterAsset.WeaponBodyBuildupLevel[key]
+            .Should()
+            .BeEquivalentTo(
+                new WeaponBodyBuildupLevel(
+                    Id: 601040,
+                    RarityGroup: 6,
+                    Level: 40,
+                    BuildupMaterialId1: Materials.BronzeWhetstone,
+                    BuildupMaterialQuantity1: 5,
+                    BuildupMaterialId2: Materials.GoldWhetstone,
+                    BuildupMaterialQuantity2: 5,
+                    BuildupMaterialId3: Materials.Empty,
+                    BuildupMaterialQuantity3: 0
+                )
+            );
+    }
+
+    [Fact]
+    public void WeaponPassiveAbility_Get_ReturnsExpectedProperties()
+    {
+        int key = MasterAsset.MasterAsset.WeaponBody[
+            WeaponBodies.InfernoApogee
+        ].GetPassiveAbilityId(1);
+
+        MasterAsset.MasterAsset.WeaponPassiveAbility[key]
+            .Should()
+            .BeEquivalentTo(
+                new WeaponPassiveAbility(
+                    Id: 1010101,
+                    WeaponPassiveAbilityGroupId: 10101,
+                    WeaponPassiveAbilityNo: 1,
+                    WeaponType: WeaponTypes.Sword,
+                    ElementalType: UnitElement.Fire,
+                    UnlockConditionLimitBreakCount: 1,
+                    RewardWeaponSkinId1: 30140105,
+                    RewardWeaponSkinId2: 0,
+                    UnlockCoin: 80_000,
+                    UnlockMaterialId1: Materials.Granite,
+                    UnlockMaterialQuantity1: 80,
+                    UnlockMaterialId2: Materials.OldCloth,
+                    UnlockMaterialQuantity2: 30,
+                    UnlockMaterialId3: Materials.FloatingYellowCloth,
+                    UnlockMaterialQuantity3: 7,
+                    UnlockMaterialId4: Materials.UnearthlyLantern,
+                    UnlockMaterialQuantity4: 1,
+                    UnlockMaterialId5: Materials.BlazeOrb,
+                    UnlockMaterialQuantity5: 8
+                )
+            );
+    }
+
+    [Theory]
+    [InlineData(Charas.Celliera, 110255011, 110255012, 110255013, 110255014, 110255015)]
+    [InlineData(Charas.SummerCelliera, 110255021, 110255022, 110255023, 110255024, 110255025)]
+    public void CharaStories_ReturnsExpectedStoryIds(Charas chara, params int[] expectedStoryIds)
+    {
+        int key = MasterAsset.MasterAsset.CharaStories[(int)chara].id;
+
+        MasterAsset.MasterAsset.CharaStories[key].storyIds
+            .Should()
+            .ContainInConsecutiveOrder(expectedStoryIds);
+    }
+
+    [Theory]
+    [InlineData(Dragons.Garuda, 210036011, 210036012)]
+    [InlineData(Dragons.Liger, 210043011, 210043012)]
+    public void DragonStories_ReturnsExpectedStoryIds(Dragons dragon, params int[] expectedStoryIds)
+    {
+        int key = MasterAsset.MasterAsset.DragonStories[(int)dragon].id;
+
+        MasterAsset.MasterAsset.DragonStories[key].storyIds
+            .Should()
+            .ContainInConsecutiveOrder(expectedStoryIds);
+    }
+
+    [Fact]
+    public void StoryData_HasExpectedProperties()
+    {
+        MasterAsset.MasterAsset.UnitStory[200010011]
+            .Should()
+            .BeEquivalentTo(
+                new UnitStory(
+                    Id: 200010011,
+                    ReleaseTriggerId: (int)Dragons.Chthonius,
+                    UnlockQuestStoryId: 0,
+                    UnlockTriggerStoryId: 0
+                )
+            );
+    }
+
+    [Theory]
+    [InlineData(100001141, StoryTypes.Chara)]
+    [InlineData(210001011, StoryTypes.Dragon)]
+    public void StoryData_Type_IsCorrect(int storyId, StoryTypes expectedType)
+    {
+        MasterAsset.MasterAsset.UnitStory[storyId].Type.Should().Be(expectedType);
     }
 }

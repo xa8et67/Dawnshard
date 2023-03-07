@@ -17,7 +17,7 @@ namespace DragaliaAPI.Database.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "7.0.1")
+                .HasAnnotation("ProductVersion", "7.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -291,10 +291,6 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("smallint")
                         .HasColumnName("Abil3Lvl");
 
-                    b.Property<byte>("AdditionalMaxLevel")
-                        .HasColumnType("smallint")
-                        .HasColumnName("AddMaxLevel");
-
                     b.Property<int>("AttackBase")
                         .HasColumnType("integer")
                         .HasColumnName("AtkBase");
@@ -472,6 +468,27 @@ namespace DragaliaAPI.Database.Migrations
                     b.HasIndex("DeviceAccountId");
 
                     b.ToTable("PlayerDragonData");
+                });
+
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerDragonGift", b =>
+                {
+                    b.Property<string>("DeviceAccountId")
+                        .HasColumnType("text")
+                        .HasColumnName("DeviceAccountId");
+
+                    b.Property<int>("DragonGiftId")
+                        .HasColumnType("integer")
+                        .HasColumnName("DragonGiftId");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("Quantity");
+
+                    b.HasKey("DeviceAccountId", "DragonGiftId");
+
+                    b.HasIndex("DeviceAccountId");
+
+                    b.ToTable("PlayerDragonGift");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerDragonReliability", b =>
@@ -919,6 +936,21 @@ namespace DragaliaAPI.Database.Migrations
                     b.ToTable("PlayerWeapons");
                 });
 
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbWeaponPassiveAbility", b =>
+                {
+                    b.Property<string>("DeviceAccountId")
+                        .HasColumnType("text");
+
+                    b.Property<int>("WeaponPassiveAbilityId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("DeviceAccountId", "WeaponPassiveAbilityId");
+
+                    b.HasIndex("DeviceAccountId");
+
+                    b.ToTable("PlayerPassiveAbilities");
+                });
+
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbWeaponSkin", b =>
                 {
                     b.Property<string>("DeviceAccountId")
@@ -1028,6 +1060,17 @@ namespace DragaliaAPI.Database.Migrations
                     b.Navigation("Owner");
                 });
 
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerDragonGift", b =>
+                {
+                    b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
+                        .WithMany("DragonGiftList")
+                        .HasForeignKey("DeviceAccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
+                });
+
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerDragonReliability", b =>
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
@@ -1127,6 +1170,17 @@ namespace DragaliaAPI.Database.Migrations
                     b.Navigation("Owner");
                 });
 
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbWeaponPassiveAbility", b =>
+                {
+                    b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
+                        .WithMany("WeaponPassiveAbilityList")
+                        .HasForeignKey("DeviceAccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
+                });
+
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbWeaponSkin", b =>
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
@@ -1153,6 +1207,8 @@ namespace DragaliaAPI.Database.Migrations
 
                     b.Navigation("Currencies");
 
+                    b.Navigation("DragonGiftList");
+
                     b.Navigation("DragonList");
 
                     b.Navigation("DragonReliabilityList");
@@ -1176,6 +1232,8 @@ namespace DragaliaAPI.Database.Migrations
                     b.Navigation("UserSummonList");
 
                     b.Navigation("WeaponBodyList");
+
+                    b.Navigation("WeaponPassiveAbilityList");
 
                     b.Navigation("WeaponSkinList");
                 });

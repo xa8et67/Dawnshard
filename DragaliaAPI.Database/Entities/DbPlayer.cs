@@ -28,6 +28,9 @@ public class DbPlayer
     public virtual ICollection<DbPlayerDragonData> DragonList { get; set; } =
         new List<DbPlayerDragonData>();
 
+    public virtual ICollection<DbPlayerDragonGift> DragonGiftList { get; set; } =
+        new List<DbPlayerDragonGift>();
+
     public virtual ICollection<DbPlayerDragonReliability> DragonReliabilityList { get; set; } =
         new List<DbPlayerDragonReliability>();
 
@@ -54,4 +57,7 @@ public class DbPlayer
 
     public virtual ICollection<DbWeaponSkin> WeaponSkinList { get; set; } =
         new List<DbWeaponSkin>();
+
+    public virtual ICollection<DbWeaponPassiveAbility> WeaponPassiveAbilityList { get; set; } =
+        new List<DbWeaponPassiveAbility>();
 }

@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using DragaliaAPI.Middleware;
 using DragaliaAPI.Models;
+using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -36,7 +37,10 @@ public abstract class DragaliaControllerBase : ControllerBase
     public OkObjectResult Code(ResultCode code, string message)
     {
         return base.Ok(
-            new DragaliaResponse<ResultCodeData>(new DataHeaders(code), new(code, message))
+            new DragaliaResponse<object>(
+                data_headers: new DataHeaders(code),
+                new ResultCodeData(code, message)
+            )
         );
     }
 
