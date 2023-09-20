@@ -3,23 +3,37 @@ name: publish-push
 on:
   push:
     branches:
-      - develop
-    paths-ignore:
-      - "**/*.yaml"
-      - "**/*.yml"
-      - "**/*.md"
+      - "develop"
 
 env:
   HUSKY: 0
 
 jobs:
   publish:
-    uses: ./.github/workflows/publish-base.yaml
+    strategy:
+      matrix:
+        args:
+          [
+            {
+              dockerfile: "DragaliaAPI.Photon.StateManager/Dockerfile",
+              image: "photon-state-manager",
+            },
+            { dockerfile: "DragaliaAPI/Dockerfile", image: "dragalia-api" }
+          ]
+    uses: ./.github/workflows/publish.yaml
     with:
       ref: develop
+      dockerfile: ${{ matrix.args.dockerfile }}
+      image-name: ${{ matrix.args.image }}
       image-tag: latest
     secrets: inherit
+
   deploy:
+    strategy:
+      matrix:
+        github-environment: ["PhotonStateManager", "Dawnshard"]
     needs: publish
     uses: ./.github/workflows/deploy.yaml
+    with:
+      github-environment: ${{ matrix.github-environment }}
     secrets: inherit

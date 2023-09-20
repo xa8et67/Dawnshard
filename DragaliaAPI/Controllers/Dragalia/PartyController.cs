@@ -1,6 +1,8 @@
-﻿using AutoMapper;
+using AutoMapper;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
+using DragaliaAPI.Features.PartyPower;
+using DragaliaAPI.Features.Missions;
 using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
@@ -15,32 +17,18 @@ namespace DragaliaAPI.Controllers.Dragalia;
 [Consumes("application/octet-stream")]
 [Produces("application/octet-stream")]
 [ApiController]
-public class PartyController : DragaliaControllerBase
+public class PartyController(
+    IPartyRepository partyRepository,
+    IUnitRepository unitRepository,
+    IUserDataRepository userDataRepository,
+    IUpdateDataService updateDataService,
+    IMapper mapper,
+    ILogger<PartyController> logger,
+    IPartyPowerService partyPowerService,
+    IPartyPowerRepository partyPowerRepository,
+    IMissionProgressionService missionProgressionService
+) : DragaliaControllerBase
 {
-    private readonly IPartyRepository partyRepository;
-    private readonly IUnitRepository unitRepository;
-    private readonly IUserDataRepository userDataRepository;
-    private readonly IUpdateDataService updateDataService;
-    private readonly IMapper mapper;
-    private readonly ILogger<PartyController> logger;
-
-    public PartyController(
-        IPartyRepository partyRepository,
-        IUnitRepository unitRepository,
-        IUserDataRepository userDataRepository,
-        IUpdateDataService updateDataService,
-        IMapper mapper,
-        ILogger<PartyController> logger
-    )
-    {
-        this.partyRepository = partyRepository;
-        this.unitRepository = unitRepository;
-        this.userDataRepository = userDataRepository;
-        this.updateDataService = updateDataService;
-        this.mapper = mapper;
-        this.logger = logger;
-    }
-
     /// <summary>
     /// Does not seem to do anything useful.
     /// ILSpy indicates the response should contain halidom info, but it is always empty and only called on fresh accounts.
@@ -63,16 +51,21 @@ public class PartyController : DragaliaControllerBase
         foreach (PartySettingList partyUnit in requestParty.request_party_setting_list)
         {
             if (
-                !await this.ValidateCharacterId(partyUnit.chara_id, this.DeviceAccountId)
-                || !await this.ValidateDragonKeyId(
-                    partyUnit.equip_dragon_key_id,
-                    this.DeviceAccountId
-                )
+                !await this.ValidateCharacterId(partyUnit.chara_id)
+                || !await this.ValidateDragonKeyId(partyUnit.equip_dragon_key_id)
             )
             {
                 throw new DragaliaException(ResultCode.PartySwitchSettingCharaShort);
             }
         }
+
+        int partyPower = await partyPowerService.CalculatePartyPower(
+            requestParty.request_party_setting_list
+        );
+
+        await partyPowerRepository.SetMaxPartyPowerAsync(partyPower);
+
+        logger.LogTrace("Party power {power}", partyPower);
 
         DbParty dbEntry = mapper.Map<DbParty>(
             new PartyList(
@@ -82,13 +75,14 @@ public class PartyController : DragaliaControllerBase
             )
         );
 
-        await partyRepository.SetParty(this.DeviceAccountId, dbEntry);
+        await partyRepository.SetParty(dbEntry);
 
-        UpdateDataList updateDataList = this.updateDataService.GetUpdateDataList(
-            this.DeviceAccountId
-        );
+        if (requestParty.is_entrust)
+        {
+            missionProgressionService.OnPartyOptimized(requestParty.entrust_element);
+        }
 
-        await partyRepository.SaveChangesAsync();
+        UpdateDataList updateDataList = await updateDataService.SaveChangesAsync();
 
         return this.Ok(new PartySetPartySettingData(updateDataList, new()));
     }
@@ -96,8 +90,9 @@ public class PartyController : DragaliaControllerBase
     [HttpPost("set_main_party_no")]
     public async Task<DragaliaResult> SetMainPartyNo(PartySetMainPartyNoRequest request)
     {
-        await this.userDataRepository.SetMainPartyNo(this.DeviceAccountId, request.main_party_no);
-        await this.userDataRepository.SaveChangesAsync();
+        await userDataRepository.SetMainPartyNo(request.main_party_no);
+
+        await updateDataService.SaveChangesAsync();
 
         return this.Ok(new PartySetMainPartyNoData(request.main_party_no));
     }
@@ -105,29 +100,20 @@ public class PartyController : DragaliaControllerBase
     [HttpPost("update_party_name")]
     public async Task<DragaliaResult> UpdatePartyName(PartyUpdatePartyNameRequest request)
     {
-        await this.partyRepository.UpdatePartyName(
-            this.DeviceAccountId,
-            request.party_no,
-            request.party_name
-        );
+        await partyRepository.UpdatePartyName(request.party_no, request.party_name);
 
-        UpdateDataList updateDataList = this.updateDataService.GetUpdateDataList(
-            this.DeviceAccountId
-        );
-
-        await this.partyRepository.SaveChangesAsync();
+        UpdateDataList updateDataList = await updateDataService.SaveChangesAsync();
 
         return this.Ok(new PartyUpdatePartyNameData() { update_data_list = updateDataList });
     }
 
-    private async Task<bool> ValidateCharacterId(Charas id, string deviceAccountId)
+    private async Task<bool> ValidateCharacterId(Charas id)
     {
         if (id == Charas.Empty)
             return true;
 
         // TODO: can make this single query instead of 8 (this method is called in a loop)
-        IEnumerable<Charas> ownedCharaIds = await this.unitRepository
-            .GetAllCharaData(deviceAccountId)
+        IEnumerable<Charas> ownedCharaIds = await unitRepository.Charas
             .Select(x => x.CharaId)
             .ToListAsync();
 
@@ -137,7 +123,7 @@ public class PartyController : DragaliaControllerBase
         {
             logger.LogError(
                 "Request from DeviceAccount {account} contained not-owned character id {id}",
-                deviceAccountId,
+                DeviceAccountId,
                 id
             );
             return false;
@@ -146,14 +132,13 @@ public class PartyController : DragaliaControllerBase
         return true;
     }
 
-    private async Task<bool> ValidateDragonKeyId(ulong keyId, string deviceAccountId)
+    private async Task<bool> ValidateDragonKeyId(ulong keyId)
     {
         // Empty slot
         if (keyId == 0)
             return true;
 
-        IEnumerable<long> ownedDragonKeyIds = await this.unitRepository
-            .GetAllDragonData(deviceAccountId)
+        IEnumerable<long> ownedDragonKeyIds = await unitRepository.Dragons
             .Select(x => x.DragonKeyId)
             .ToListAsync();
 
@@ -161,7 +146,7 @@ public class PartyController : DragaliaControllerBase
         {
             logger.LogError(
                 "Request from DeviceAccount {id} contained not-owned dragon_key_id {key_id}",
-                deviceAccountId,
+                DeviceAccountId,
                 keyId
             );
             return false;

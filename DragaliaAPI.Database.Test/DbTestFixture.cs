@@ -1,8 +1,12 @@
 ﻿using AutoMapper;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
+using DragaliaAPI.Features.SavefileUpdate;
 using DragaliaAPI.Services;
+using DragaliaAPI.Services.Game;
+using DragaliaAPI.Test.Utils;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -20,12 +24,15 @@ public class DbTestFixture : IDisposable
         DbContextOptions<ApiContext> options = new DbContextOptionsBuilder<ApiContext>()
             .UseInMemoryDatabase($"DbTestFixture-{Guid.NewGuid()}")
             .EnableSensitiveDataLogging()
+            .ConfigureWarnings(config => config.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
 
         this.ApiContext = new ApiContext(options);
-        Mock<ILogger<SavefileService>> mockLogger = new(MockBehavior.Loose);
         // Unused for creating saves
+        Mock<ILogger<SavefileService>> mockLogger = new(MockBehavior.Loose);
         Mock<IDistributedCache> mockCache = new(MockBehavior.Loose);
+        // Used but we probably don't want it to actually add characters?
+        Mock<IUnitRepository> mockUnitRepository = new(MockBehavior.Loose);
 
         SavefileService savefileService =
             new(
@@ -34,9 +41,12 @@ public class DbTestFixture : IDisposable
                 new MapperConfiguration(
                     opts => opts.AddMaps(typeof(Program).Assembly)
                 ).CreateMapper(),
-                mockLogger.Object
+                mockLogger.Object,
+                IdentityTestUtils.MockPlayerDetailsService.Object,
+                Enumerable.Empty<ISavefileUpdate>(),
+                mockUnitRepository.Object
             );
-        savefileService.Create("id").Wait();
+        savefileService.Create().Wait();
     }
 
     public async Task AddToDatabase<TEntity>(TEntity data)

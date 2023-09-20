@@ -153,7 +153,7 @@ public class DbPlayerCharaData : IDbHasAccountId
     public bool ListViewFlag { get; set; }
 
     [Column("GetTime")]
-    public DateTimeOffset GetTime { get; set; } = DateTime.UtcNow;
+    public DateTimeOffset GetTime { get; set; } = DateTimeOffset.UtcNow;
 
     [NotMapped]
     public SortedSet<int> ManaCirclePieceIdList
@@ -205,6 +205,7 @@ public class DbPlayerCharaData : IDbHasAccountId
         this.CharaId = id;
         this.HpBase = rarityHp;
         this.AttackBase = rarityAtk;
+        this.BurstAttackLevel = (byte)data.DefaultBurstAttackLevel;
         this.Ability1Level = (byte)data.DefaultAbility1Level;
         this.Ability2Level = (byte)data.DefaultAbility2Level;
         this.Ability3Level = (byte)data.DefaultAbility3Level;

@@ -1,7 +1,10 @@
 ﻿using System.Reflection.Emit;
+using DragaliaAPI.Photon.Shared.Enums;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models;
+using DragaliaAPI.Shared.MasterAsset.Models.Story;
+using DragaliaAPI.Shared.MasterAsset.Models.ManaCircle;
 
 namespace DragaliaAPI.Shared.Test.Unit;
 
@@ -52,6 +55,20 @@ public class MasterAssetTest
                     EditSkillLevelNum: 1,
                     EditSkillCost: 5,
                     ManaCircleName: "MC_0511",
+                    CharaLimitBreak: 1050201,
+                    PieceElementGroupId: 502,
+                    PieceMaterialElementId: 5091,
+                    AwakeNeedEntityType4: EntityTypes.Dew,
+                    AwakeNeedEntityId4: 0,
+                    AwakeNeedEntityQuantity4: 2500,
+                    AwakeNeedEntityType5: EntityTypes.Dew,
+                    AwakeNeedEntityId5: 0,
+                    AwakeNeedEntityQuantity5: 25000,
+                    GrowMaterialOnlyStartDate: DateTimeOffset.UnixEpoch,
+                    GrowMaterialOnlyEndDate: DateTimeOffset.UnixEpoch,
+                    UniqueGrowMaterialId1: Materials.GalaLaxisConviction,
+                    UniqueGrowMaterialId2: Materials.GalaLaxisDevotion,
+                    GrowMaterialId: Materials.Empty,
                     DefaultAbility1Level: 1,
                     DefaultAbility2Level: 0,
                     DefaultAbility3Level: 0,
@@ -67,7 +84,21 @@ public class MasterAssetTest
                     Abilities31: 1071,
                     Abilities32: 1074,
                     Abilities33: 2041,
-                    Abilities34: 0
+                    Abilities34: 0,
+                    MinDef: 10,
+                    ExAbilityData1: 106070004,
+                    ExAbilityData2: 106070005,
+                    ExAbilityData3: 106070006,
+                    ExAbilityData4: 106070007,
+                    ExAbilityData5: 106070008,
+                    ExAbility2Data1: 400000735,
+                    ExAbility2Data2: 400000736,
+                    ExAbility2Data3: 400000737,
+                    ExAbility2Data4: 400000738,
+                    ExAbility2Data5: 400000740,
+                    EditReleaseEntityType1: EntityTypes.Material,
+                    EditReleaseEntityId1: 201019011,
+                    EditReleaseEntityQuantity1: 5
                 )
             );
     }
@@ -87,7 +118,9 @@ public class MasterAssetTest
                     NecessaryManaPoint: 400,
                     UniqueGrowMaterialCount1: 0,
                     UniqueGrowMaterialCount2: 0,
+                    GrowMaterialCount: 1,
                     MC_0: 4032,
+                    Step: 1,
                     ManaCircleName: "MC_0403"
                 )
             );
@@ -193,7 +226,9 @@ public class MasterAssetTest
                     NecessaryManaPoint: 450,
                     UniqueGrowMaterialCount1: 0,
                     UniqueGrowMaterialCount2: 0,
+                    GrowMaterialCount: 1,
                     MC_0: 5045,
+                    Step: 3,
                     ManaCircleName: "MC_0504"
                 )
             );
@@ -209,13 +244,19 @@ public class MasterAssetTest
             .BeEquivalentTo(
                 new QuestData(
                     Id: 100010101,
+                    Gid: 10001,
+                    GroupType: QuestGroupType.MainStory,
                     QuestPlayModeType: QuestPlayModeTypes.Normal,
                     LimitedElementalType: 0,
                     LimitedElementalType2: 0,
                     LimitedWeaponTypePatternId: 0,
+                    IsPayForceStaminaSingle: false,
                     PayStaminaSingle: 2,
+                    CampaignStaminaSingle: 1,
                     PayStaminaMulti: 1,
+                    CampaignStaminaMulti: 1,
                     DungeonType: DungeonTypes.Normal,
+                    VariationType: VariationTypes.Normal,
                     Scene01: "Main/01/MAIN_01_0101_01",
                     AreaName01: "MAIN_01_0101_01",
                     Scene02: "Boss/BG001_5001_00/BG001_5001_00_00",
@@ -227,7 +268,18 @@ public class MasterAssetTest
                     Scene05: "",
                     AreaName05: "",
                     Scene06: "",
-                    AreaName06: ""
+                    AreaName06: "",
+                    ContinueLimit: 3,
+                    RebornLimit: 3,
+                    Difficulty: 500,
+                    PayEntityTargetType: PayTargetType.None,
+                    PayEntityType: 0,
+                    PayEntityId: 0,
+                    PayEntityQuantity: 0,
+                    HoldEntityType: EntityTypes.None,
+                    HoldEntityId: 0,
+                    HoldEntityQuantity: 0,
+                    IsSumUpTotalDamage: false
                 )
             );
 
@@ -281,7 +333,8 @@ public class MasterAssetTest
                     StaminaMaxTime: 0,
                     StaminaMax: 0,
                     EventEffectType: 0,
-                    EventEffectArgs: 0.0f
+                    EventEffectArgs: 0.0f,
+                    Odds: ""
                 )
             );
     }
@@ -295,6 +348,7 @@ public class MasterAssetTest
             .BeEquivalentTo(
                 new WeaponBody(
                     Id: WeaponBodies.EndlessAzureCore,
+                    WeaponSeriesId: WeaponSeries.Void,
                     WeaponType: WeaponTypes.Cane,
                     Rarity: 5,
                     ElementalType: UnitElement.Water,
@@ -331,7 +385,17 @@ public class MasterAssetTest
                     CreateEntityId4: Materials.StreamOrb,
                     CreateEntityQuantity4: 8,
                     CreateEntityId5: 0,
-                    CreateEntityQuantity5: 0
+                    CreateEntityQuantity5: 0,
+                    LimitOverCountPartyPower1: 100,
+                    LimitOverCountPartyPower2: 150,
+                    BaseHp: 45,
+                    MaxHp1: 151,
+                    MaxHp2: 216,
+                    MaxHp3: 0,
+                    BaseAtk: 97,
+                    MaxAtk1: 324,
+                    MaxAtk2: 590,
+                    MaxAtk3: 0
                 )
             );
     }
@@ -476,5 +540,254 @@ public class MasterAssetTest
     public void StoryData_Type_IsCorrect(int storyId, StoryTypes expectedType)
     {
         MasterAsset.MasterAsset.UnitStory[storyId].Type.Should().Be(expectedType);
+    }
+
+    [Fact]
+    public void AbilityCrestTrade_Get_ReturnsExpectedProperties()
+    {
+        AbilityCrestTrade abilityCrestTrade = MasterAsset.MasterAsset.AbilityCrestTrade.Get(5101);
+
+        abilityCrestTrade
+            .Should()
+            .BeEquivalentTo(
+                new
+                {
+                    Id = 5101,
+                    AbilityCrestId = AbilityCrests.SweetSurprise,
+                    NeedDewPoint = 4000,
+                    Priority = 5199
+                }
+            );
+    }
+
+    [Fact]
+    public void AbilityCrestBuildupGroup_Get_ReturnsExpectedProperties()
+    {
+        AbilityCrestBuildupGroup buildupGroup =
+            MasterAsset.MasterAsset.AbilityCrestBuildupGroup.Get(6020603);
+
+        buildupGroup
+            .Should()
+            .BeEquivalentTo(
+                new AbilityCrestBuildupGroup(
+                    Id: 6020603,
+                    AbilityCrestBuildupGroupId: 602,
+                    BuildupPieceType: BuildupPieceTypes.Copies,
+                    Step: 3,
+                    BuildupDewPoint: 0,
+                    BuildupMaterialId1: Materials.AzureInsignia,
+                    BuildupMaterialQuantity1: 200,
+                    BuildupMaterialId2: Materials.DyrenellAureus,
+                    BuildupMaterialQuantity2: 25,
+                    BuildupMaterialId3: 0,
+                    BuildupMaterialQuantity3: 0,
+                    UniqueBuildupMaterialCount: 0
+                )
+            );
+    }
+
+    [Fact]
+    public void AbilityCrestBuildupGroup_MaterialMap_ReturnsExpectedDictionary()
+    {
+        Dictionary<Materials, int> map = MasterAsset.MasterAsset.AbilityCrestBuildupGroup
+            .Get(6020603)
+            .MaterialMap;
+
+        map.Should()
+            .BeEquivalentTo(
+                new Dictionary<Materials, int>()
+                {
+                    { Materials.AzureInsignia, 200 },
+                    { Materials.DyrenellAureus, 25 }
+                }
+            );
+    }
+
+    [Theory]
+    [InlineData(6040104, false)]
+    [InlineData(11030602, true)]
+    public void AbilityCrestBuildupGroup_IsUseUniqueMaterial_ReturnsExpectedBool(
+        int id,
+        bool expected
+    )
+    {
+        bool actual = MasterAsset.MasterAsset.AbilityCrestBuildupGroup.Get(id).IsUseUniqueMaterial;
+
+        actual.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(6020603, false)]
+    [InlineData(5010101, true)]
+    public void AbilityCrestBuildupGroup_IsUseDewpoint_ReturnsExpectedBool(int id, bool expected)
+    {
+        bool actual = MasterAsset.MasterAsset.AbilityCrestBuildupGroup.Get(id).IsUseDewpoint;
+
+        actual.Should().Be(expected);
+    }
+
+    [Fact]
+    public void AbilityCrestBuildupLevel_Get_ReturnsExpectedProperties()
+    {
+        AbilityCrestBuildupLevel buildupLevel =
+            MasterAsset.MasterAsset.AbilityCrestBuildupLevel.Get(901010);
+
+        buildupLevel
+            .Should()
+            .BeEquivalentTo(
+                new AbilityCrestBuildupLevel(
+                    Id: 901010,
+                    RarityGroup: 901,
+                    Level: 10,
+                    BuildupMaterialId1: Materials.HolyWater,
+                    BuildupMaterialQuantity1: 2,
+                    BuildupMaterialId2: Materials.ConsecratedWater,
+                    BuildupMaterialQuantity2: 14,
+                    BuildupMaterialId3: 0,
+                    BuildupMaterialQuantity3: 0,
+                    UniqueBuildupMaterialCount: 2
+                )
+            );
+    }
+
+    [Fact]
+    public void AbilityCrestBuildupLevel_MaterialMap_ReturnsExpectedDictionary()
+    {
+        Dictionary<Materials, int> map = MasterAsset.MasterAsset.AbilityCrestBuildupLevel
+            .Get(901010)
+            .MaterialMap;
+
+        map.Should()
+            .BeEquivalentTo(
+                new Dictionary<Materials, int>()
+                {
+                    { Materials.HolyWater, 2 },
+                    { Materials.ConsecratedWater, 14 }
+                }
+            );
+    }
+
+    [Theory]
+    [InlineData(901010, true)]
+    [InlineData(301013, false)]
+    public void AbilityCrestBuildupLevel_IsUseUniqueMaterial_ReturnsExpectedBool(
+        int id,
+        bool expected
+    )
+    {
+        bool actual = MasterAsset.MasterAsset.AbilityCrestBuildupLevel.Get(id).IsUseUniqueMaterial;
+
+        actual.Should().Be(expected);
+    }
+
+    [Fact]
+    public void AbilityCrestRarity_Get_ReturnsExpectedProperties()
+    {
+        AbilityCrestRarity rarity = MasterAsset.MasterAsset.AbilityCrestRarity.Get(9);
+
+        rarity
+            .Should()
+            .BeEquivalentTo(
+                new AbilityCrestRarity(
+                    Id: 9,
+                    MaxLimitLevelByLimitBreak0: 10,
+                    MaxLimitLevelByLimitBreak1: 15,
+                    MaxLimitLevelByLimitBreak2: 20,
+                    MaxLimitLevelByLimitBreak3: 25,
+                    MaxLimitLevelByLimitBreak4: 30,
+                    MaxHpPlusCount: 40,
+                    MaxAtkPlusCount: 40
+                )
+            );
+    }
+
+    [Fact]
+    public void AbilityCrest_Get_ReturnsExpectedProperties()
+    {
+        AbilityCrest abilityCrest = MasterAsset.MasterAsset.AbilityCrest.Get(
+            AbilityCrests.TheGeniusTacticianBowsBoon
+        );
+
+        abilityCrest
+            .Should()
+            .BeEquivalentTo(
+                new AbilityCrest(
+                    Id: AbilityCrests.TheGeniusTacticianBowsBoon,
+                    AbilityCrestBuildupGroupId: 1101,
+                    AbilityCrestLevelRarityGroupId: 901,
+                    Rarity: 9,
+                    UniqueBuildupMaterialId: Materials.GeniusoftheCenturysMemory,
+                    DuplicateEntityId: Materials.GeniusoftheCenturysMemory,
+                    DuplicateEntityQuantity: 6,
+                    DuplicateEntityType: EntityTypes.Material,
+                    Abilities11: 2338,
+                    Abilities12: 2339,
+                    Abilities13: 2340,
+                    Abilities21: 0,
+                    Abilities22: 0,
+                    Abilities23: 0,
+                    BaseHp: 14,
+                    MaxHp: 44,
+                    BaseAtk: 5,
+                    MaxAtk: 25,
+                    UnionAbilityGroupId: 4
+                )
+            );
+    }
+
+    [Fact]
+    public void AbilityCrest_GetBuildupGroupId_ReturnsExpectedId()
+    {
+        AbilityCrest abilityCrest = MasterAsset.MasterAsset.AbilityCrest.Get(
+            AbilityCrests.TheGeniusTacticianBowsBoon
+        );
+
+        int buildupGroupId = abilityCrest.GetBuildupGroupId(BuildupPieceTypes.Copies, 4);
+        buildupGroupId.Should().Be(11010604);
+    }
+
+    [Fact]
+    public void AbilityCrest_GetBuildupLevelId_ReturnsExpectedId()
+    {
+        AbilityCrest abilityCrest = MasterAsset.MasterAsset.AbilityCrest.Get(
+            AbilityCrests.TheGeniusTacticianBowsBoon
+        );
+
+        int buildupLevelId = abilityCrest.GetBuildupLevelId(9);
+        buildupLevelId.Should().Be(901009);
+    }
+
+    [Fact]
+    public void AbilityCrest_DuplicateMaterialMap_ReturnsExpectedDictionary()
+    {
+        Dictionary<Materials, int> map = MasterAsset.MasterAsset.AbilityCrest
+            .Get(AbilityCrests.TheGeniusTacticianBowsBoon)
+            .DuplicateMaterialMap;
+
+        map.Should()
+            .BeEquivalentTo(
+                new Dictionary<Materials, int>() { { Materials.GeniusoftheCenturysMemory, 6 } }
+            );
+    }
+
+    [Fact]
+    public void AbilityCrest_GetAbilities_ReturnsExpected()
+    {
+        AbilityCrest crest = MasterAsset.MasterAsset.AbilityCrest[AbilityCrests.TotheExtreme];
+
+        crest
+            .GetAbilities(1)
+            .Should()
+            .BeEquivalentTo(new List<int>() { crest.Abilities11, crest.Abilities21 });
+
+        crest
+            .GetAbilities(2)
+            .Should()
+            .BeEquivalentTo(new List<int>() { crest.Abilities12, crest.Abilities22 });
+
+        crest
+            .GetAbilities(3)
+            .Should()
+            .BeEquivalentTo(new List<int>() { crest.Abilities13, crest.Abilities23 });
     }
 }

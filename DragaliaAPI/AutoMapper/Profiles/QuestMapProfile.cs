@@ -11,6 +11,8 @@ public class QuestMapProfile : Profile
     {
         this.CreateMap<DbQuest, QuestList>().ReverseMap();
 
+        this.CreateMap<DbQuestEvent, QuestEventList>().ReverseMap();
+
         this.CreateMap<DbPlayerStoryState, QuestStoryList>()
             .ForMember(x => x.quest_story_id, o => o.MapFrom(nameof(DbPlayerStoryState.StoryId)));
 
@@ -21,6 +23,10 @@ public class QuestMapProfile : Profile
         this.CreateMap<DbPlayerStoryState, CastleStoryList>()
             .ForMember(x => x.castle_story_id, o => o.MapFrom(src => src.StoryId))
             .ForMember(x => x.is_read, o => o.MapFrom(src => src.State));
+
+        this.CreateMap<DbPlayerStoryState, DmodeStoryList>()
+            .ForMember(x => x.dmode_story_id, o => o.MapFrom(src => src.StoryId))
+            .ForMember(x => x.is_read, o => o.MapFrom(o => o.State));
 
         this.CreateMap<AreaInfo, AreaInfoList>();
 

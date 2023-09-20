@@ -2,6 +2,7 @@
 using DragaliaAPI.Shared.Definitions.Enums;
 using Microsoft.AspNetCore.Mvc;
 using DragaliaAPI.Services;
+using DragaliaAPI.Services.Game;
 
 namespace DragaliaAPI.Controllers.Dragalia;
 
@@ -47,12 +48,18 @@ public class FriendController : DragaliaControllerBase
             helperList.support_user_list
                 .Where(helper => helper.viewer_id == request.support_viewer_id)
                 .FirstOrDefault()
-            ?? new() { support_chara = new() { chara_id = Charas.ThePrince } };
+            ?? HelperService.StubData.SupportListData.support_user_list.First();
 
         AtgenSupportUserDetailList helperDetail =
             helperList.support_user_detail_list
                 .Where(helper => helper.viewer_id == request.support_viewer_id)
-                .FirstOrDefault() ?? new() { is_friend = false };
+                .FirstOrDefault()
+            ?? new()
+            {
+                is_friend = false,
+                viewer_id = request.support_viewer_id,
+                gettable_mana_point = 50,
+            };
 
         // TODO: when helpers are converted to use other account ids, get the bonuses of that account id
         FortBonusList bonusList = await bonusService.GetBonusList();
@@ -70,7 +77,7 @@ public class FriendController : DragaliaControllerBase
                     ),
                     dragon_reliability_level = 30,
                     is_friend = helperDetail.is_friend,
-                    apply_send_status = 0
+                    apply_send_status = 0,
                 }
             };
 

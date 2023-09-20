@@ -8,10 +8,37 @@
 /// </summary>
 public enum PaymentTypes
 {
-    Diamantium = 2,
-    Wyrmite = 3,
-    Ticket = 8,
+    None,
+    Money,
+    Diamantium,
+    Wyrmite,
+    DiamantiumOrWyrmite,
+    Coin,
+    ManaPoint,
+    DewPoint,
+    Ticket,
+    FreeDailyExecDependant,
+    FreeDailyTenfold,
+    HalidomHustleHammer,
+    ItemSummonCampaign,
+    TutorialTicketSummon,
+    SummonCampaignOneHundred,
+    Other = 99
+}
 
-    FreeDailyExecDependant = 9,
-    FreeDailyTenfold = 10
+public static class PaymentTypesExtensions
+{
+    public static EntityTypes ToEntityType(this PaymentTypes type)
+    {
+        return type switch
+        {
+            PaymentTypes.Wyrmite => EntityTypes.Wyrmite,
+            PaymentTypes.Coin => EntityTypes.Rupies,
+            PaymentTypes.ManaPoint => EntityTypes.Mana,
+            PaymentTypes.DewPoint => EntityTypes.Dew,
+            PaymentTypes.Ticket => EntityTypes.SummonTicket,
+            PaymentTypes.HalidomHustleHammer => EntityTypes.HustleHammer,
+            _ => EntityTypes.None
+        };
+    }
 }

@@ -1,35 +1,53 @@
+using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
-using System.Security.Claims;
 using DragaliaAPI.Database;
+using DragaliaAPI.Features.GraphQL;
 using DragaliaAPI.MessagePack;
 using DragaliaAPI.Middleware;
 using DragaliaAPI.Models.Options;
-using DragaliaAPI.Services;
 using DragaliaAPI.Services.Health;
-using DragaliaAPI.Services.Helpers;
 using DragaliaAPI.Shared;
 using DragaliaAPI.Shared.Json;
-using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Serilog;
-using Serilog.Core;
-using Serilog.Events;
-
-Log.Logger = new LoggerConfiguration().MinimumLevel
-    .Debug()
-    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
-    .Enrich.FromLogContext()
-    .WriteTo.Console()
-    .CreateBootstrapLogger();
+using DragaliaAPI;
+using DragaliaAPI.Models;
+using MessagePack;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Hosting.StaticWebAssets;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using MudBlazor.Services;
+using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore.Diagnostics.Internal;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-ConfigurationManager configuration = builder.Configuration;
+IConfiguration config = builder.Configuration
+    .AddJsonFile("itemSummonOdds.json", optional: false, reloadOnChange: true)
+    .AddJsonFile("dragonfruitOdds.json", optional: false, reloadOnChange: true)
+    .Build();
+
+StaticWebAssetsLoader.UseStaticWebAssets(builder.Environment, builder.Configuration);
+
 builder.Services
-    .Configure<BaasOptions>(configuration.GetRequiredSection("Baas"))
-    .Configure<LoginOptions>(configuration.GetRequiredSection("Login"))
-    .Configure<DragalipatchOptions>(configuration.GetRequiredSection("Dragalipatch"))
-    .Configure<RedisOptions>(configuration.GetRequiredSection("Redis"));
+    .Configure<BaasOptions>(config.GetRequiredSection("Baas"))
+    .Configure<LoginOptions>(config.GetRequiredSection("Login"))
+    .Configure<DragalipatchOptions>(config.GetRequiredSection("Dragalipatch"))
+    .Configure<RedisOptions>(config.GetRequiredSection("Redis"))
+    .Configure<PhotonOptions>(config.GetRequiredSection(nameof(PhotonOptions)))
+    .Configure<ItemSummonConfig>(config)
+    .Configure<DragonfruitConfig>(config);
+
+builder.Services.AddServerSideBlazor();
+builder.Services.AddMudServices();
+
+// Ensure item summon weightings add to 100%
+builder.Services.AddOptions<ItemSummonConfig>().Validate(x => x.Odds.Sum(y => y.Rate) == 100_000);
+builder.Services
+    .AddOptions<DragonfruitConfig>()
+    .Validate(x => x.FruitOdds.Values.All(y => y.Normal + y.Ripe + y.Succulent == 100));
 
 builder.Logging.ClearProviders();
 builder.Logging.AddSerilog();
@@ -51,27 +69,28 @@ builder.Services
         option.OutputFormatters.Add(new CustomMessagePackOutputFormatter(CustomResolver.Options));
         option.InputFormatters.Add(new CustomMessagePackInputFormatter(CustomResolver.Options));
     })
-    .AddJsonOptions(options =>
-    {
-        ApiJsonOptions.Action.Invoke(options.JsonSerializerOptions);
-    });
+    .AddJsonOptions(options => ApiJsonOptions.Action.Invoke(options.JsonSerializerOptions));
 
-builder.Services.AddRazorPages(
-    options =>
-        // Make root URL redirect to news instead of 404
-        options.Conventions.AddPageRoute("/News", "~/")
-);
-builder.Services.AddServerSideBlazor();
+builder.Services.AddRazorPages();
 builder.Services
     .AddHealthChecks()
     .AddDbContextCheck<ApiContext>()
     .AddCheck<RedisHealthCheck>("Redis", failureStatus: HealthStatus.Unhealthy);
 
-builder.Services.AddAuthentication(opts =>
-{
-    opts.AddScheme<SessionAuthenticationHandler>(SchemeName.Session, null);
-    opts.AddScheme<DeveloperAuthenticationHandler>(SchemeName.Developer, null);
-});
+builder.Services
+    .AddAuthentication(opts =>
+    {
+        opts.AddScheme<SessionAuthenticationHandler>(SchemeName.Session, null);
+        opts.AddScheme<DeveloperAuthenticationHandler>(SchemeName.Developer, null);
+        opts.AddScheme<PhotonAuthenticationHandler>(nameof(PhotonAuthenticationHandler), null);
+
+        opts.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    })
+    .AddCookie(opts =>
+    {
+        opts.ExpireTimeSpan = TimeSpan.FromMinutes(20);
+        opts.SlidingExpiration = true;
+    });
 
 builder.Services
     .AddResponseCompression()
@@ -83,75 +102,83 @@ builder.Services
         options.Configuration = builder.Configuration.GetConnectionString("RedisHost");
         options.InstanceName = "RedisInstance";
     })
-    .AddHttpContextAccessor()
-    .AddScoped<ISessionService, SessionService>()
-#pragma warning disable CS0618 // Type or member is obsolete
-    .AddScoped<IDeviceAccountService, DeviceAccountService>()
-#pragma warning restore CS0618 // Type or member is obsolete
-    .AddScoped<ISummonService, SummonService>()
-    .AddScoped<IUpdateDataService, UpdateDataService>()
-    .AddScoped<IDungeonService, DungeonService>()
-    .AddScoped<IDragonService, DragonService>()
-    .AddScoped<ISavefileService, SavefileService>()
-    .AddScoped<IHelperService, HelperService>()
-    .AddScoped<IAuthService, AuthService>()
-    .AddScoped<IBonusService, BonusService>()
-    .AddScoped<IWeaponService, WeaponService>()
-    .AddScoped<IQuestRewardService, QuestRewardService>()
-    .AddScoped<IStoryService, StoryService>()
-    .AddTransient<ILogEventEnricher, AccountIdEnricher>()
-    .AddTransient<ILogEventEnricher, PodNameEnricher>()
-    .AddHttpClient<IBaasRequestHelper, BaasRequestHelper>();
+    .AddHttpContextAccessor();
+
+builder.Services.ConfigureGameServices(builder.Configuration);
+builder.Services.ConfigureGraphQlSchema();
 
 WebApplication app = builder.Build();
 
-app.UseSerilogRequestLogging(
-    options =>
-        options.EnrichDiagnosticContext = (diagContext, httpContext) =>
-        {
-            diagContext.Set(
-                CustomClaimType.AccountId,
-                httpContext.User.FindFirstValue(CustomClaimType.AccountId)
-            );
-            diagContext.Set(
-                CustomClaimType.ViewerId,
-                long.Parse(httpContext.User.FindFirstValue(CustomClaimType.ViewerId) ?? "0")
-            );
-        }
-);
-
-Log.Logger.Information("App environment: {@env}", app.Environment);
+Log.Logger.Debug("App environment: {@env}", app.Environment);
 
 if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
-{
     app.MigrateDatabase();
-}
-else if (app.Environment.EnvironmentName == "Testing")
-{
-    using IServiceScope scope = app.Services
-        .GetRequiredService<IServiceScopeFactory>()
-        .CreateScope();
 
-    ApiContext context = scope.ServiceProvider.GetRequiredService<ApiContext>();
-    context.Database.EnsureCreated();
-}
-
-app.MapRazorPages();
-
-// Latest Android app version
-app.UsePathBase("/2.19.0_20220714193707");
-
-// Latest iOS app version
-app.UsePathBase("/2.19.0_20220719103923");
-app.UseMiddleware<ExceptionHandlerMiddleware>();
-app.UseMiddleware<NotFoundHandlerMiddleware>();
-
-app.UseRouting();
+app.UseStaticFiles();
 app.UseAuthentication();
-app.UseAuthorization();
-app.MapControllers();
 app.UseResponseCompression();
-app.MapHealthChecks("/health");
+
+ImmutableArray<string> apiRoutePrefixes = new[]
+{
+    "/api",
+    "/2.19.0_20220714193707",
+    "/2.19.0_20220719103923"
+}.ToImmutableArray();
+
+app.MapWhen(
+    ctx => apiRoutePrefixes.Any(prefix => ctx.Request.Path.StartsWithSegments(prefix)),
+    applicationBuilder =>
+    {
+        foreach (string prefix in apiRoutePrefixes)
+            applicationBuilder.UsePathBase(prefix);
+
+        applicationBuilder.UseRouting();
+        applicationBuilder.UseAuthorization();
+        applicationBuilder.UseMiddleware<PlayerIdentityLoggingMiddleware>();
+        applicationBuilder.UseSerilogRequestLogging();
+        applicationBuilder.UseMiddleware<NotFoundHandlerMiddleware>();
+        applicationBuilder.UseMiddleware<ExceptionHandlerMiddleware>();
+        applicationBuilder.UseMiddleware<DailyResetMiddleware>();
+        applicationBuilder.UseEndpoints(endpoints =>
+        {
+            endpoints.MapControllers();
+        });
+    }
+);
+
+app.MapWhen(
+    ctx => !apiRoutePrefixes.Any(prefix => ctx.Request.Path.StartsWithSegments(prefix)),
+    applicationBuilder =>
+    {
+        applicationBuilder.UseRouting();
+#pragma warning disable ASP0001
+        applicationBuilder.UseAuthorization();
+#pragma warning restore ASP0001
+        applicationBuilder.UseEndpoints(endpoints =>
+        {
+            endpoints.MapBlazorHub();
+            endpoints.MapRazorPages();
+            endpoints.MapFallbackToPage("/_Host");
+        });
+    }
+);
+
+app.MapHealthChecks("/health"); // Kubernetes readiness check
+app.MapGet("/ping", () => Results.Ok()); // Kubernetes liveness check
+app.MapGet(
+    "/dragalipatch/config",
+    (
+        [FromServices] IOptionsMonitor<LoginOptions> loginOptions,
+        [FromServices] IOptionsMonitor<DragalipatchOptions> patchOptions
+    ) =>
+        new DragalipatchResponse()
+        {
+            Mode = patchOptions.CurrentValue.Mode,
+            ConeshellKey = patchOptions.CurrentValue.ConeshellKey,
+            CdnUrl = patchOptions.CurrentValue.CdnUrl,
+            UseUnifiedLogin = loginOptions.CurrentValue.UseBaasLogin
+        }
+);
 
 app.Run();
 

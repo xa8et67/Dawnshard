@@ -9,71 +9,63 @@ namespace DragaliaAPI.Database.Repositories;
 public class QuestRepository : IQuestRepository
 {
     private readonly ApiContext apiContext;
-    private readonly IPlayerDetailsService playerDetailsService;
+    private readonly IPlayerIdentityService playerIdentityService;
 
-    public QuestRepository(ApiContext apiContext, IPlayerDetailsService playerDetailsService)
+    public QuestRepository(ApiContext apiContext, IPlayerIdentityService playerIdentityService)
     {
         this.apiContext = apiContext;
-        this.playerDetailsService = playerDetailsService;
-    }
-
-    [Obsolete(ObsoleteReasons.UsePlayerDetailsService)]
-    public IQueryable<DbQuest> GetQuests(string deviceAccountId)
-    {
-        return this.apiContext.PlayerQuests.Where(x => x.DeviceAccountId == deviceAccountId);
+        this.playerIdentityService = playerIdentityService;
     }
 
     public IQueryable<DbQuest> Quests =>
         this.apiContext.PlayerQuests.Where(
-            x => x.DeviceAccountId == this.playerDetailsService.AccountId
+            x => x.DeviceAccountId == this.playerIdentityService.AccountId
         );
 
-    public async Task UpdateQuestState(string deviceAccountId, int questId, int state)
+    public IQueryable<DbQuestEvent> QuestEvents =>
+        this.apiContext.QuestEvents.Where(
+            x => x.DeviceAccountId == this.playerIdentityService.AccountId
+        );
+
+    private async Task<DbQuest?> FindQuestAsync(int questId)
     {
-        DbQuest? questData = await apiContext.PlayerQuests.FindAsync(deviceAccountId, questId);
-
-        if (questData is null)
-        {
-            questData = new()
-            {
-                DeviceAccountId = deviceAccountId,
-                QuestId = questId,
-                State = (byte)state
-            };
-            apiContext.PlayerQuests.Add(questData);
-        }
-
-        questData.State = (byte)state;
+        return await apiContext.PlayerQuests.FindAsync(playerIdentityService.AccountId, questId);
     }
 
-    public async Task<DbQuest> CompleteQuest(string deviceAccountId, int questId, float clearTime)
+    public async Task<DbQuest> GetQuestDataAsync(int questId)
     {
-        DbQuest? questData = await apiContext.PlayerQuests.SingleOrDefaultAsync(
-            x => x.DeviceAccountId == deviceAccountId && x.QuestId == questId
-        );
-
-        if (questData is null)
-        {
-            questData = new() { DeviceAccountId = deviceAccountId, QuestId = questId, };
-            apiContext.PlayerQuests.Add(questData);
-        }
-
-        questData.State = 3;
-
-        // TODO: need to track actual completion of missions in DungeonRecordController
-        questData.IsMissionClear1 = true;
-        questData.IsMissionClear2 = true;
-        questData.IsMissionClear3 = true;
-        questData.PlayCount++;
-        questData.DailyPlayCount++;
-        questData.WeeklyPlayCount++;
-        questData.IsAppear = true;
-
-        if (clearTime < questData.BestClearTime || questData.BestClearTime == -1.0f)
-        {
-            questData.BestClearTime = clearTime;
-        }
-
+        DbQuest? questData = await FindQuestAsync(questId);
+        questData ??= this.apiContext.PlayerQuests
+            .Add(
+                new DbQuest()
+                {
+                    DeviceAccountId = this.playerIdentityService.AccountId,
+                    QuestId = questId
+                }
+            )
+            .Entity;
         return questData;
+    }
+
+    private async Task<DbQuestEvent?> FindQuestEventAsync(int questEventId)
+    {
+        return await apiContext.QuestEvents.FindAsync(
+            playerIdentityService.AccountId,
+            questEventId
+        );
+    }
+
+    public async Task<DbQuestEvent> GetQuestEventAsync(int questEventId)
+    {
+        return await FindQuestEventAsync(questEventId)
+            ?? apiContext.QuestEvents
+                .Add(
+                    new DbQuestEvent
+                    {
+                        DeviceAccountId = playerIdentityService.AccountId,
+                        QuestEventId = questEventId
+                    }
+                )
+                .Entity;
     }
 }

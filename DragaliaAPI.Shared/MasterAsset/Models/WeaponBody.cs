@@ -6,6 +6,7 @@ namespace DragaliaAPI.Shared.MasterAsset.Models;
 /// Weapon body MasterAsset model.
 /// </summary>
 /// <param name="Id">Unique weapon ID.</param>
+/// <param name="WeaponSeriesId">Series the weapon belongs to</param>
 /// <param name="WeaponType">Weapon type (sword, bow, etc...)</param>
 /// <param name="Rarity">Weapon rarity.</param>
 /// <param name="ElementalType">Weapon element.</param>
@@ -40,6 +41,7 @@ namespace DragaliaAPI.Shared.MasterAsset.Models;
 /// <param name="NeedFortCraftLevel">Required Smithy level to craft this weapon</param>
 public record WeaponBody(
     WeaponBodies Id,
+    WeaponSeries WeaponSeriesId,
     WeaponTypes WeaponType,
     int Rarity,
     UnitElement ElementalType,
@@ -76,7 +78,17 @@ public record WeaponBody(
     Materials CreateEntityId4,
     int CreateEntityQuantity4,
     Materials CreateEntityId5,
-    int CreateEntityQuantity5
+    int CreateEntityQuantity5,
+    int LimitOverCountPartyPower1,
+    int LimitOverCountPartyPower2,
+    int BaseHp,
+    int MaxHp1,
+    int MaxHp2,
+    int MaxHp3,
+    int BaseAtk,
+    int MaxAtk1,
+    int MaxAtk2,
+    int MaxAtk3
 )
 {
     public Dictionary<Materials, int> CreateMaterialMap { get; } =
@@ -119,4 +131,20 @@ public record WeaponBody(
     /// <returns>The row id.</returns>
     public int GetPassiveAbilityId(int abilityNo) =>
         int.Parse($"{this.WeaponPassiveAbilityGroupId}{abilityNo:00}");
+
+    public readonly int[] Hp = { BaseHp, MaxHp1, MaxHp2, MaxHp3 };
+
+    public readonly int[] Atk = { BaseAtk, MaxAtk1, MaxAtk2, MaxAtk3 };
+
+    public readonly int[][] Abilities =
+    {
+        new[] { Abilities11, Abilities12, Abilities13 },
+        new[] { Abilities21, Abilities22, Abilities23 }
+    };
+
+    public int GetAbility(int abilityNo, int level)
+    {
+        int[] pool = Abilities[abilityNo - 1];
+        return level < 1 || level > 3 ? 0 : pool[level - 1];
+    }
 };

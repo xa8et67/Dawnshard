@@ -10,10 +10,15 @@ public class DbPlayer
     [Key]
     public required string AccountId { get; set; }
 
+    public int SavefileVersion { get; set; }
+
     public virtual DbPlayerUserData? UserData { get; set; }
 
     public virtual ICollection<DbAbilityCrest> AbilityCrestList { get; set; } =
         new List<DbAbilityCrest>();
+
+    public virtual ICollection<DbAbilityCrestSet> AbilityCrestSetList { get; set; } =
+        new List<DbAbilityCrestSet>();
 
     public virtual ICollection<DbFortBuild> BuildList { get; set; } = new List<DbFortBuild>();
 
@@ -60,4 +65,33 @@ public class DbPlayer
 
     public virtual ICollection<DbWeaponPassiveAbility> WeaponPassiveAbilityList { get; set; } =
         new List<DbWeaponPassiveAbility>();
+
+    public virtual DbFortDetail? FortDetail { get; set; }
+
+    public virtual ICollection<DbEquippedStamp> EquippedStampList { get; set; } =
+        new List<DbEquippedStamp>();
+
+    public virtual ICollection<DbPlayerPresent> Presents { get; set; } =
+        new List<DbPlayerPresent>();
+
+    public virtual ICollection<DbPlayerPresentHistory> PresentHistory { get; set; } =
+        new List<DbPlayerPresentHistory>();
+
+    public virtual ICollection<DbPlayerDmodeChara> DmodeCharas { get; set; } =
+        new List<DbPlayerDmodeChara>();
+
+    public virtual DbPlayerDmodeDungeon? DmodeDungeon { get; set; }
+
+    public virtual DbPlayerDmodeExpedition? DmodeExpedition { get; set; }
+
+    public virtual DbPlayerDmodeInfo? DmodeInfo { get; set; }
+
+    public virtual ICollection<DbPlayerDmodeServitorPassive> DmodeServitorPassives { get; set; } =
+        new List<DbPlayerDmodeServitorPassive>();
+
+    public virtual DbPlayerShopInfo? ShopInfo { get; set; }
+
+    public virtual ICollection<DbQuestEvent> QuestEvents { get; set; } = new List<DbQuestEvent>();
+
+    public virtual DbPartyPower? PartyPower { get; set; }
 }

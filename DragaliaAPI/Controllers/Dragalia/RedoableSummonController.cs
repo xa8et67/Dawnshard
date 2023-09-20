@@ -20,9 +20,9 @@ public class RedoableSummonController : DragaliaControllerBase
 {
     private readonly ISummonService summonService;
     private readonly IStoryRepository storyRepository;
-    private readonly IUserDataRepository userDataRepository;
     private readonly IUnitRepository unitRepository;
     private readonly IUpdateDataService updateDataService;
+    private readonly ITutorialService tutorialService;
     private readonly IDistributedCache cache;
 
     private const int PrologueStoryId = 1000100;
@@ -83,16 +83,16 @@ public class RedoableSummonController : DragaliaControllerBase
     public RedoableSummonController(
         ISummonService summonService,
         IStoryRepository storyRepository,
-        IUserDataRepository userDataRepository,
         IUnitRepository unitRepository,
+        ITutorialService tutorialService,
         IUpdateDataService updateDataService,
         IDistributedCache cache
     )
     {
         this.summonService = summonService;
         this.storyRepository = storyRepository;
-        this.userDataRepository = userDataRepository;
         this.unitRepository = unitRepository;
+        this.tutorialService = tutorialService;
         this.updateDataService = updateDataService;
         this.cache = cache;
     }
@@ -155,7 +155,7 @@ public class RedoableSummonController : DragaliaControllerBase
             JsonSerializer.Deserialize<List<AtgenRedoableSummonResultUnitList>>(cachedResultJson)
             ?? throw new JsonException("Null deserialization result!");
 
-        await userDataRepository.UpdateTutorialStatus(this.DeviceAccountId, RerollTutorialStatus);
+        await tutorialService.UpdateTutorialStatus(RerollTutorialStatus);
 
         DbPlayerStoryState prologueStory = await this.storyRepository.GetOrCreateStory(
             StoryTypes.Quest,
@@ -165,7 +165,6 @@ public class RedoableSummonController : DragaliaControllerBase
 
         IEnumerable<(Charas id, bool isNew)> repositoryCharaOuput =
             await this.unitRepository.AddCharas(
-                this.DeviceAccountId,
                 cachedResult
                     .Where(x => x.entity_type == EntityTypes.Chara)
                     .Select(x => (Charas)x.id)
@@ -173,15 +172,12 @@ public class RedoableSummonController : DragaliaControllerBase
 
         IEnumerable<(Dragons id, bool isNew)> repositoryDragonOutput =
             await this.unitRepository.AddDragons(
-                this.DeviceAccountId,
                 cachedResult
                     .Where(x => x.entity_type == EntityTypes.Dragon)
                     .Select(x => (Dragons)x.id)
             );
 
-        UpdateDataList updateData = this.updateDataService.GetUpdateDataList(this.DeviceAccountId);
-
-        await this.unitRepository.SaveChangesAsync();
+        UpdateDataList updateData = await this.updateDataService.SaveChangesAsync();
 
         IEnumerable<AtgenDuplicateEntityList> newCharas = repositoryCharaOuput
             .Where(x => x.isNew)
