@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using DragaliaAPI.Photon.Plugin.Constants;
 using DragaliaAPI.Photon.Plugin.Helpers;
 using DragaliaAPI.Photon.Plugin.Models;
 using MessagePack;
@@ -142,7 +143,12 @@ namespace DragaliaAPI.Photon.Plugin
                 CustomHeaders = new Dictionary<string, string>()
                 {
                     { "Auth-ViewerId", actor.GetViewerId().ToString() },
-                    { "Authorization", $"Bearer {this.config.BearerToken}" }
+                    { "Authorization", $"Bearer {this.config.BearerToken}" },
+                    { "RoomName", this.PluginHost.GameId },
+                    {
+                        "RoomId",
+                        this.PluginHost.GameProperties.GetInt(GamePropertyKeys.RoomId).ToString()
+                    }
                 }
             };
 

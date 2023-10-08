@@ -17,22 +17,29 @@ public class BlazorIdentityService : IBlazorIdentityService
     {
         this.authenticationStateProvider = authenticationStateProvider;
         this.authenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+    }
 
-        AuthenticationState state = this.authenticationStateProvider
-            .GetAuthenticationStateAsync()
-            .Result;
+    public async Task InitializeAsync()
+    {
+        AuthenticationState state =
+            await this.authenticationStateProvider.GetAuthenticationStateAsync();
 
-        this.InitializeIdentity(state);
+        this.SetIdentity(state);
     }
 
     private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
     {
         AuthenticationState state = await task;
-        this.InitializeIdentity(state);
+        this.SetIdentity(state);
     }
 
-    private void InitializeIdentity(AuthenticationState state)
+    private void SetIdentity(AuthenticationState state)
     {
+        this.IsAuthenticated = state.User.Identity?.IsAuthenticated ?? false;
+
+        if (!this.IsAuthenticated)
+            return;
+
         this.accountId = state.User.Claims
             .FirstOrDefault(x => x.Type == CustomClaimType.AccountId)
             ?.Value;
@@ -48,6 +55,8 @@ public class BlazorIdentityService : IBlazorIdentityService
         if (int.TryParse(viewerIdString, out int viewerId))
             this.viewerId = viewerId;
     }
+
+    public bool IsAuthenticated { get; private set; }
 
     public string AccountId =>
         this.accountId ?? throw new InvalidOperationException("User was not authenticated!");

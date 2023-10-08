@@ -1,6 +1,8 @@
-﻿using DragaliaAPI.Database.Entities;
+﻿using System.Diagnostics.CodeAnalysis;
+using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Helpers;
 using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services.Exceptions;
@@ -158,7 +160,7 @@ public class EventService(
         return rewardEntities;
     }
 
-    private static Dictionary<int, List<QuestData>> CombatEventQuestLookup =
+    private static readonly Dictionary<int, List<QuestData>> CombatEventQuestLookup =
         MasterAsset.EventData.Enumerable
             .Where(x => x.EventKindType == EventKindType.Combat)
             .Select(x => x.Id)
