@@ -1,12 +1,8 @@
 ﻿using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
-using DragaliaAPI.Controllers;
-using DragaliaAPI.Services;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Primitives;
 
 namespace DragaliaAPI.Middleware;
 
@@ -15,10 +11,9 @@ public class DeveloperAuthenticationHandler : AuthenticationHandler<Authenticati
     public DeveloperAuthenticationHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
-        UrlEncoder encoder,
-        ISystemClock clock
+        UrlEncoder encoder
     )
-        : base(options, logger, encoder, clock) { }
+        : base(options, logger, encoder) { }
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {

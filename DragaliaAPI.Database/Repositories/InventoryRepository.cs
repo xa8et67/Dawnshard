@@ -1,13 +1,10 @@
-﻿using System.Collections;
-using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Shared;
+﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-
-using MaterialsEnum = DragaliaAPI.Shared.Definitions.Enums.Materials;
 using DragonGiftsEnum = DragaliaAPI.Shared.Definitions.Enums.DragonGifts;
+using MaterialsEnum = DragaliaAPI.Shared.Definitions.Enums.Materials;
 
 namespace DragaliaAPI.Database.Repositories;
 
@@ -28,50 +25,23 @@ public class InventoryRepository : IInventoryRepository
         this.logger = logger;
     }
 
-    public IQueryable<DbPlayerCurrency> Currencies =>
-        this.apiContext.PlayerWallet.Where(
-            wallet => wallet.DeviceAccountId == this.playerIdentityService.AccountId
-        );
-
     public IQueryable<DbPlayerMaterial> Materials =>
         this.apiContext.PlayerMaterials.Where(
-            storage => storage.DeviceAccountId == this.playerIdentityService.AccountId
+            storage => storage.ViewerId == this.playerIdentityService.ViewerId
         );
 
     public IQueryable<DbPlayerDragonGift> DragonGifts =>
         this.apiContext.PlayerDragonGifts.Where(
-            gifts => gifts.DeviceAccountId == this.playerIdentityService.AccountId
+            gifts => gifts.ViewerId == this.playerIdentityService.ViewerId
         );
-
-    public DbPlayerCurrency AddCurrency(CurrencyTypes type)
-    {
-        return apiContext.PlayerWallet
-            .Add(
-                new DbPlayerCurrency()
-                {
-                    DeviceAccountId = this.playerIdentityService.AccountId,
-                    CurrencyType = type,
-                    Quantity = 0
-                }
-            )
-            .Entity;
-    }
-
-    public async Task<DbPlayerCurrency?> GetCurrency(CurrencyTypes type)
-    {
-        return await this.apiContext.PlayerWallet.FindAsync(
-            this.playerIdentityService.AccountId,
-            type
-        );
-    }
 
     public DbPlayerMaterial AddMaterial(Materials type)
     {
-        return apiContext.PlayerMaterials
-            .Add(
+        return apiContext
+            .PlayerMaterials.Add(
                 new DbPlayerMaterial()
                 {
-                    DeviceAccountId = this.playerIdentityService.AccountId,
+                    ViewerId = this.playerIdentityService.ViewerId,
                     MaterialId = type,
                     Quantity = 0
                 }
@@ -100,14 +70,14 @@ public class InventoryRepository : IInventoryRepository
     private async Task<DbPlayerMaterial> FindAsync(Materials item)
     {
         return await this.apiContext.PlayerMaterials.FindAsync(
-                this.playerIdentityService.AccountId,
+                this.playerIdentityService.ViewerId,
                 item
             )
             ?? (
                 await this.apiContext.AddAsync(
                     new DbPlayerMaterial()
                     {
-                        DeviceAccountId = this.playerIdentityService.AccountId,
+                        ViewerId = this.playerIdentityService.ViewerId,
                         MaterialId = item,
                         Quantity = 0
                     }
@@ -142,7 +112,7 @@ public class InventoryRepository : IInventoryRepository
     public async Task<DbPlayerMaterial?> GetMaterial(Materials materialId)
     {
         return await this.apiContext.PlayerMaterials.FindAsync(
-            this.playerIdentityService.AccountId,
+            this.playerIdentityService.ViewerId,
             materialId
         );
     }
@@ -175,24 +145,22 @@ public class InventoryRepository : IInventoryRepository
         return true;
     }
 
-    public DbPlayerDragonGift AddDragonGift(DragonGifts giftId)
-    {
-        return apiContext.PlayerDragonGifts
-            .Add(
+    public DbPlayerDragonGift AddDragonGift(DragonGifts giftId, int quantity) =>
+        apiContext
+            .PlayerDragonGifts.Add(
                 new DbPlayerDragonGift()
                 {
-                    DeviceAccountId = this.playerIdentityService.AccountId,
+                    ViewerId = this.playerIdentityService.ViewerId,
                     DragonGiftId = giftId,
-                    Quantity = 0
+                    Quantity = quantity
                 }
             )
             .Entity;
-    }
 
     public async Task<DbPlayerDragonGift?> GetDragonGift(DragonGifts giftId)
     {
         return await this.apiContext.PlayerDragonGifts.FindAsync(
-            this.playerIdentityService.AccountId,
+            this.playerIdentityService.ViewerId,
             giftId
         );
     }
@@ -213,8 +181,7 @@ public class InventoryRepository : IInventoryRepository
             }
             else
             {
-                dbGift = AddDragonGift(gift);
-                dbGift.Quantity = 1;
+                this.AddDragonGift(gift, 1);
             }
         }
     }

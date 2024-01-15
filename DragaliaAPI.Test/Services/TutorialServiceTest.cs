@@ -1,6 +1,7 @@
 ﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Fort;
+using DragaliaAPI.Features.Wall;
 using DragaliaAPI.Services;
 using DragaliaAPI.Services.Game;
 using Microsoft.Extensions.Logging;
@@ -15,6 +16,7 @@ public class TutorialServiceTest
     private readonly Mock<IAbilityCrestRepository> mockAbilityCrestRepository;
     private readonly Mock<IUserDataRepository> mockUserDataRepository;
     private readonly Mock<IFortRepository> mockFortRepository;
+    private readonly Mock<IWallRepository> mockWallRepository;
 
     private readonly ITutorialService tutorialService;
 
@@ -25,25 +27,26 @@ public class TutorialServiceTest
         mockAbilityCrestRepository = new(MockBehavior.Strict);
         mockUserDataRepository = new(MockBehavior.Strict);
         mockFortRepository = new(MockBehavior.Strict);
+        mockWallRepository = new(MockBehavior.Strict);
 
         tutorialService = new TutorialService(
             mockLogger.Object,
             mockInventoryRepository.Object,
             mockAbilityCrestRepository.Object,
             mockUserDataRepository.Object,
-            mockFortRepository.Object
+            mockFortRepository.Object,
+            mockWallRepository.Object
         );
     }
 
     [Fact]
     public async Task UpdateTutorialStatus_UpdatesTutorialStatus()
     {
-        this.mockUserDataRepository
-            .SetupGet(x => x.UserData)
+        this.mockUserDataRepository.SetupGet(x => x.UserData)
             .Returns(
                 new List<DbPlayerUserData>
                 {
-                    new() { DeviceAccountId = "aa", TutorialStatus = 1 }
+                    new() { ViewerId = 1, TutorialStatus = 1 }
                 }
                     .AsQueryable()
                     .BuildMock()
@@ -57,12 +60,11 @@ public class TutorialServiceTest
     [Fact]
     public async Task UpdateTutorialStatus_LowerStatus_DoesNotUpdateTutorialStatus()
     {
-        this.mockUserDataRepository
-            .SetupGet(x => x.UserData)
+        this.mockUserDataRepository.SetupGet(x => x.UserData)
             .Returns(
                 new List<DbPlayerUserData>
                 {
-                    new() { DeviceAccountId = "aa", TutorialStatus = 99999 }
+                    new() { ViewerId = 1, TutorialStatus = 99999 }
                 }
                     .AsQueryable()
                     .BuildMock()
@@ -76,12 +78,11 @@ public class TutorialServiceTest
     [Fact]
     public async Task UpdateTutorialStatus_DojoStatus_AddsDojos()
     {
-        this.mockUserDataRepository
-            .SetupGet(x => x.UserData)
+        this.mockUserDataRepository.SetupGet(x => x.UserData)
             .Returns(
                 new List<DbPlayerUserData>
                 {
-                    new() { DeviceAccountId = "aa", TutorialStatus = 1 }
+                    new() { ViewerId = 1, TutorialStatus = 1 }
                 }
                     .AsQueryable()
                     .BuildMock()

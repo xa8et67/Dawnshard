@@ -1,8 +1,5 @@
 using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Models;
-using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Shared.Definitions.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -25,16 +22,8 @@ public class WeaponBodyTest : TestFixture
         await this.AddRangeToDatabase(
             new List<DbWeaponBody>()
             {
-                new()
-                {
-                    DeviceAccountId = DeviceAccountId,
-                    WeaponBodyId = WeaponBodies.WandoftheTorrent
-                },
-                new()
-                {
-                    DeviceAccountId = DeviceAccountId,
-                    WeaponBodyId = WeaponBodies.SpiritBreaker
-                },
+                new() { ViewerId = 0, WeaponBodyId = WeaponBodies.WandoftheTorrent },
+                new() { ViewerId = 0, WeaponBodyId = WeaponBodies.SpiritBreaker },
             }
         );
 
@@ -47,8 +36,7 @@ public class WeaponBodyTest : TestFixture
             .data
             .update_data_list;
 
-        list.weapon_body_list
-            .Should()
+        list.weapon_body_list.Should()
             .BeEquivalentTo(
                 new List<WeaponBodyList>()
                 {
@@ -77,12 +65,8 @@ public class WeaponBodyTest : TestFixture
     [Fact]
     public async Task Craft_Success_UpdatesDatabase()
     {
-        this.ApiContext.PlayerWeapons.Add(
-            new DbWeaponBody()
-            {
-                DeviceAccountId = DeviceAccountId,
-                WeaponBodyId = WeaponBodies.AbsoluteCrimson
-            }
+        await this.AddToDatabase(
+            new DbWeaponBody() { ViewerId = 0, WeaponBodyId = WeaponBodies.AbsoluteCrimson }
         );
 
         await this.ApiContext.SaveChangesAsync();
@@ -97,12 +81,9 @@ public class WeaponBodyTest : TestFixture
             new WeaponBodyCraftRequest() { weapon_body_id = WeaponBodies.PrimalCrimson }
         );
 
-        this.ApiContext.PlayerWeapons
-            .SingleOrDefault(
-                x =>
-                    x.DeviceAccountId == DeviceAccountId
-                    && x.WeaponBodyId == WeaponBodies.PrimalCrimson
-            )
+        this.ApiContext.PlayerWeapons.SingleOrDefault(
+            x => x.ViewerId == ViewerId && x.WeaponBodyId == WeaponBodies.PrimalCrimson
+        )
             .Should()
             .NotBeNull();
 
@@ -144,7 +125,7 @@ public class WeaponBodyTest : TestFixture
         ).data;
 
         // Check coin
-        DbPlayerUserData userData = (await apiContext.PlayerUserData.FindAsync(DeviceAccountId))!;
+        DbPlayerUserData userData = (await apiContext.PlayerUserData.FindAsync(ViewerId))!;
         await apiContext.Entry(userData).ReloadAsync();
 
         if (testCase.ExpCoinLoss != 0)
@@ -156,16 +137,15 @@ public class WeaponBodyTest : TestFixture
 
         // Check weapon
         DbWeaponBody weaponBody = (
-            await apiContext.PlayerWeapons.FindAsync(
-                DeviceAccountId,
-                testCase.InitialState.WeaponBodyId
-            )
+            await apiContext.PlayerWeapons.FindAsync(ViewerId, testCase.InitialState.WeaponBodyId)
         )!;
         await apiContext.Entry(weaponBody).ReloadAsync();
 
-        weaponBody.Should().BeEquivalentTo(testCase.ExpFinalState);
-        response.update_data_list.weapon_body_list
+        weaponBody
             .Should()
+            .BeEquivalentTo(testCase.ExpFinalState, opts => opts.Excluding(x => x.ViewerId));
+        response
+            .update_data_list.weapon_body_list.Should()
             .BeEquivalentTo(
                 new List<WeaponBodyList>()
                 {
@@ -178,14 +158,14 @@ public class WeaponBodyTest : TestFixture
         {
             int expQuantity = oldMaterials[material] - loss;
 
-            response.update_data_list.material_list
-                .Should()
+            response
+                .update_data_list.material_list.Should()
                 .ContainEquivalentOf(
                     new MaterialList() { material_id = material, quantity = expQuantity }
                 );
 
             DbPlayerMaterial dbEntry = (
-                await apiContext.PlayerMaterials.FindAsync(DeviceAccountId, material)
+                await apiContext.PlayerMaterials.FindAsync(ViewerId, material)
             )!;
 
             dbEntry.Quantity.Should().Be(expQuantity);
@@ -197,26 +177,31 @@ public class WeaponBodyTest : TestFixture
                 ?? new List<DbWeaponPassiveAbility>()
         )
         {
-            response.update_data_list.weapon_passive_ability_list
-                .Should()
+            response
+                .update_data_list.weapon_passive_ability_list.Should()
                 .ContainEquivalentOf(this.Mapper.Map<WeaponPassiveAbilityList>(expPassive));
 
-            apiContext.PlayerPassiveAbilities.Should().ContainEquivalentOf(expPassive);
+            apiContext
+                .PlayerPassiveAbilities.Should()
+                .ContainEquivalentOf(expPassive, opts => opts.Excluding(x => x.ViewerId));
         }
 
         // Check skins
         foreach (DbWeaponSkin expPassive in testCase.ExpNewSkins ?? new List<DbWeaponSkin>())
         {
-            response.update_data_list.weapon_skin_list
-                .Should()
+            response
+                .update_data_list.weapon_skin_list.Should()
                 .ContainEquivalentOf(
                     this.Mapper.Map<WeaponSkinList>(expPassive),
                     opts => opts.Excluding(x => x.gettime)
                 );
 
-            apiContext.PlayerWeaponSkins
-                .Should()
-                .ContainEquivalentOf(expPassive, opts => opts.Excluding(x => x.GetTime));
+            apiContext
+                .PlayerWeaponSkins.Should()
+                .ContainEquivalentOf(
+                    expPassive,
+                    opts => opts.Excluding(x => x.GetTime).Excluding(x => x.ViewerId)
+                );
         }
     }
 
@@ -240,7 +225,7 @@ public class WeaponBodyTest : TestFixture
         await this.AddToDatabase(
             new DbWeaponBody()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = 0,
                 WeaponBodyId = WeaponBodies.ChanzelianCaster,
                 BuildupCount = 4
             }
@@ -283,7 +268,7 @@ public class WeaponBodyTest : TestFixture
                 new(
                     new()
                     {
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = 0,
                         WeaponBodyId = WeaponBodies.PrimalAqua,
                         LimitBreakCount = 0,
                     },
@@ -301,7 +286,7 @@ public class WeaponBodyTest : TestFixture
                     4_000_000,
                     new()
                     {
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = 0,
                         WeaponBodyId = WeaponBodies.PrimalAqua,
                         LimitBreakCount = 2,
                     }
@@ -314,7 +299,7 @@ public class WeaponBodyTest : TestFixture
                 new(
                     new()
                     {
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = 0,
                         WeaponBodyId = WeaponBodies.PrimalLightning,
                         LimitBreakCount = 0,
                     },
@@ -337,7 +322,7 @@ public class WeaponBodyTest : TestFixture
                     0,
                     new()
                     {
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = 0,
                         WeaponBodyId = WeaponBodies.PrimalLightning,
                         LimitBreakCount = 2,
                     }
@@ -350,7 +335,7 @@ public class WeaponBodyTest : TestFixture
                 new(
                     new()
                     {
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = 0,
                         WeaponBodyId = WeaponBodies.ChimeratechAnomalocaris,
                         BuildupCount = 0
                     },
@@ -369,7 +354,7 @@ public class WeaponBodyTest : TestFixture
                     0,
                     new DbWeaponBody()
                     {
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = 0,
                         WeaponBodyId = WeaponBodies.ChimeratechAnomalocaris,
                         BuildupCount = 55,
                     }
@@ -382,7 +367,7 @@ public class WeaponBodyTest : TestFixture
                 new(
                     new()
                     {
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = 0,
                         WeaponBodyId = WeaponBodies.EverfrostBow,
                         LimitBreakCount = 8,
                     },
@@ -415,7 +400,7 @@ public class WeaponBodyTest : TestFixture
                     160_000,
                     new DbWeaponBody()
                     {
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = 0,
                         WeaponBodyId = WeaponBodies.EverfrostBow,
                         LimitBreakCount = 8,
                         UnlockWeaponPassiveAbilityNoList = new[]
@@ -439,20 +424,12 @@ public class WeaponBodyTest : TestFixture
                     },
                     ExpPassiveAbilities: new List<DbWeaponPassiveAbility>()
                     {
-                        new()
-                        {
-                            DeviceAccountId = DeviceAccountId,
-                            WeaponPassiveAbilityId = 1060203
-                        },
-                        new()
-                        {
-                            DeviceAccountId = DeviceAccountId,
-                            WeaponPassiveAbilityId = 1060204
-                        }
+                        new() { ViewerId = 0, WeaponPassiveAbilityId = 1060203 },
+                        new() { ViewerId = 0, WeaponPassiveAbilityId = 1060204 }
                     },
                     ExpNewSkins: new List<DbWeaponSkin>()
                     {
-                        new() { DeviceAccountId = DeviceAccountId, WeaponSkinId = 30640203 }
+                        new() { ViewerId = 0, WeaponSkinId = 30640203 }
                     }
                 )
             );
@@ -463,7 +440,7 @@ public class WeaponBodyTest : TestFixture
                 new(
                     new()
                     {
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = 0,
                         WeaponBodyId = WeaponBodies.Ydalir,
                         LimitOverCount = 1
                     },
@@ -482,13 +459,13 @@ public class WeaponBodyTest : TestFixture
                     2_500_000,
                     new()
                     {
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = 0,
                         WeaponBodyId = WeaponBodies.Ydalir,
                         LimitOverCount = 2,
                     },
                     ExpNewSkins: new()
                     {
-                        new() { DeviceAccountId = DeviceAccountId, WeaponSkinId = 30660103 }
+                        new() { ViewerId = 0, WeaponSkinId = 30660103 }
                     }
                 )
             );
@@ -499,7 +476,7 @@ public class WeaponBodyTest : TestFixture
                 new(
                     new()
                     {
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = 0,
                         WeaponBodyId = WeaponBodies.ChimeratechProcyon,
                         EquipableCount = 1,
                         LimitBreakCount = 8,
@@ -522,7 +499,7 @@ public class WeaponBodyTest : TestFixture
                     10_000_000,
                     new()
                     {
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = 0,
                         WeaponBodyId = WeaponBodies.ChimeratechProcyon,
                         EquipableCount = 3,
                         LimitBreakCount = 8,
@@ -537,7 +514,7 @@ public class WeaponBodyTest : TestFixture
                 new(
                     new()
                     {
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = 0,
                         WeaponBodyId = WeaponBodies.QinghongJian,
                         LimitBreakCount = 8,
                     },
@@ -558,7 +535,7 @@ public class WeaponBodyTest : TestFixture
                     4_500_000,
                     new()
                     {
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = 0,
                         WeaponBodyId = WeaponBodies.QinghongJian,
                         LimitBreakCount = 8,
                         AdditionalCrestSlotType1Count = 1,
@@ -573,7 +550,7 @@ public class WeaponBodyTest : TestFixture
                 new(
                     new()
                     {
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = 0,
                         WeaponBodyId = WeaponBodies.WindrulersFang,
                         LimitBreakCount = 8,
                         LimitOverCount = 1,
@@ -592,7 +569,7 @@ public class WeaponBodyTest : TestFixture
                     5_000_000,
                     new()
                     {
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = 0,
                         WeaponBodyId = WeaponBodies.WindrulersFang,
                         LimitBreakCount = 8,
                         LimitOverCount = 1,
@@ -606,17 +583,17 @@ public class WeaponBodyTest : TestFixture
 
     private int GetMaterialCount(Materials id)
     {
-        return this.ApiContext.PlayerMaterials
-            .Where(x => x.DeviceAccountId == DeviceAccountId && x.MaterialId == id)
+        return this.ApiContext.PlayerMaterials.Where(
+            x => x.ViewerId == ViewerId && x.MaterialId == id
+        )
             .Select(x => x.Quantity)
             .First();
     }
 
     private long GetRupies()
     {
-        return this.ApiContext.PlayerUserData
-            .AsNoTracking()
-            .Where(x => x.DeviceAccountId == DeviceAccountId)
+        return this.ApiContext.PlayerUserData.AsNoTracking()
+            .Where(x => x.ViewerId == ViewerId)
             .Select(x => x.Coin)
             .First();
     }

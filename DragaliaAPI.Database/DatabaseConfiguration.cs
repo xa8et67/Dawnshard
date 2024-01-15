@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using DragaliaAPI.Database.Repositories;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
@@ -6,8 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("DragaliaAPI.Database.Test")]
-[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("DragaliaAPI.Test")]
+[assembly: InternalsVisibleTo("DragaliaAPI.Database.Test")]
+[assembly: InternalsVisibleTo("DragaliaAPI.Test")]
 
 namespace DragaliaAPI.Database;
 
@@ -22,7 +23,6 @@ public static class DatabaseConfiguration
     )
     {
         string connectionString = GetConnectionString(host);
-        // logger.Debug("Connecting to database using host {host}...", host);
 
         services = services
             .AddDbContext<ApiContext>(
@@ -59,6 +59,7 @@ public static class DatabaseConfiguration
                 Host = host ?? "postgres",
                 Username = Environment.GetEnvironmentVariable("POSTGRES_USER") ?? "postgres",
                 Password = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD"),
+                Database = Environment.GetEnvironmentVariable("POSTGRES_DB"),
                 LogParameters = true,
                 IncludeErrorDetail = true,
             };
@@ -69,8 +70,7 @@ public static class DatabaseConfiguration
     [ExcludeFromCodeCoverage]
     public static void MigrateDatabase(this WebApplication app)
     {
-        using IServiceScope scope = app.Services
-            .GetRequiredService<IServiceScopeFactory>()
+        using IServiceScope scope = app.Services.GetRequiredService<IServiceScopeFactory>()
             .CreateScope();
 
         ApiContext context = scope.ServiceProvider.GetRequiredService<ApiContext>();

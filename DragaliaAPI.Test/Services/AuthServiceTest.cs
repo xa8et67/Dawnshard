@@ -1,4 +1,5 @@
-﻿using DragaliaAPI.Database.Entities;
+﻿using DragaliaAPI.Database;
+using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Helpers;
 using DragaliaAPI.Models;
@@ -11,6 +12,8 @@ using DragaliaAPI.Services.Game;
 using DragaliaAPI.Shared;
 using DragaliaAPI.Shared.PlayerDetails;
 using DragaliaAPI.Test.Utils;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -32,8 +35,10 @@ public class AuthServiceTest
     private readonly Mock<IOptionsMonitor<BaasOptions>> mockBaasOptions;
     private readonly Mock<IDateTimeProvider> mockDateTimeProvider;
     private readonly Mock<ILogger<AuthService>> mockLogger;
+    private readonly ApiContext apiContext;
 
     private const string AccountId = "account id";
+    private const long ViewerId = 1;
 
     public AuthServiceTest()
     {
@@ -47,6 +52,14 @@ public class AuthServiceTest
         this.mockLogger = new(MockBehavior.Loose);
         this.mockDateTimeProvider = new(MockBehavior.Strict);
 
+        DbContextOptions<ApiContext> options = new DbContextOptionsBuilder<ApiContext>()
+            .UseInMemoryDatabase("apicontext")
+            .Options;
+
+        this.apiContext = new ApiContext(options);
+        this.apiContext.Database.EnsureDeleted();
+        this.apiContext.Database.EnsureCreated();
+
         this.mockDateTimeProvider.SetupGet(x => x.UtcNow).Returns(DateTimeOffset.UnixEpoch);
 
         this.authService = new(
@@ -55,6 +68,7 @@ public class AuthServiceTest
             this.mockSavefileService.Object,
             this.mockPlayerIdentityService.Object,
             this.mockUserDataRepository.Object,
+            this.apiContext,
             this.mockLoginOptions.Object,
             this.mockBaasOptions.Object,
             this.mockLogger.Object,
@@ -68,32 +82,24 @@ public class AuthServiceTest
     [Obsolete(ObsoleteReasons.BaaS)]
     public async Task DoAuth_LegacyAuthEnabled_UsesLegacyAuth()
     {
-        this.mockLoginOptions
-            .Setup(x => x.CurrentValue)
+        this.mockLoginOptions.Setup(x => x.CurrentValue)
             .Returns(new LoginOptions() { UseBaasLogin = false });
 
         // These session service methods are not used in the new auth
-        this.mockSessionService
-            .Setup(x => x.ActivateSession("id token"))
+        this.mockSessionService.Setup(x => x.ActivateSession("id token"))
             .ReturnsAsync("session id");
-        this.mockSessionService
-            .Setup(x => x.LoadSessionSessionId("session id"))
+        this.mockSessionService.Setup(x => x.LoadSessionSessionId("session id"))
             .ReturnsAsync(
                 new Session("session id", "token", "device account id", 1, DateTimeOffset.UnixEpoch)
             );
-        this.mockUserDataRepository
-            .SetupGet(x => x.UserData)
+        this.mockUserDataRepository.SetupGet(x => x.UserData)
             .Returns(
-                new List<DbPlayerUserData>()
-                {
-                    new() { DeviceAccountId = "id", ViewerId = 1 }
-                }
+                new List<DbPlayerUserData>() { new() { ViewerId = 1, } }
                     .AsQueryable()
                     .BuildMock()
             );
 
-        this.mockPlayerIdentityService
-            .Setup(x => x.StartUserImpersonation("device account id", 1))
+        this.mockPlayerIdentityService.Setup(x => x.StartUserImpersonation(1, "device account id"))
             .Returns(new Mock<IDisposable>(MockBehavior.Loose).Object);
 
         this.mockPlayerIdentityService.SetupGet(x => x.AccountId).Returns("device account id");
@@ -109,11 +115,19 @@ public class AuthServiceTest
     [Fact]
     public async Task DoAuth_ValidToken_ReturnsViewerId()
     {
-        this.mockBaasOptions
-            .Setup(x => x.CurrentValue)
+        this.apiContext.Players.Add(
+            new()
+            {
+                AccountId = AccountId,
+                ViewerId = ViewerId,
+                UserData = new() { Name = "Euden", }
+            }
+        );
+        this.apiContext.SaveChanges();
+
+        this.mockBaasOptions.Setup(x => x.CurrentValue)
             .Returns(new BaasOptions() { TokenAudience = "audience", TokenIssuer = "issuer" });
-        this.mockLoginOptions
-            .Setup(x => x.CurrentValue)
+        this.mockLoginOptions.Setup(x => x.CurrentValue)
             .Returns(new LoginOptions() { UseBaasLogin = true });
         this.mockBaasRequestHelper.Setup(x => x.GetKeys()).ReturnsAsync(TokenHelper.SecurityKeys);
 
@@ -126,22 +140,12 @@ public class AuthServiceTest
             )
             .AsString();
 
-        this.mockUserDataRepository
-            .SetupGet(x => x.UserData)
-            .Returns(
-                new List<DbPlayerUserData>()
-                {
-                    new() { DeviceAccountId = "id", ViewerId = 1 }
-                }
-                    .AsQueryable()
-                    .BuildMock()
-            );
-        this.mockSessionService
-            .Setup(x => x.CreateSession(token, AccountId, 1, DateTimeOffset.UnixEpoch))
+        this.mockSessionService.Setup(
+            x => x.CreateSession(token, AccountId, 1, DateTimeOffset.UnixEpoch)
+        )
             .ReturnsAsync("session id");
 
-        this.mockPlayerIdentityService
-            .Setup(x => x.StartUserImpersonation(AccountId, null))
+        this.mockPlayerIdentityService.Setup(x => x.StartUserImpersonation(ViewerId, AccountId))
             .Returns(new Mock<IDisposable>(MockBehavior.Loose).Object);
 
         this.mockPlayerIdentityService.SetupGet(x => x.AccountId).Returns(AccountId);
@@ -158,11 +162,9 @@ public class AuthServiceTest
     [Fact]
     public async Task DoAuth_ExpiredToken_ThrowsSessionException()
     {
-        this.mockBaasOptions
-            .Setup(x => x.CurrentValue)
+        this.mockBaasOptions.Setup(x => x.CurrentValue)
             .Returns(new BaasOptions() { TokenAudience = "audience", TokenIssuer = "issuer" });
-        this.mockLoginOptions
-            .Setup(x => x.CurrentValue)
+        this.mockLoginOptions.Setup(x => x.CurrentValue)
             .Returns(new LoginOptions() { UseBaasLogin = true });
         this.mockBaasRequestHelper.Setup(x => x.GetKeys()).ReturnsAsync(TokenHelper.SecurityKeys);
 
@@ -175,8 +177,7 @@ public class AuthServiceTest
             )
             .AsString();
 
-        await this.authService
-            .Invoking(x => x.DoAuth(token))
+        await this.authService.Invoking(x => x.DoAuth(token))
             .Should()
             .ThrowExactlyAsync<SecurityTokenExpiredException>();
 
@@ -188,22 +189,19 @@ public class AuthServiceTest
     [Fact]
     public async Task DoAuth_InvalidToken_ThrowsDragaliaException()
     {
-        this.mockBaasOptions
-            .Setup(x => x.CurrentValue)
+        this.mockBaasOptions.Setup(x => x.CurrentValue)
             .Returns(new BaasOptions() { TokenAudience = "audience", TokenIssuer = "issuer" });
-        this.mockLoginOptions
-            .Setup(x => x.CurrentValue)
+        this.mockLoginOptions.Setup(x => x.CurrentValue)
             .Returns(new LoginOptions() { UseBaasLogin = true });
-        await this.authService
-            .Invoking(
-                x =>
-                    x.DoAuth(
-                        "We cry tears of mascara in the bathroom / Honey life is just a classroom / Ah-ah-ah-ah"
-                    )
-            )
+        await this.authService.Invoking(
+            x =>
+                x.DoAuth(
+                    "We cry tears of mascara in the bathroom / Honey life is just a classroom / Ah-ah-ah-ah"
+                )
+        )
             .Should()
             .ThrowExactlyAsync<DragaliaException>()
-            .Where(x => x.Code == Models.ResultCode.IdTokenError);
+            .Where(x => x.Code == ResultCode.IdTokenError);
 
         this.mockBaasOptions.VerifyAll();
         this.mockLoginOptions.VerifyAll();
@@ -213,8 +211,21 @@ public class AuthServiceTest
     [Fact]
     public async Task DoAuth_SavefileUploaded_IsNewer_ImportsSave()
     {
-        this.mockBaasOptions
-            .Setup(x => x.CurrentValue)
+        this.apiContext.Players.Add(
+            new()
+            {
+                AccountId = AccountId,
+                ViewerId = ViewerId,
+                UserData = new()
+                {
+                    Name = "Euden",
+                    LastSaveImportTime = DateTimeOffset.UtcNow - TimeSpan.FromSeconds(15)
+                }
+            }
+        );
+        this.apiContext.SaveChanges();
+
+        this.mockBaasOptions.Setup(x => x.CurrentValue)
             .Returns(new BaasOptions() { TokenAudience = "audience", TokenIssuer = "issuer" });
 
         string token = TokenHelper
@@ -235,42 +246,23 @@ public class AuthServiceTest
                 fort_bonus_list = null!
             };
 
-        this.mockLoginOptions
-            .Setup(x => x.CurrentValue)
+        this.mockLoginOptions.Setup(x => x.CurrentValue)
             .Returns(new LoginOptions() { UseBaasLogin = true });
 
         this.mockBaasRequestHelper.Setup(x => x.GetKeys()).ReturnsAsync(TokenHelper.SecurityKeys);
         this.mockBaasRequestHelper.Setup(x => x.GetSavefile(token)).ReturnsAsync(importSavefile);
 
-        this.mockUserDataRepository
-            .SetupGet(x => x.UserData)
-            .Returns(
-                new List<DbPlayerUserData>()
-                {
-                    new()
-                    {
-                        DeviceAccountId = AccountId,
-                        Name = "Euden",
-                        ViewerId = 1,
-                        LastSaveImportTime = DateTimeOffset.UtcNow - TimeSpan.FromSeconds(15)
-                    }
-                }
-                    .AsQueryable()
-                    .BuildMock()
-            );
-
-        this.mockPlayerIdentityService
-            .Setup(x => x.StartUserImpersonation(AccountId, null))
+        this.mockPlayerIdentityService.Setup(x => x.StartUserImpersonation(ViewerId, AccountId))
             .Returns(new Mock<IDisposable>(MockBehavior.Loose).Object);
 
         this.mockPlayerIdentityService.SetupGet(x => x.AccountId).Returns(AccountId);
 
-        this.mockSessionService
-            .Setup(x => x.CreateSession(token, AccountId, 1, DateTimeOffset.UnixEpoch))
+        this.mockSessionService.Setup(
+            x => x.CreateSession(token, AccountId, 1, DateTimeOffset.UnixEpoch)
+        )
             .ReturnsAsync("session id");
 
-        this.mockSavefileService
-            .Setup(x => x.ThreadSafeImport(It.IsAny<LoadIndexData>()))
+        this.mockSavefileService.Setup(x => x.ThreadSafeImport(It.IsAny<LoadIndexData>()))
             .Returns(Task.CompletedTask);
 
         await this.authService.DoAuth(token);
@@ -285,8 +277,21 @@ public class AuthServiceTest
     [Fact]
     public async Task DoAuth_SavefileUploaded_IsNewer_SaveInvalid_HandlesException()
     {
-        this.mockBaasOptions
-            .Setup(x => x.CurrentValue)
+        this.apiContext.Players.Add(
+            new()
+            {
+                AccountId = AccountId,
+                ViewerId = ViewerId,
+                UserData = new()
+                {
+                    Name = "Euden",
+                    LastSaveImportTime = DateTimeOffset.UtcNow - TimeSpan.FromSeconds(1)
+                }
+            }
+        );
+        this.apiContext.SaveChanges();
+
+        this.mockBaasOptions.Setup(x => x.CurrentValue)
             .Returns(new BaasOptions() { TokenAudience = "audience", TokenIssuer = "issuer" });
 
         string token = TokenHelper
@@ -307,40 +312,21 @@ public class AuthServiceTest
                 fort_bonus_list = null!
             };
 
-        this.mockLoginOptions
-            .Setup(x => x.CurrentValue)
+        this.mockLoginOptions.Setup(x => x.CurrentValue)
             .Returns(new LoginOptions() { UseBaasLogin = true });
 
         this.mockBaasRequestHelper.Setup(x => x.GetKeys()).ReturnsAsync(TokenHelper.SecurityKeys);
-        this.mockBaasRequestHelper
-            .Setup(x => x.GetSavefile(token))
+        this.mockBaasRequestHelper.Setup(x => x.GetSavefile(token))
             .ThrowsAsync(new JsonException());
 
-        this.mockUserDataRepository
-            .SetupGet(x => x.UserData)
-            .Returns(
-                new List<DbPlayerUserData>()
-                {
-                    new()
-                    {
-                        DeviceAccountId = AccountId,
-                        Name = "Euden",
-                        ViewerId = 1,
-                        LastSaveImportTime = DateTimeOffset.UtcNow - TimeSpan.FromSeconds(1)
-                    }
-                }
-                    .AsQueryable()
-                    .BuildMock()
-            );
-
-        this.mockPlayerIdentityService
-            .Setup(x => x.StartUserImpersonation(AccountId, null))
+        this.mockPlayerIdentityService.Setup(x => x.StartUserImpersonation(ViewerId, AccountId))
             .Returns(new Mock<IDisposable>(MockBehavior.Loose).Object);
 
         this.mockPlayerIdentityService.SetupGet(x => x.AccountId).Returns(AccountId);
 
-        this.mockSessionService
-            .Setup(x => x.CreateSession(token, AccountId, 1, DateTimeOffset.UnixEpoch))
+        this.mockSessionService.Setup(
+            x => x.CreateSession(token, AccountId, 1, DateTimeOffset.UnixEpoch)
+        )
             .ReturnsAsync("session id");
 
         await this.authService.Invoking(x => x.DoAuth(token)).Should().NotThrowAsync();
@@ -355,8 +341,22 @@ public class AuthServiceTest
     [Fact]
     public async Task DoAuth_SavefileUploaded_IsOlder_DoesNotImportSave()
     {
-        this.mockBaasOptions
-            .Setup(x => x.CurrentValue)
+        this.apiContext.Players.Add(
+            new()
+            {
+                AccountId = AccountId,
+                ViewerId = ViewerId,
+                UserData = new()
+                {
+                    ViewerId = ViewerId,
+                    Name = "Euden",
+                    LastSaveImportTime = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(2),
+                }
+            }
+        );
+        this.apiContext.SaveChanges();
+
+        this.mockBaasOptions.Setup(x => x.CurrentValue)
             .Returns(new BaasOptions() { TokenAudience = "audience", TokenIssuer = "issuer" });
 
         string token = TokenHelper
@@ -370,35 +370,17 @@ public class AuthServiceTest
             )
             .AsString();
 
-        this.mockLoginOptions
-            .Setup(x => x.CurrentValue)
+        this.mockLoginOptions.Setup(x => x.CurrentValue)
             .Returns(new LoginOptions() { UseBaasLogin = true });
 
         this.mockBaasRequestHelper.Setup(x => x.GetKeys()).ReturnsAsync(TokenHelper.SecurityKeys);
 
-        this.mockUserDataRepository
-            .SetupGet(x => x.UserData)
-            .Returns(
-                new List<DbPlayerUserData>()
-                {
-                    new()
-                    {
-                        DeviceAccountId = AccountId,
-                        Name = "Euden",
-                        ViewerId = 1,
-                        LastSaveImportTime = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(2),
-                    }
-                }
-                    .AsQueryable()
-                    .BuildMock()
-            );
-
-        this.mockSessionService
-            .Setup(x => x.CreateSession(token, AccountId, 1, DateTimeOffset.UnixEpoch))
+        this.mockSessionService.Setup(
+            x => x.CreateSession(token, AccountId, 1, DateTimeOffset.UnixEpoch)
+        )
             .ReturnsAsync("session id");
 
-        this.mockPlayerIdentityService
-            .Setup(x => x.StartUserImpersonation("account id", null))
+        this.mockPlayerIdentityService.Setup(x => x.StartUserImpersonation(ViewerId, "account id"))
             .Returns(new Mock<IDisposable>(MockBehavior.Loose).Object);
 
         this.mockPlayerIdentityService.SetupGet(x => x.AccountId).Returns("account id");
@@ -416,8 +398,21 @@ public class AuthServiceTest
     [Fact]
     public async Task DoAuth_NoSavefileUploaded_DoesNotImportSave()
     {
-        this.mockBaasOptions
-            .Setup(x => x.CurrentValue)
+        this.apiContext.Players.Add(
+            new()
+            {
+                AccountId = AccountId,
+                ViewerId = ViewerId,
+                UserData = new()
+                {
+                    Name = "Euden",
+                    LastSaveImportTime = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(2),
+                }
+            }
+        );
+        this.apiContext.SaveChanges();
+
+        this.mockBaasOptions.Setup(x => x.CurrentValue)
             .Returns(new BaasOptions() { TokenAudience = "audience", TokenIssuer = "issuer" });
 
         string token = TokenHelper
@@ -431,39 +426,21 @@ public class AuthServiceTest
             )
             .AsString();
 
-        this.mockLoginOptions
-            .Setup(x => x.CurrentValue)
+        this.mockLoginOptions.Setup(x => x.CurrentValue)
             .Returns(new LoginOptions() { UseBaasLogin = true });
 
         this.mockBaasRequestHelper.Setup(x => x.GetKeys()).ReturnsAsync(TokenHelper.SecurityKeys);
 
-        this.mockUserDataRepository
-            .SetupGet(x => x.UserData)
-            .Returns(
-                new List<DbPlayerUserData>()
-                {
-                    new()
-                    {
-                        DeviceAccountId = AccountId,
-                        Name = "Euden",
-                        ViewerId = 1,
-                        LastSaveImportTime = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(2),
-                    }
-                }
-                    .AsQueryable()
-                    .BuildMock()
-            );
-
-        this.mockPlayerIdentityService
-            .Setup(x => x.StartUserImpersonation(AccountId, null))
+        this.mockPlayerIdentityService.Setup(x => x.StartUserImpersonation(ViewerId, AccountId))
             .Returns(new Mock<IDisposable>(MockBehavior.Loose).Object);
 
         this.mockPlayerIdentityService.SetupGet(x => x.AccountId).Returns(AccountId);
 
         this.mockPlayerIdentityService.SetupGet(x => x.AccountId).Returns(AccountId);
 
-        this.mockSessionService
-            .Setup(x => x.CreateSession(token, AccountId, 1, DateTimeOffset.UnixEpoch))
+        this.mockSessionService.Setup(
+            x => x.CreateSession(token, AccountId, 1, DateTimeOffset.UnixEpoch)
+        )
             .ReturnsAsync("session id");
 
         await this.authService.DoAuth(token);

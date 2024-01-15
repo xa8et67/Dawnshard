@@ -1,11 +1,9 @@
 ﻿using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Middleware;
-using DragaliaAPI.Models;
 using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Features.DmodeDungeon;
@@ -25,7 +23,7 @@ public class DmodeDeveloperController(
         if (accountId is null)
             return this.NotFound("Player not found");
 
-        using IDisposable ctx = playerIdentityService.StartUserImpersonation(accountId, viewerId);
+        using IDisposable ctx = playerIdentityService.StartUserImpersonation(viewerId, accountId);
 
         try
         {
@@ -45,7 +43,7 @@ public class DmodeDeveloperController(
         if (accountId is null)
             return this.NotFound("Player not found");
 
-        using IDisposable ctx = playerIdentityService.StartUserImpersonation(accountId, viewerId);
+        using IDisposable ctx = playerIdentityService.StartUserImpersonation(viewerId, accountId);
 
         try
         {
@@ -64,7 +62,7 @@ public class DmodeDeveloperController(
         if (accountId is null)
             return this.NotFound("Player not found");
 
-        using IDisposable ctx = playerIdentityService.StartUserImpersonation(accountId, viewerId);
+        using IDisposable ctx = playerIdentityService.StartUserImpersonation(viewerId, accountId);
         try
         {
             return this.Ok(await dmodeCacheService.LoadIngameInfo());
@@ -79,7 +77,7 @@ public class DmodeDeveloperController(
     {
         return userDataRepository
             .GetViewerData(viewerId)
-            .Select(x => x.DeviceAccountId)
+            .Select(x => x.Owner!.AccountId)
             .SingleOrDefaultAsync();
     }
 }

@@ -1,10 +1,8 @@
 ﻿using AutoMapper;
 using DragaliaAPI.Controllers;
-using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Extensions;
 using DragaliaAPI.Features.Dungeon.Record;
-using DragaliaAPI.Features.Player;
 using DragaliaAPI.Features.Reward;
 using DragaliaAPI.Features.Shop;
 using DragaliaAPI.Models;
@@ -199,8 +197,8 @@ public class DungeonSkipController(
                 PlayCount = playCount,
             };
 
-        session.EnemyList = questData.AreaInfo
-            .Select((_, index) => oddsInfoService.GetOddsInfo(questData.Id, index))
+        session.EnemyList = questData
+            .AreaInfo.Select((_, index) => oddsInfoService.GetOddsInfo(questData.Id, index))
             .ToDictionary(x => x.area_index, x => x.enemy.Repeat(playCount));
 
         PlayRecord playRecord =
@@ -234,29 +232,5 @@ public class DungeonSkipController(
 
     private static IngameResultData CombineIngameResultData(
         IEnumerable<IngameResultData> ingameResultDatas
-    )
-    {
-        return ingameResultDatas.Aggregate(
-            (acc, current) =>
-            {
-                // TODO: Combine other things
-                acc.reward_record.take_coin += current.reward_record.take_coin;
-                acc.reward_record.drop_all.AddRange(current.reward_record.drop_all);
-
-                acc.grow_record.take_chara_exp += current.grow_record.take_chara_exp;
-                acc.grow_record.take_player_exp += current.grow_record.take_player_exp;
-                acc.grow_record.take_mana += current.grow_record.take_mana;
-
-                acc.reward_record.quest_bonus_list = acc.reward_record.quest_bonus_list.Concat(
-                    current.reward_record.quest_bonus_list
-                );
-
-                acc.reward_record.player_level_up_fstone += current
-                    .reward_record
-                    .player_level_up_fstone;
-
-                return acc;
-            }
-        );
-    }
+    ) => ingameResultDatas.Aggregate((acc, current) => acc.CombineWith(current));
 }

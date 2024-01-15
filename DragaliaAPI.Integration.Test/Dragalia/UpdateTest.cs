@@ -1,10 +1,4 @@
-﻿using DragaliaAPI.Database;
-using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Models;
-using DragaliaAPI.Models.Generated;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Xunit.Abstractions;
+﻿using DragaliaAPI.Database.Entities;
 
 namespace DragaliaAPI.Integration.Test.Dragalia;
 
@@ -23,7 +17,7 @@ public class UpdateTest : TestFixture
             new UpdateNamechangeRequest() { name = newName }
         );
 
-        DbPlayerUserData userData = this.ApiContext.PlayerUserData.Find(DeviceAccountId)!;
+        DbPlayerUserData userData = this.ApiContext.PlayerUserData.Find(ViewerId)!;
         this.ApiContext.Entry(userData).Reload();
         userData.Name.Should().Be(newName);
     }

@@ -2,11 +2,10 @@
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Database.Utils;
 using DragaliaAPI.Features.Missions;
-using DragaliaAPI.Models;
 using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
-using DragaliaAPI.Shared.MasterAsset.Models;
 using DragaliaAPI.Shared.MasterAsset;
+using DragaliaAPI.Shared.MasterAsset.Models;
 
 namespace DragaliaAPI.Features.Chara;
 
@@ -41,7 +40,7 @@ public class CharaService(
 
             while (
                 maxLevel > playerCharaData.Level
-                && playerCharaData.Exp > CharaConstants.XpLimits[playerCharaData.Level - 1]
+                && playerCharaData.Exp >= CharaConstants.XpLimits[playerCharaData.Level]
             )
             {
                 playerCharaData.Level++;

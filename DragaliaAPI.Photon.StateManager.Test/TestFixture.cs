@@ -43,8 +43,7 @@ public class TestFixture : IClassFixture<CustomWebApplicationFactory>, IDisposab
 
     public void Dispose()
     {
-        this.RedisConnectionProvider
-            .RedisCollection<RedisGame>()
+        this.RedisConnectionProvider.RedisCollection<RedisGame>()
             .Delete(this.RedisConnectionProvider.RedisCollection<RedisGame>());
     }
 }

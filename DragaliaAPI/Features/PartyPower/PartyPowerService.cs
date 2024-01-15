@@ -1,6 +1,5 @@
 ﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
-using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
 using DragaliaAPI.Services.Exceptions;
@@ -149,12 +148,7 @@ public class PartyPowerService(
                     "No dragon found for power calculation"
                 );
 
-            reliability =
-                await unitRepository.FindDragonReliabilityAsync(dragon.DragonId)
-                ?? throw new DragaliaException(
-                    ResultCode.CommonDbError,
-                    "No reliability found for power calculation"
-                );
+            reliability = await unitRepository.FindDragonReliabilityAsync(dragon.DragonId);
 
             dragonData = MasterAsset.DragonData[dragon.DragonId];
             dragonRarity = MasterAsset.DragonRarity[dragonData.Rarity];
@@ -193,8 +187,8 @@ public class PartyPowerService(
 
         HashSet<AbilityCrests> uniqueCrests = crests.Where(x => x != 0).ToHashSet();
 
-        List<DbAbilityCrest> dbCrests = abilityCrestRepository.AbilityCrests
-            .Where(x => uniqueCrests.Contains(x.AbilityCrestId))
+        List<DbAbilityCrest> dbCrests = abilityCrestRepository
+            .AbilityCrests.Where(x => uniqueCrests.Contains(x.AbilityCrestId))
             .ToList();
 
         double charaPowerParam = GetCharacterPower(
@@ -494,21 +488,18 @@ public class PartyPowerService(
 
     private static int GetExAbilityPower(ref DbPlayerCharaData dbChara, ref CharaData charaData)
     {
-        if (dbChara.ExAbilityLevel == 0)
+        int ability1Id = charaData.ExAbility[dbChara.ExAbilityLevel - 1];
+        if (!MasterAsset.ExAbilityData.TryGetValue(ability1Id, out ExAbilityData? exAbilityData1))
             return 0;
 
-        int power = MasterAsset.ExAbilityData[
-            charaData.ExAbility[dbChara.ExAbilityLevel - 1]
-        ].PartyPowerWeight;
-
-        if (dbChara.ExAbility2Level == 0)
-            return power;
+        int power = exAbilityData1.PartyPowerWeight;
 
         // yes this is intentionally AbilityData
-        return power
-            + MasterAsset.AbilityData[
-                charaData.ExAbility2[dbChara.ExAbility2Level - 1]
-            ].PartyPowerWeight;
+        int ability2Id = charaData.ExAbility2[dbChara.ExAbility2Level - 1];
+        if (!MasterAsset.AbilityData.TryGetValue(ability2Id, out AbilityData? exAbilityData2))
+            return power;
+
+        return power + exAbilityData2.PartyPowerWeight;
     }
 
     private static int GetUnionAbilityPower(IEnumerable<DbAbilityCrest> crests)

@@ -1,5 +1,4 @@
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Models.Generated;
 using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Integration.Test.Features.SavefileUpdate;
@@ -7,10 +6,7 @@ namespace DragaliaAPI.Integration.Test.Features.SavefileUpdate;
 public class V2UpdateTest : SavefileUpdateTestFixture
 {
     public V2UpdateTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
-        : base(factory, outputHelper)
-    {
-        this.ApiContext.EquippedStamps.ExecuteDelete();
-    }
+        : base(factory, outputHelper) { }
 
     [Fact]
     public async Task V2Update_AddsStampList()
@@ -58,8 +54,7 @@ public class V2UpdateTest : SavefileUpdateTestFixture
 
         data.equip_stamp_list.Should().BeEquivalentTo(expectedStampList);
 
-        this.ApiContext.EquippedStamps
-            .Where(x => x.DeviceAccountId == DeviceAccountId)
+        this.ApiContext.EquippedStamps.Where(x => x.ViewerId == ViewerId)
             .Should()
             .BeEquivalentTo(
                 expectedStampList,
@@ -68,8 +63,8 @@ public class V2UpdateTest : SavefileUpdateTestFixture
                         .WithMapping<DbEquippedStamp>(dto => dto.slot, db => db.Slot)
                         .WithMapping<DbEquippedStamp>(dto => dto.stamp_id, db => db.StampId)
             );
-        (await this.ApiContext.Players.FindAsync(DeviceAccountId))!.SavefileVersion
-            .Should()
+        (await this.ApiContext.Players.FindAsync(ViewerId))!
+            .SavefileVersion.Should()
             .Be(MaxVersion);
     }
 }

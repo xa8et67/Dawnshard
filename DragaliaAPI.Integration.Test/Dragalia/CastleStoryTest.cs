@@ -1,6 +1,4 @@
 ﻿using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Shared.Definitions.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Integration.Test.Dragalia;
@@ -23,8 +21,7 @@ public class CastleStoryTest : TestFixture
             )
         ).data;
 
-        data.castle_story_reward_list
-            .Should()
+        data.castle_story_reward_list.Should()
             .BeEquivalentTo(
                 new List<AtgenBuildEventRewardEntityList>()
                 {
@@ -38,8 +35,7 @@ public class CastleStoryTest : TestFixture
             );
 
         data.update_data_list.user_data.Should().NotBeNull();
-        data.update_data_list.castle_story_list
-            .Should()
+        data.update_data_list.castle_story_list.Should()
             .BeEquivalentTo(
                 new List<CastleStoryList>()
                 {
@@ -54,7 +50,7 @@ public class CastleStoryTest : TestFixture
         this.ApiContext.Add(
             new DbPlayerStoryState()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 State = StoryState.Read,
                 StoryId = 2,
                 StoryType = StoryTypes.Castle
@@ -78,9 +74,8 @@ public class CastleStoryTest : TestFixture
     [Fact]
     public async Task ReadStory_StoryNotRead_UpdatesDatabase()
     {
-        int oldCrystal = await this.ApiContext.PlayerUserData
-            .AsNoTracking()
-            .Where(x => x.DeviceAccountId == DeviceAccountId)
+        int oldCrystal = await this.ApiContext.PlayerUserData.AsNoTracking()
+            .Where(x => x.ViewerId == ViewerId)
             .Select(x => x.Crystal)
             .SingleAsync();
 
@@ -91,16 +86,15 @@ public class CastleStoryTest : TestFixture
             )
         ).data;
 
-        int newCrystal = await this.ApiContext.PlayerUserData
-            .AsNoTracking()
-            .Where(x => x.DeviceAccountId == DeviceAccountId)
+        int newCrystal = await this.ApiContext.PlayerUserData.AsNoTracking()
+            .Where(x => x.ViewerId == ViewerId)
             .Select(x => x.Crystal)
             .SingleAsync();
 
         newCrystal.Should().Be(oldCrystal + 50);
 
         IEnumerable<DbPlayerStoryState> stories = this.ApiContext.PlayerStoryState.Where(
-            x => x.DeviceAccountId == DeviceAccountId
+            x => x.ViewerId == ViewerId
         );
 
         stories
@@ -108,7 +102,7 @@ public class CastleStoryTest : TestFixture
             .ContainEquivalentOf(
                 new DbPlayerStoryState()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     State = StoryState.Read,
                     StoryId = 3,
                     StoryType = StoryTypes.Castle

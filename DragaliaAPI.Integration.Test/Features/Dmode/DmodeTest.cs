@@ -1,8 +1,4 @@
-﻿using DragaliaAPI.Database;
-using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Models;
-using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Shared.Definitions.Enums;
+﻿using DragaliaAPI.Database.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Integration.Test.Features.Dmode;
@@ -12,7 +8,7 @@ public class DmodeTest : TestFixture
     public DmodeTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
         : base(factory, outputHelper)
     {
-        CommonAssertionOptions.ApplyTimeOptions();
+        CommonAssertionOptions.ApplyTimeOptions(toleranceSec: 2);
     }
 
     [Fact]
@@ -34,9 +30,8 @@ public class DmodeTest : TestFixture
     [Fact]
     public async Task ReadStory_ReadsStory()
     {
-        int oldWyrmite = this.ApiContext.PlayerUserData
-            .AsNoTracking()
-            .Single(x => x.DeviceAccountId == DeviceAccountId)
+        int oldWyrmite = this.ApiContext.PlayerUserData.AsNoTracking()
+            .Single(x => x.ViewerId == ViewerId)
             .Crystal;
 
         DragaliaResponse<DmodeReadStoryData> resp = await Client.PostMsgpack<DmodeReadStoryData>(
@@ -44,8 +39,7 @@ public class DmodeTest : TestFixture
             new DmodeReadStoryRequest() { dmode_story_id = 1 }
         );
 
-        resp.data.dmode_story_reward_list
-            .Should()
+        resp.data.dmode_story_reward_list.Should()
             .BeEquivalentTo(
                 new List<AtgenBuildEventRewardEntityList>()
                 {
@@ -70,8 +64,7 @@ public class DmodeTest : TestFixture
                 }
             );
         resp.data.update_data_list.user_data.crystal.Should().Be(oldWyrmite + 25);
-        resp.data.update_data_list.dmode_story_list
-            .Should()
+        resp.data.update_data_list.dmode_story_list.Should()
             .ContainEquivalentOf(new DmodeStoryList() { dmode_story_id = 1, is_read = 1 });
     }
 
@@ -104,51 +97,48 @@ public class DmodeTest : TestFixture
                 }
             );
 
-        resp.data.dmode_servitor_passive_list
-            .Should()
+        resp.data.dmode_servitor_passive_list.Should()
             .Contain(
                 x => x.passive_no == DmodeServitorPassiveType.BurstDamage && x.passive_level == 2
             );
-        resp.data.dmode_servitor_passive_list
-            .Should()
+        resp.data.dmode_servitor_passive_list.Should()
             .Contain(
                 x => x.passive_no == DmodeServitorPassiveType.ResistUndead && x.passive_level == 10
             );
-        resp.data.dmode_servitor_passive_list
-            .Should()
+        resp.data.dmode_servitor_passive_list.Should()
             .Contain(
                 x => x.passive_no == DmodeServitorPassiveType.ResistNatural && x.passive_level == 2
             );
 
-        ApiContext.PlayerDmodeServitorPassives
-            .AsNoTracking()
+        ApiContext
+            .PlayerDmodeServitorPassives.AsNoTracking()
             .Should()
             .ContainEquivalentOf(
                 new DbPlayerDmodeServitorPassive()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     PassiveId = DmodeServitorPassiveType.ResistNatural,
                     Level = 2
                 }
             );
-        ApiContext.PlayerDmodeServitorPassives
-            .AsNoTracking()
+        ApiContext
+            .PlayerDmodeServitorPassives.AsNoTracking()
             .Should()
             .ContainEquivalentOf(
                 new DbPlayerDmodeServitorPassive()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     PassiveId = DmodeServitorPassiveType.ResistUndead,
                     Level = 10
                 }
             );
-        ApiContext.PlayerDmodeServitorPassives
-            .AsNoTracking()
+        ApiContext
+            .PlayerDmodeServitorPassives.AsNoTracking()
             .Should()
             .ContainEquivalentOf(
                 new DbPlayerDmodeServitorPassive()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     PassiveId = DmodeServitorPassiveType.BurstDamage,
                     Level = 2
                 }
@@ -174,8 +164,7 @@ public class DmodeTest : TestFixture
                 }
             );
 
-        resp.data.dmode_expedition
-            .Should()
+        resp.data.dmode_expedition.Should()
             .BeEquivalentTo(
                 new DmodeExpedition()
                 {
@@ -195,8 +184,8 @@ public class DmodeTest : TestFixture
                 new DmodeExpeditionForceFinishRequest() { }
             );
 
-        finishResp.data.dmode_expedition
-            .Should()
+        finishResp
+            .data.dmode_expedition.Should()
             .BeEquivalentTo(
                 new DmodeExpedition()
                 {
@@ -209,8 +198,8 @@ public class DmodeTest : TestFixture
                     start_time = resp.data.dmode_expedition.start_time
                 }
             );
-        finishResp.data.dmode_ingame_result.chara_id_list
-            .Should()
+        finishResp
+            .data.dmode_ingame_result.chara_id_list.Should()
             .BeEquivalentTo(
                 new[] { Charas.HunterBerserker, Charas.Empty, Charas.Empty, Charas.Empty }
             );
@@ -242,8 +231,7 @@ public class DmodeTest : TestFixture
                 }
             );
 
-        resp.data.dmode_expedition
-            .Should()
+        resp.data.dmode_expedition.Should()
             .BeEquivalentTo(
                 new DmodeExpedition()
                 {
@@ -265,8 +253,8 @@ public class DmodeTest : TestFixture
                 new DmodeExpeditionFinishRequest() { }
             );
 
-        finishResp.data.dmode_expedition
-            .Should()
+        finishResp
+            .data.dmode_expedition.Should()
             .BeEquivalentTo(
                 new DmodeExpedition()
                 {
@@ -283,17 +271,17 @@ public class DmodeTest : TestFixture
         finishResp.data.dmode_ingame_result.take_dmode_point_1.Should().BeGreaterThan(0);
         finishResp.data.dmode_ingame_result.take_dmode_point_2.Should().Be(0);
         finishResp.data.dmode_ingame_result.reward_talisman_list.Should().NotBeEmpty();
-        finishResp.data.dmode_ingame_result.reward_talisman_list
-            .Should()
+        finishResp
+            .data.dmode_ingame_result.reward_talisman_list.Should()
             .Contain(x => x.talisman_id == Talismans.HunterBerserker);
-        finishResp.data.dmode_ingame_result.reward_talisman_list
-            .Should()
+        finishResp
+            .data.dmode_ingame_result.reward_talisman_list.Should()
             .Contain(x => x.talisman_id == Talismans.Chrom);
-        finishResp.data.dmode_ingame_result.reward_talisman_list
-            .Should()
+        finishResp
+            .data.dmode_ingame_result.reward_talisman_list.Should()
             .Contain(x => x.talisman_id == Talismans.Cassandra);
-        finishResp.data.dmode_ingame_result.reward_talisman_list
-            .Should()
+        finishResp
+            .data.dmode_ingame_result.reward_talisman_list.Should()
             .Contain(x => x.talisman_id == Talismans.GalaMym);
     }
 }

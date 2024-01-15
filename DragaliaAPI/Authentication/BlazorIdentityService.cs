@@ -1,6 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
-using DragaliaAPI.Shared.PlayerDetails;
+﻿using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.AspNetCore.Components.Authorization;
 
 namespace DragaliaAPI.Blazor.Authentication;
@@ -40,16 +38,16 @@ public class BlazorIdentityService : IBlazorIdentityService
         if (!this.IsAuthenticated)
             return;
 
-        this.accountId = state.User.Claims
-            .FirstOrDefault(x => x.Type == CustomClaimType.AccountId)
+        this.accountId = state
+            .User.Claims.FirstOrDefault(x => x.Type == CustomClaimType.AccountId)
             ?.Value;
 
-        this.userIdName = state.User.Claims
-            .FirstOrDefault(x => x.Type == CustomClaimType.PlayerName)
+        this.userIdName = state
+            .User.Claims.FirstOrDefault(x => x.Type == CustomClaimType.PlayerName)
             ?.Value;
 
-        string? viewerIdString = state.User.Claims
-            .FirstOrDefault(x => x.Type == CustomClaimType.ViewerId)
+        string? viewerIdString = state
+            .User.Claims.FirstOrDefault(x => x.Type == CustomClaimType.ViewerId)
             ?.Value;
 
         if (int.TryParse(viewerIdString, out int viewerId))
@@ -61,13 +59,13 @@ public class BlazorIdentityService : IBlazorIdentityService
     public string AccountId =>
         this.accountId ?? throw new InvalidOperationException("User was not authenticated!");
 
-    public long? ViewerId =>
+    public long ViewerId =>
         this.viewerId ?? throw new InvalidOperationException("User was not authenticated!");
 
     public string UserDataName =>
         this.userIdName ?? throw new InvalidOperationException("User was not authenticated!");
 
-    public IDisposable StartUserImpersonation(string account, long? viewer = null)
+    public IDisposable StartUserImpersonation(long? viewer = null, string? account = null)
     {
         throw new NotImplementedException();
     }

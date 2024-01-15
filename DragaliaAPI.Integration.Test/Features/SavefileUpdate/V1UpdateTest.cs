@@ -1,7 +1,5 @@
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services.Game;
-using DragaliaAPI.Shared.Definitions.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Integration.Test.Features.SavefileUpdate;
@@ -9,10 +7,7 @@ namespace DragaliaAPI.Integration.Test.Features.SavefileUpdate;
 public class V1UpdateTest : SavefileUpdateTestFixture
 {
     public V1UpdateTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
-        : base(factory, outputHelper)
-    {
-        this.ApiContext.PlayerFortBuilds.ExecuteDelete();
-    }
+        : base(factory, outputHelper) { }
 
     [Fact]
     public async Task V1Update_NoFort_StoryComplete_Adds()
@@ -20,7 +15,7 @@ public class V1UpdateTest : SavefileUpdateTestFixture
         await this.AddToDatabase(
             new DbPlayerStoryState()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 StoryType = StoryTypes.Quest,
                 State = StoryState.Read,
                 StoryId = TutorialService.TutorialStoryIds.Halidom
@@ -33,15 +28,10 @@ public class V1UpdateTest : SavefileUpdateTestFixture
 
         data.build_list.Should().Contain(x => x.plant_id == FortPlants.TheHalidom);
 
-        this.ApiContext.PlayerFortBuilds
-            .Should()
-            .Contain(
-                x => x.PlantId == FortPlants.TheHalidom && x.DeviceAccountId == DeviceAccountId
-            );
+        this.ApiContext.PlayerFortBuilds.Should()
+            .Contain(x => x.PlantId == FortPlants.TheHalidom && x.ViewerId == ViewerId);
 
         this.GetSavefileVersion().Should().Be(this.MaxVersion);
-
-        await this.ApiContext.PlayerStoryState.ExecuteDeleteAsync();
     }
 
     [Fact]
@@ -50,7 +40,7 @@ public class V1UpdateTest : SavefileUpdateTestFixture
         await this.AddToDatabase(
             new DbPlayerStoryState()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 StoryType = StoryTypes.Quest,
                 State = StoryState.Read,
                 StoryId = TutorialService.TutorialStoryIds.Smithy
@@ -63,13 +53,10 @@ public class V1UpdateTest : SavefileUpdateTestFixture
 
         data.build_list.Should().Contain(x => x.plant_id == FortPlants.Smithy);
 
-        this.ApiContext.PlayerFortBuilds
-            .Should()
-            .Contain(x => x.PlantId == FortPlants.Smithy && x.DeviceAccountId == DeviceAccountId);
+        this.ApiContext.PlayerFortBuilds.Should()
+            .Contain(x => x.PlantId == FortPlants.Smithy && x.ViewerId == ViewerId);
 
         this.GetSavefileVersion().Should().Be(this.MaxVersion);
-
-        await this.ApiContext.PlayerStoryState.ExecuteDeleteAsync();
     }
 
     [Fact]
@@ -78,7 +65,7 @@ public class V1UpdateTest : SavefileUpdateTestFixture
         await this.AddToDatabase(
             new DbPlayerStoryState()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 StoryType = StoryTypes.Quest,
                 State = StoryState.Read,
                 StoryId = 1000808
@@ -91,13 +78,10 @@ public class V1UpdateTest : SavefileUpdateTestFixture
 
         data.build_list.Should().Contain(x => x.plant_id == FortPlants.FlameDracolith);
 
-        this.ApiContext.PlayerFortBuilds
-            .Should()
+        this.ApiContext.PlayerFortBuilds.Should()
             .Contain(x => x.PlantId == FortPlants.FlameDracolith);
 
         this.GetSavefileVersion().Should().Be(this.MaxVersion);
-
-        await this.ApiContext.PlayerStoryState.ExecuteDeleteAsync();
     }
 
     [Fact]
@@ -125,6 +109,9 @@ public class V1UpdateTest : SavefileUpdateTestFixture
     [Fact]
     public async Task V1Update_StoryAndTutorialIncomplete_DoesNothing()
     {
+        await this.ApiContext.PlayerFortBuilds.ExecuteDeleteAsync();
+        await this.ApiContext.PlayerStoryState.ExecuteDeleteAsync();
+
         LoadIndexData data = (
             await this.Client.PostMsgpack<LoadIndexData>("/load/index", new LoadIndexRequest())
         ).data;

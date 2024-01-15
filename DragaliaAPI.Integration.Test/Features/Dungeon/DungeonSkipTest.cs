@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Models;
-using DragaliaAPI.Models.Generated;
+﻿using DragaliaAPI.Database.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Integration.Test.Features.Dungeon;
@@ -27,9 +20,17 @@ public class DungeonSkipTest : TestFixture
         int staminaCost = 8;
         int playCount = 5;
 
-        DbPlayerUserData oldUserData = this.ApiContext.PlayerUserData
-            .AsNoTracking()
-            .First(x => x.DeviceAccountId == DeviceAccountId);
+        await this.AddToDatabase(
+            new DbQuest()
+            {
+                ViewerId = ViewerId,
+                QuestId = questId,
+                State = 3
+            }
+        );
+
+        DbPlayerUserData oldUserData = this.ApiContext.PlayerUserData.AsNoTracking()
+            .First(x => x.ViewerId == ViewerId);
 
         DragaliaResponse<DungeonSkipStartData> response =
             await this.Client.PostMsgpack<DungeonSkipStartData>(
@@ -47,28 +48,28 @@ public class DungeonSkipTest : TestFixture
         response.data.ingame_result_data.reward_record.take_coin.Should().NotBe(0);
 
         response.data.ingame_result_data.grow_record.take_mana.Should().NotBe(0);
-        response.data.ingame_result_data.grow_record.take_player_exp
-            .Should()
+        response
+            .data.ingame_result_data.grow_record.take_player_exp.Should()
             .Be(staminaCost * 10 * playCount);
 
-        response.data.ingame_result_data.quest_party_setting_list
-            .Should()
+        response
+            .data.ingame_result_data.quest_party_setting_list.Should()
             .Contain(x => x.chara_id == Shared.Definitions.Enums.Charas.ThePrince);
-        response.data.ingame_result_data.helper_list
-            .Should()
+        response
+            .data.ingame_result_data.helper_list.Should()
             .Contain(x => x.name == "dreadfullydistinct");
 
-        response.data.update_data_list.quest_list
-            .Should()
+        response
+            .data.update_data_list.quest_list.Should()
             .Contain(x => x.quest_id == questId && x.play_count == playCount);
-        response.data.update_data_list.user_data.stamina_single
-            .Should()
+        response
+            .data.update_data_list.user_data.stamina_single.Should()
             .Be(oldUserData.StaminaSingle - (staminaCost * playCount));
-        response.data.update_data_list.user_data.exp
-            .Should()
+        response
+            .data.update_data_list.user_data.exp.Should()
             .Be(oldUserData.Exp + (staminaCost * 10 * playCount));
-        response.data.update_data_list.user_data.quest_skip_point
-            .Should()
+        response
+            .data.update_data_list.user_data.quest_skip_point.Should()
             .Be(oldUserData.QuestSkipPoint - playCount);
     }
 
@@ -79,9 +80,17 @@ public class DungeonSkipTest : TestFixture
         int staminaCost = 8;
         int playCount = 5;
 
-        DbPlayerUserData oldUserData = this.ApiContext.PlayerUserData
-            .AsNoTracking()
-            .First(x => x.DeviceAccountId == DeviceAccountId);
+        await this.AddToDatabase(
+            new DbQuest()
+            {
+                ViewerId = ViewerId,
+                QuestId = questId,
+                State = 3
+            }
+        );
+
+        DbPlayerUserData oldUserData = this.ApiContext.PlayerUserData.AsNoTracking()
+            .First(x => x.ViewerId == ViewerId);
 
         DragaliaResponse<DungeonSkipStartAssignUnitData> response =
             await this.Client.PostMsgpack<DungeonSkipStartAssignUnitData>(
@@ -102,28 +111,28 @@ public class DungeonSkipTest : TestFixture
         response.data.ingame_result_data.reward_record.take_coin.Should().NotBe(0);
 
         response.data.ingame_result_data.grow_record.take_mana.Should().NotBe(0);
-        response.data.ingame_result_data.grow_record.take_player_exp
-            .Should()
+        response
+            .data.ingame_result_data.grow_record.take_player_exp.Should()
             .Be(staminaCost * 10 * playCount);
 
-        response.data.ingame_result_data.quest_party_setting_list
-            .Should()
+        response
+            .data.ingame_result_data.quest_party_setting_list.Should()
             .Contain(x => x.chara_id == Shared.Definitions.Enums.Charas.ThePrince);
-        response.data.ingame_result_data.helper_list
-            .Should()
+        response
+            .data.ingame_result_data.helper_list.Should()
             .Contain(x => x.name == "dreadfullydistinct");
 
-        response.data.update_data_list.quest_list
-            .Should()
+        response
+            .data.update_data_list.quest_list.Should()
             .Contain(x => x.quest_id == questId && x.play_count == playCount);
-        response.data.update_data_list.user_data.stamina_single
-            .Should()
+        response
+            .data.update_data_list.user_data.stamina_single.Should()
             .Be(oldUserData.StaminaSingle - (staminaCost * playCount));
-        response.data.update_data_list.user_data.exp
-            .Should()
+        response
+            .data.update_data_list.user_data.exp.Should()
             .Be(oldUserData.Exp + (staminaCost * 10 * playCount));
-        response.data.update_data_list.user_data.quest_skip_point
-            .Should()
+        response
+            .data.update_data_list.user_data.quest_skip_point.Should()
             .Be(oldUserData.QuestSkipPoint - playCount);
     }
 
@@ -138,9 +147,8 @@ public class DungeonSkipTest : TestFixture
 
         int totalStamina = 9 + 9 + 9 + 12 + 9;
 
-        DbPlayerUserData oldUserData = this.ApiContext.PlayerUserData
-            .AsNoTracking()
-            .First(x => x.DeviceAccountId == DeviceAccountId);
+        DbPlayerUserData oldUserData = this.ApiContext.PlayerUserData.AsNoTracking()
+            .First(x => x.ViewerId == ViewerId);
 
         DragaliaResponse<DungeonSkipStartMultipleQuestData> response =
             await this.Client.PostMsgpack<DungeonSkipStartMultipleQuestData>(
@@ -166,15 +174,15 @@ public class DungeonSkipTest : TestFixture
         response.data.ingame_result_data.grow_record.take_mana.Should().NotBe(0);
         response.data.ingame_result_data.grow_record.take_player_exp.Should().Be(totalStamina * 10);
 
-        response.data.ingame_result_data.quest_party_setting_list
-            .Should()
+        response
+            .data.ingame_result_data.quest_party_setting_list.Should()
             .Contain(x => x.chara_id == Shared.Definitions.Enums.Charas.ThePrince);
-        response.data.ingame_result_data.helper_list
-            .Should()
+        response
+            .data.ingame_result_data.helper_list.Should()
             .Contain(x => x.name == "dreadfullydistinct");
 
-        response.data.update_data_list.quest_list
-            .Select(x => x.quest_id)
+        response
+            .data.update_data_list.quest_list.Select(x => x.quest_id)
             .Should()
             .BeEquivalentTo(
                 new List<int>()
@@ -186,18 +194,18 @@ public class DungeonSkipTest : TestFixture
                     flameIoStandard
                 }
             );
-        response.data.update_data_list.quest_list
-            .Should()
+        response
+            .data.update_data_list.quest_list.Should()
             .AllSatisfy(x => x.play_count.Should().Be(1));
 
-        response.data.update_data_list.user_data.stamina_single
-            .Should()
+        response
+            .data.update_data_list.user_data.stamina_single.Should()
             .Be(oldUserData.StaminaSingle - totalStamina);
-        response.data.update_data_list.user_data.exp
-            .Should()
+        response
+            .data.update_data_list.user_data.exp.Should()
             .Be(oldUserData.Exp + (totalStamina * 10));
-        response.data.update_data_list.user_data.quest_skip_point
-            .Should()
+        response
+            .data.update_data_list.user_data.quest_skip_point.Should()
             .Be(oldUserData.QuestSkipPoint - 5);
     }
 
@@ -213,7 +221,7 @@ public class DungeonSkipTest : TestFixture
         await this.AddToDatabase(
             new DbQuestEvent()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 QuestEventId = questEventId,
                 LastWeeklyResetTime = resetTime,
                 LastDailyResetTime = resetTime,
@@ -222,9 +230,8 @@ public class DungeonSkipTest : TestFixture
             }
         );
 
-        DbPlayerUserData oldUserData = this.ApiContext.PlayerUserData
-            .AsNoTracking()
-            .First(x => x.DeviceAccountId == DeviceAccountId);
+        DbPlayerUserData oldUserData = this.ApiContext.PlayerUserData.AsNoTracking()
+            .First(x => x.ViewerId == ViewerId);
 
         DragaliaResponse<DungeonSkipStartData> response =
             await this.Client.PostMsgpack<DungeonSkipStartData>(
@@ -238,8 +245,8 @@ public class DungeonSkipTest : TestFixture
                 }
             );
 
-        response.data.update_data_list.quest_event_list
-            .Should()
+        response
+            .data.update_data_list.quest_event_list.Should()
             .ContainEquivalentOf(
                 new QuestEventList()
                 {

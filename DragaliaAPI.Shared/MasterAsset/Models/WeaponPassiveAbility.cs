@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using DragaliaAPI.Shared.Definitions.Enums;
 
 namespace DragaliaAPI.Shared.MasterAsset.Models;
@@ -21,10 +22,11 @@ public record WeaponPassiveAbility(
     Materials UnlockMaterialId4,
     int UnlockMaterialQuantity4,
     Materials UnlockMaterialId5,
-    int UnlockMaterialQuantity5
+    int UnlockMaterialQuantity5,
+    int AbilityId
 )
 {
-    public Dictionary<Materials, int> MaterialMap { get; } =
+    public FrozenDictionary<Materials, int> MaterialMap { get; } =
         new List<KeyValuePair<Materials, int>>()
         {
             new(UnlockMaterialId1, UnlockMaterialQuantity1),
@@ -34,5 +36,5 @@ public record WeaponPassiveAbility(
             new(UnlockMaterialId5, UnlockMaterialQuantity5),
         }
             .Where(x => x.Key != Materials.Empty)
-            .ToDictionary(x => x.Key, x => x.Value);
+            .ToFrozenDictionary(x => x.Key, x => x.Value);
 };

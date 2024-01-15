@@ -2,6 +2,7 @@
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Database.Utils;
 using DragaliaAPI.Features.Fort;
+using DragaliaAPI.Features.Wall;
 using DragaliaAPI.Shared.Definitions.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,13 +15,15 @@ public class TutorialService : ITutorialService
     private readonly IAbilityCrestRepository abilityCrestRepository;
     private readonly IUserDataRepository userDataRepository;
     private readonly IFortRepository fortRepository;
+    private readonly IWallRepository wallRepository;
 
     public TutorialService(
         ILogger<TutorialService> logger,
         IInventoryRepository inventoryRepository,
         IAbilityCrestRepository abilityCrestRepository,
         IUserDataRepository userDataRepository,
-        IFortRepository fortRepository
+        IFortRepository fortRepository,
+        IWallRepository wallRepository
     )
     {
         this.logger = logger;
@@ -28,6 +31,7 @@ public class TutorialService : ITutorialService
         this.abilityCrestRepository = abilityCrestRepository;
         this.userDataRepository = userDataRepository;
         this.fortRepository = fortRepository;
+        this.wallRepository = wallRepository;
     }
 
     public async Task<int> UpdateTutorialStatus(int newStatus)
@@ -71,12 +75,18 @@ public class TutorialService : ITutorialService
                 userData.FortOpenTime = DateTimeOffset.UtcNow;
                 await UpdateTutorialStatus(11001);
                 break;
+            case TutorialStoryIds.MercurialGauntlet:
+                await this.wallRepository.InitializeWall();
+                break;
             case TutorialStoryIds.Smithy:
                 await this.fortRepository.InitializeSmithy();
                 break;
             case TutorialStoryIds.DragonTrials:
                 await UpdateTutorialStatus(30102);
                 await AddTutorialFlag(1005);
+                break;
+            case TutorialStoryIds.ImperialOnslaught:
+                await UpdateTutorialStatus(60999);
                 break;
             case TutorialStoryIds.Ch9Done:
                 await AddTutorialFlag(1010);
@@ -129,8 +139,10 @@ public class TutorialService : ITutorialService
     {
         public const int Wyrmprints = 1000106;
         public const int Halidom = 1000111;
+        public const int MercurialGauntlet = 1000202;
         public const int Smithy = 1000210;
         public const int DragonTrials = 1000311;
+        public const int ImperialOnslaught = 1000607;
         public const int Ch9Done = 1000909;
         public const int Ch10Done = 1001009;
         public const int Sindom = 1001610;

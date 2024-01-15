@@ -1,10 +1,10 @@
 ﻿using DragaliaAPI.Features.Dungeon;
+using DragaliaAPI.Features.Dungeon.Record;
 using DragaliaAPI.Features.Quest;
 using DragaliaAPI.Features.Reward;
 using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
-using DragaliaAPI.Features.Dungeon.Record;
 using DragaliaAPI.Services.Photon;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
@@ -63,8 +63,7 @@ public class DungeonControllerTest
                 }
             };
 
-        this.mockDungeonService
-            .Setup(x => x.FinishDungeon("my key"))
+        this.mockDungeonService.Setup(x => x.FinishDungeon("my key"))
             .ReturnsAsync(
                 new DungeonSession()
                 {
@@ -75,8 +74,7 @@ public class DungeonControllerTest
                 }
             );
 
-        this.mockDungeonRecordHelperService
-            .Setup(x => x.ProcessHelperDataSolo(4))
+        this.mockDungeonRecordHelperService.Setup(x => x.ProcessHelperDataSolo(4))
             .ReturnsAsync((userSupportList, supportDetailList));
 
         DungeonFailData? response = (
@@ -125,8 +123,7 @@ public class DungeonControllerTest
                 }
             };
 
-        this.mockDungeonService
-            .Setup(x => x.FinishDungeon("my key"))
+        this.mockDungeonService.Setup(x => x.FinishDungeon("my key"))
             .ReturnsAsync(
                 new DungeonSession()
                 {
@@ -136,8 +133,7 @@ public class DungeonControllerTest
                 }
             );
 
-        this.mockDungeonRecordHelperService
-            .Setup(x => x.ProcessHelperDataMulti())
+        this.mockDungeonRecordHelperService.Setup(x => x.ProcessHelperDataMulti())
             .ReturnsAsync((userSupportList, supportDetailList));
 
         this.mockMatchingService.Setup(x => x.GetIsHost()).ReturnsAsync(false);

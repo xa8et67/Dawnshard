@@ -24,10 +24,9 @@ public class TimeAttackService(
     ILogger<TimeAttackService> logger
 ) : ITimeAttackService
 {
-    public bool GetIsRankedQuest(int questId)
-    {
-        return MasterAsset.RankingData.TryGetValue(questId, out _);
-    }
+    public bool GetIsRankedQuest(int questId) =>
+        MasterAsset.RankingData.TryGetValue(questId, out RankingData? rankingData)
+        && rankingData.GroupId == options.CurrentValue.GroupId;
 
     public IEnumerable<RankingTierReward> GetRewards()
     {
@@ -63,8 +62,8 @@ public class TimeAttackService(
             return;
         }
 
-        List<DbTimeAttackClearUnit> clearUnits = entry.PartyInfo.party_unit_list
-            .Select(x => MapTimeAttackUnit(x, gameId))
+        List<DbTimeAttackClearUnit> clearUnits = entry
+            .PartyInfo.party_unit_list.Select(x => MapTimeAttackUnit(x, gameId))
             .ToList();
 
         await timeAttackRepository.CreateOrUpdateClear(
@@ -78,7 +77,7 @@ public class TimeAttackService(
                     new()
                     {
                         GameId = gameId,
-                        DeviceAccountId = playerIdentityService.AccountId,
+                        ViewerId = playerIdentityService.ViewerId,
                         PartyInfo = JsonSerializer.Serialize(entry.PartyInfo),
                         Units = clearUnits
                     },
@@ -95,8 +94,8 @@ public class TimeAttackService(
 
     public async Task<IEnumerable<RankingTierReward>> ReceiveTierReward(int questId)
     {
-        float bestClearTime = await questRepository.Quests
-            .Where(x => x.QuestId == questId)
+        float bestClearTime = await questRepository
+            .Quests.Where(x => x.QuestId == questId)
             .Select(x => x.BestClearTime)
             .FirstOrDefaultAsync();
 
@@ -105,8 +104,8 @@ public class TimeAttackService(
         if (bestClearTime <= 0)
             return Enumerable.Empty<RankingTierReward>();
 
-        IEnumerable<int> receivedRewards = await timeAttackRepository.ReceivedRewards
-            .Select(x => x.RewardId)
+        IEnumerable<int> receivedRewards = await timeAttackRepository
+            .ReceivedRewards.Select(x => x.RewardId)
             .ToListAsync();
 
         IEnumerable<RankingTierReward> rewardsToReceive = this.GetRewards()
@@ -131,7 +130,7 @@ public class TimeAttackService(
                 x =>
                     new DbReceivedRankingTierReward()
                     {
-                        DeviceAccountId = playerIdentityService.AccountId,
+                        ViewerId = playerIdentityService.ViewerId,
                         QuestId = questId,
                         RewardId = x.Id
                     }
@@ -147,7 +146,7 @@ public class TimeAttackService(
             new()
             {
                 UnitNo = x.position,
-                DeviceAccountId = playerIdentityService.AccountId,
+                ViewerId = playerIdentityService.ViewerId,
                 GameId = roomId
             };
 
@@ -173,8 +172,9 @@ public class TimeAttackService(
             unit.TalismanAbility2 = x.talisman_data.talisman_ability_id_2;
         }
 
-        List<AbilityCrests> crests = x.crest_slot_type_1_crest_list
-            .Concat(x.crest_slot_type_2_crest_list)
+        List<AbilityCrests> crests = x.crest_slot_type_1_crest_list.Concat(
+            x.crest_slot_type_2_crest_list
+        )
             .Concat(x.crest_slot_type_3_crest_list)
             .Select(x => x.ability_crest_id)
             .ToList();

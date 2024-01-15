@@ -1,22 +1,17 @@
-using Castle.Core.Logging;
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Chara;
 using DragaliaAPI.Features.Dungeon;
 using DragaliaAPI.Features.Dungeon.Record;
-using DragaliaAPI.Features.Missions;
 using DragaliaAPI.Features.Player;
 using DragaliaAPI.Features.Quest;
-using DragaliaAPI.Features.TimeAttack;
+using DragaliaAPI.Features.Reward;
 using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Test.Utils;
-using Humanizer;
 using Microsoft.Extensions.Logging;
-using StackExchange.Redis;
 
 namespace DragaliaAPI.Test.Features.Dungeon.Record;
 
@@ -27,6 +22,7 @@ public class DungeonRecordServiceTest
     private readonly Mock<IUserService> mockUserService;
     private readonly Mock<ITutorialService> mockTutorialService;
     private readonly Mock<ICharaService> mockCharaService;
+    private readonly Mock<IRewardService> mockRewardService;
     private readonly Mock<ILogger<DungeonRecordService>> mockLogger;
 
     private readonly IDungeonRecordService dungeonRecordService;
@@ -37,8 +33,9 @@ public class DungeonRecordServiceTest
         this.mockQuestService = new(MockBehavior.Strict);
         this.mockUserService = new(MockBehavior.Strict);
         this.mockTutorialService = new(MockBehavior.Strict);
-        this.mockLogger = new(MockBehavior.Loose);
         this.mockCharaService = new(MockBehavior.Strict);
+        this.mockRewardService = new(MockBehavior.Strict);
+        this.mockLogger = new(MockBehavior.Loose);
 
         this.dungeonRecordService = new DungeonRecordService(
             this.mockDungeonRewardService.Object,
@@ -46,6 +43,7 @@ public class DungeonRecordServiceTest
             this.mockUserService.Object,
             this.mockTutorialService.Object,
             this.mockCharaService.Object,
+            this.mockRewardService.Object,
             this.mockLogger.Object
         );
 
@@ -71,7 +69,7 @@ public class DungeonRecordServiceTest
         DbQuest mockQuest =
             new()
             {
-                DeviceAccountId = "id",
+                ViewerId = 1,
                 QuestId = lSurtrSoloId,
                 State = 0,
                 BestClearTime = 999
@@ -147,6 +145,16 @@ public class DungeonRecordServiceTest
                 }
             };
 
+        List<AtgenScoringEnemyPointList> enemyScoring =
+        [
+            new()
+            {
+                scoring_enemy_id = 100,
+                point = 1,
+                smash_count = 2
+            }
+        ];
+
         QuestMissionStatus missionStatus =
             new(new bool[] { }, missionsClearSets, missionCompleteSets);
 
@@ -155,28 +163,25 @@ public class DungeonRecordServiceTest
         int takeAccumulatePoint = 30;
         int takeBoostAccumulatePoint = 40;
 
-        this.mockQuestService
-            .Setup(x => x.ProcessQuestCompletion(lSurtrSoloId, 10f, 1))
-            .ReturnsAsync((mockQuest, true, new List<AtgenFirstClearSet>()));
+        this.mockQuestService.Setup(x => x.ProcessQuestCompletion(session, playRecord))
+            .ReturnsAsync((true, new List<AtgenFirstClearSet>()));
 
-        this.mockUserService
-            .Setup(x => x.RemoveStamina(StaminaType.Single, 40))
+        this.mockUserService.Setup(x => x.RemoveStamina(StaminaType.Single, 40))
             .Returns(Task.CompletedTask);
-        this.mockUserService
-            .Setup(x => x.AddExperience(400))
+        this.mockUserService.Setup(x => x.AddExperience(400))
             .ReturnsAsync(new PlayerLevelResult(true, 100, 50));
 
-        this.mockDungeonRewardService
-            .Setup(x => x.ProcessQuestMissionCompletion(playRecord, session, mockQuest))
+        this.mockDungeonRewardService.Setup(
+            x => x.ProcessQuestMissionCompletion(playRecord, session)
+        )
             .ReturnsAsync((missionStatus, firstClearSets));
-        this.mockDungeonRewardService
-            .Setup(x => x.ProcessEnemyDrops(playRecord, session))
+        this.mockDungeonRewardService.Setup(x => x.ProcessEnemyDrops(playRecord, session))
             .ReturnsAsync((dropList, takeMana, takeCoin));
-        this.mockDungeonRewardService
-            .Setup(x => x.ProcessEventRewards(playRecord, session))
+        this.mockDungeonRewardService.Setup(x => x.ProcessEventRewards(playRecord, session))
             .ReturnsAsync(
                 new DungeonRecordRewardService.EventRewardData(
                     scoreMissionSuccessLists,
+                    enemyScoring,
                     takeAccumulatePoint,
                     takeBoostAccumulatePoint,
                     passiveUpLists,
@@ -184,9 +189,11 @@ public class DungeonRecordServiceTest
                 )
             );
 
-        this.mockQuestService
-            .Setup(x => x.GetQuestStamina(lSurtrSoloId, StaminaType.Single))
+        this.mockQuestService.Setup(x => x.GetQuestStamina(lSurtrSoloId, StaminaType.Single))
             .ReturnsAsync(40);
+
+        this.mockRewardService.Setup(x => x.GetConvertedEntityList())
+            .Returns(new List<ConvertedEntity>());
 
         IngameResultData ingameResultData =
             await this.dungeonRecordService.GenerateIngameResultData(
@@ -234,8 +241,10 @@ public class DungeonRecordServiceTest
                     },
                     event_passive_up_list = passiveUpLists,
                     score_mission_success_list = scoreMissionSuccessLists,
+                    scoring_enemy_point_list = enemyScoring,
                     is_best_clear_time = true,
                     clear_time = playRecord.time,
+                    converted_entity_list = new List<ConvertedEntityList>()
                 }
             );
 

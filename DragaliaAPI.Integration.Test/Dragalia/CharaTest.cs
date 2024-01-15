@@ -2,8 +2,6 @@
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Database.Utils;
 using DragaliaAPI.Features.Chara;
-using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models;
 using DragaliaAPI.Shared.PlayerDetails;
@@ -18,7 +16,9 @@ namespace DragaliaAPI.Integration.Test.Dragalia;
 public class CharaTest : TestFixture
 {
     public CharaTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
-        : base(factory, outputHelper)
+        : base(factory, outputHelper) { }
+
+    protected override Task Setup()
     {
         this.AddCharacter(Charas.Naveed);
         this.AddCharacter(Charas.Ezelith);
@@ -38,6 +38,10 @@ public class CharaTest : TestFixture
         this.AddCharacter(Charas.GalaZethia);
         this.AddCharacter(Charas.Vida);
         this.AddCharacter(Charas.Delphi);
+        this.AddCharacter(Charas.GalaAudric);
+        this.AddCharacter(Charas.Gauld);
+
+        return Task.CompletedTask;
     }
 
     [Fact]
@@ -50,8 +54,8 @@ public class CharaTest : TestFixture
             )
         ).data;
 
-        CharaList charaData = response.update_data_list.chara_list
-            .Where(x => (Charas)x.chara_id == Charas.Celliera)
+        CharaList charaData = response
+            .update_data_list.chara_list.Where(x => (Charas)x.chara_id == Charas.Celliera)
             .First();
         charaData.rarity.Should().Be(5);
     }
@@ -63,19 +67,16 @@ public class CharaTest : TestFixture
         int matQuantity;
 
         using (
-            IDisposable ctx = this.Services
-                .GetRequiredService<IPlayerIdentityService>()
-                .StartUserImpersonation(DeviceAccountId)
+            IDisposable ctx = this.Services.GetRequiredService<IPlayerIdentityService>()
+                .StartUserImpersonation(viewer: ViewerId)
         )
         {
-            charaData = await this.Services
-                .GetRequiredService<IUnitRepository>()
+            charaData = await this.Services.GetRequiredService<IUnitRepository>()
                 .Charas.Where(x => x.CharaId == Charas.Celliera)
                 .FirstAsync();
 
             matQuantity = (
-                await this.Services
-                    .GetRequiredService<IInventoryRepository>()
+                await this.Services.GetRequiredService<IInventoryRepository>()
                     .GetMaterial(Materials.GoldCrystal)
             )!.Quantity;
         }
@@ -102,19 +103,50 @@ public class CharaTest : TestFixture
             CharaConstants.XpLimits[maxLevel - 1]
         );
 
-        CharaList responseCharaData = response.update_data_list.chara_list
-            .Where(x => (Charas)x.chara_id == Charas.Celliera)
+        CharaList responseCharaData = response
+            .update_data_list.chara_list.Where(x => (Charas)x.chara_id == Charas.Celliera)
             .First();
-        responseCharaData.level
-            .Should()
+        responseCharaData
+            .level.Should()
             .Be(Math.Min(CharaConstants.XpLimits.FindIndex(0, x => x > expectedXp), maxLevel));
         responseCharaData.exp.Should().Be(expectedXp);
 
-        response.update_data_list.material_list
-            .Where(x => (Materials)x.material_id == Materials.GoldCrystal)
+        response
+            .update_data_list.material_list.Where(
+                x => (Materials)x.material_id == Materials.GoldCrystal
+            )
             .First()
             .quantity.Should()
             .Be(matQuantity - 300);
+    }
+
+    [Fact]
+    public async Task CharaBuildup_NotEnoughForLevel_DoesNotLevelUp()
+    {
+        await this.Client.PostMsgpack(
+            "chara/buildup",
+            new CharaBuildupRequest(
+                Charas.Gauld,
+                [new AtgenEnemyPiece() { id = Materials.GoldCrystal, quantity = 10 }]
+            )
+        );
+
+        byte currentLevel = this.ApiContext.PlayerCharaData.AsNoTracking()
+            .First(x => x.CharaId == Charas.Gauld)
+            .Level;
+
+        await this.Client.PostMsgpack(
+            "chara/buildup",
+            new CharaBuildupRequest(
+                Charas.Gauld,
+                [new AtgenEnemyPiece() { id = Materials.BronzeCrystal, quantity = 1 }]
+            )
+        );
+
+        this.ApiContext.PlayerCharaData.AsNoTracking()
+            .First(x => x.CharaId == Charas.Gauld)
+            .Level.Should()
+            .Be(currentLevel);
     }
 
     [Fact]
@@ -123,9 +155,8 @@ public class CharaTest : TestFixture
         int manaPointNum;
 
         using (
-            IDisposable ctx = this.Services
-                .GetRequiredService<IPlayerIdentityService>()
-                .StartUserImpersonation(DeviceAccountId)
+            IDisposable ctx = this.Services.GetRequiredService<IPlayerIdentityService>()
+                .StartUserImpersonation(viewer: ViewerId)
         )
         {
             manaPointNum = (
@@ -144,17 +175,43 @@ public class CharaTest : TestFixture
             )
         ).data;
 
-        CharaList responseCharaData = response.update_data_list.chara_list
-            .Where(x => (Charas)x.chara_id == Charas.Celliera)
+        CharaList responseCharaData = response
+            .update_data_list.chara_list.Where(x => (Charas)x.chara_id == Charas.Celliera)
             .First();
 
-        responseCharaData.mana_circle_piece_id_list
-            .Should()
+        responseCharaData
+            .mana_circle_piece_id_list.Should()
             .ContainInOrder(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 
-        response.update_data_list.user_data.mana_point
-            .Should()
+        response
+            .update_data_list.user_data.mana_point.Should()
             .Be(manaPointNum - 350 - 450 - 650 - 350 - 450 - 350 - 500 - 450 - 350 - 650);
+    }
+
+    [Fact]
+    public async Task CharaBuildupMana_AllStoriesUnlocked_DoesNotThrow()
+    {
+        foreach (int storyId in MasterAsset.CharaStories[(int)Charas.GalaAudric].storyIds)
+        {
+            await this.AddToDatabase(
+                new DbPlayerStoryState()
+                {
+                    ViewerId = ViewerId,
+                    StoryId = storyId,
+                    State = StoryState.Read,
+                    StoryType = StoryTypes.Chara
+                }
+            );
+        }
+
+        DragaliaResponse<CharaBuildupManaData> response = (
+            await this.Client.PostMsgpack<CharaBuildupManaData>(
+                "chara/buildup_mana",
+                new CharaBuildupManaRequest(Charas.GalaAudric, new List<int>() { 5 }, false)
+            )
+        );
+
+        response.data_headers.result_code.Should().Be(ResultCode.Success);
     }
 
     [Fact]
@@ -164,9 +221,8 @@ public class CharaTest : TestFixture
             mat2Quantity;
 
         using (
-            IDisposable ctx = this.Services
-                .GetRequiredService<IPlayerIdentityService>()
-                .StartUserImpersonation(DeviceAccountId)
+            IDisposable ctx = this.Services.GetRequiredService<IPlayerIdentityService>()
+                .StartUserImpersonation(viewer: ViewerId)
         )
         {
             IInventoryRepository inventoryRepository =
@@ -182,14 +238,14 @@ public class CharaTest : TestFixture
             )
         ).data;
 
-        CharaList responseCharaData = response.update_data_list.chara_list
-            .Where(x => (Charas)x.chara_id == Charas.Celliera)
+        CharaList responseCharaData = response
+            .update_data_list.chara_list.Where(x => (Charas)x.chara_id == Charas.Celliera)
             .First();
 
         responseCharaData.limit_break_count.Should().Be(1);
 
-        response.update_data_list.material_list
-            .Should()
+        response
+            .update_data_list.material_list.Should()
             .ContainEquivalentOf(new MaterialList(Materials.WaterOrb, mat1Quantity - 8))
             .And.ContainEquivalentOf(new MaterialList(Materials.StreamOrb, mat2Quantity - 1));
     }
@@ -203,9 +259,8 @@ public class CharaTest : TestFixture
             manaPointNum;
 
         using (
-            IDisposable ctx = this.Services
-                .GetRequiredService<IPlayerIdentityService>()
-                .StartUserImpersonation(DeviceAccountId)
+            IDisposable ctx = this.Services.GetRequiredService<IPlayerIdentityService>()
+                .StartUserImpersonation(viewer: ViewerId)
         )
         {
             IInventoryRepository inventoryRepository =
@@ -231,13 +286,13 @@ public class CharaTest : TestFixture
             )
         ).data;
 
-        CharaList responseCharaData = response.update_data_list.chara_list
-            .Where(x => (Charas)x.chara_id == Charas.Celliera)
+        CharaList responseCharaData = response
+            .update_data_list.chara_list.Where(x => (Charas)x.chara_id == Charas.Celliera)
             .First();
 
         responseCharaData.limit_break_count.Should().Be(2);
-        responseCharaData.mana_circle_piece_id_list
-            .Should()
+        responseCharaData
+            .mana_circle_piece_id_list.Should()
             .ContainInOrder(
                 1,
                 2,
@@ -266,12 +321,12 @@ public class CharaTest : TestFixture
                 28
             );
 
-        response.update_data_list.user_data.mana_point
-            .Should()
+        response
+            .update_data_list.user_data.mana_point.Should()
             .Be(manaPointNum - 2800 - 3400 - 5200 - 3400 - 2800);
 
-        response.update_data_list.material_list
-            .Should()
+        response
+            .update_data_list.material_list.Should()
             .ContainEquivalentOf(new MaterialList(Materials.WaterOrb, mat1Quantity - 15 - 25))
             .And.ContainEquivalentOf(new MaterialList(Materials.StreamOrb, mat2Quantity - 4 - 5))
             .And.ContainEquivalentOf(new MaterialList(Materials.DelugeOrb, mat3Quantity - 1 - 1));
@@ -292,8 +347,8 @@ public class CharaTest : TestFixture
             )
         ).data;
 
-        CharaList preSpiralResponseCharaData = preSpiralResponse.update_data_list.chara_list
-            .Where(x => (Charas)x.chara_id == Charas.Delphi)
+        CharaList preSpiralResponseCharaData = preSpiralResponse
+            .update_data_list.chara_list.Where(x => (Charas)x.chara_id == Charas.Delphi)
             .First();
 
         CharaData charaData = MasterAsset.CharaData.Get(Charas.Delphi);
@@ -301,8 +356,8 @@ public class CharaTest : TestFixture
         preSpiralResponseCharaData.level.Should().Be(1);
         preSpiralResponseCharaData.mana_circle_piece_id_list.Count().Should().Be(50);
         preSpiralResponseCharaData.additional_max_level.Should().Be(0);
-        preSpiralResponseCharaData.hp
-            .Should()
+        preSpiralResponseCharaData
+            .hp.Should()
             .Be(
                 charaData.PlusHp0
                     + charaData.PlusHp1
@@ -312,8 +367,8 @@ public class CharaTest : TestFixture
                     + charaData.McFullBonusHp5
                     + 67
             );
-        preSpiralResponseCharaData.attack
-            .Should()
+        preSpiralResponseCharaData
+            .attack.Should()
             .Be(
                 charaData.PlusAtk0
                     + charaData.PlusAtk1
@@ -336,15 +391,15 @@ public class CharaTest : TestFixture
             )
         ).data;
 
-        CharaList postSpiralResponseCharaData = postSpiralResponse.update_data_list.chara_list
-            .Where(x => (Charas)x.chara_id == Charas.Delphi)
+        CharaList postSpiralResponseCharaData = postSpiralResponse
+            .update_data_list.chara_list.Where(x => (Charas)x.chara_id == Charas.Delphi)
             .First();
 
         postSpiralResponseCharaData.level.Should().Be(1);
         postSpiralResponseCharaData.mana_circle_piece_id_list.Count().Should().Be(70);
         postSpiralResponseCharaData.additional_max_level.Should().Be(20);
-        postSpiralResponseCharaData.hp
-            .Should()
+        postSpiralResponseCharaData
+            .hp.Should()
             .Be(
                 charaData.PlusHp0
                     + charaData.PlusHp1
@@ -355,8 +410,8 @@ public class CharaTest : TestFixture
                     + charaData.McFullBonusHp5
                     + 67
             );
-        postSpiralResponseCharaData.attack
-            .Should()
+        postSpiralResponseCharaData
+            .attack.Should()
             .Be(
                 charaData.PlusAtk0
                     + charaData.PlusAtk1
@@ -379,8 +434,8 @@ public class CharaTest : TestFixture
             )
         ).data;
 
-        CharaList responseCharaData = response.update_data_list.chara_list
-            .Where(x => x.chara_id == Charas.SummerCelliera)
+        CharaList responseCharaData = response
+            .update_data_list.chara_list.Where(x => x.chara_id == Charas.SummerCelliera)
             .First();
 
         responseCharaData.level.Should().Be(100);
@@ -392,8 +447,8 @@ public class CharaTest : TestFixture
         responseCharaData.attack.Should().Be(574);
 
         responseCharaData.limit_break_count.Should().Be(5);
-        responseCharaData.mana_circle_piece_id_list
-            .Should()
+        responseCharaData
+            .mana_circle_piece_id_list.Should()
             .BeEquivalentTo(Enumerable.Range(1, 70));
 
         responseCharaData.skill_1_level.Should().Be(4);
@@ -413,8 +468,8 @@ public class CharaTest : TestFixture
             )
         ).data;
 
-        CharaList responseCharaData = response.update_data_list.chara_list
-            .Where(x => x.chara_id == Charas.Harle)
+        CharaList responseCharaData = response
+            .update_data_list.chara_list.Where(x => x.chara_id == Charas.Harle)
             .First();
 
         responseCharaData.level.Should().Be(80);
@@ -425,8 +480,8 @@ public class CharaTest : TestFixture
         responseCharaData.attack.Should().Be(470);
 
         responseCharaData.limit_break_count.Should().Be(4);
-        responseCharaData.mana_circle_piece_id_list
-            .Should()
+        responseCharaData
+            .mana_circle_piece_id_list.Should()
             .BeEquivalentTo(Enumerable.Range(1, 50));
 
         responseCharaData.skill_1_level.Should().Be(3);
@@ -479,8 +534,8 @@ public class CharaTest : TestFixture
             )
         ).data;
 
-        CharaList responseCharaData = response.update_data_list.chara_list
-            .Where(x => x.chara_id == id)
+        CharaList responseCharaData = response
+            .update_data_list.chara_list.Where(x => x.chara_id == id)
             .First();
 
         responseCharaData.level.Should().Be(100);
@@ -489,8 +544,8 @@ public class CharaTest : TestFixture
         CharaData charaData = MasterAsset.CharaData.Get(id);
 
         // Values from wiki
-        responseCharaData.hp
-            .Should()
+        responseCharaData
+            .hp.Should()
             .Be(
                 charaData.AddMaxHp1
                     + charaData.PlusHp0
@@ -501,8 +556,8 @@ public class CharaTest : TestFixture
                     + charaData.PlusHp5
                     + charaData.McFullBonusHp5
             );
-        responseCharaData.attack
-            .Should()
+        responseCharaData
+            .attack.Should()
             .Be(
                 charaData.AddMaxAtk1
                     + charaData.PlusAtk0
@@ -515,8 +570,8 @@ public class CharaTest : TestFixture
             );
 
         responseCharaData.limit_break_count.Should().Be(5);
-        responseCharaData.mana_circle_piece_id_list
-            .Should()
+        responseCharaData
+            .mana_circle_piece_id_list.Should()
             .BeEquivalentTo(Enumerable.Range(1, 70));
 
         responseCharaData.skill_1_level.Should().Be(4);
@@ -564,8 +619,8 @@ public class CharaTest : TestFixture
             )
         ).data;
 
-        CharaList responseCharaData = response.update_data_list.chara_list
-            .Where(x => x.chara_id == id)
+        CharaList responseCharaData = response
+            .update_data_list.chara_list.Where(x => x.chara_id == id)
             .First();
 
         responseCharaData.level.Should().Be(80);
@@ -574,8 +629,8 @@ public class CharaTest : TestFixture
 
         CharaData charaData = MasterAsset.CharaData.Get(id);
 
-        responseCharaData.hp
-            .Should()
+        responseCharaData
+            .hp.Should()
             .Be(
                 charaData.MaxHp
                     + charaData.PlusHp0
@@ -585,8 +640,8 @@ public class CharaTest : TestFixture
                     + charaData.PlusHp4
                     + charaData.McFullBonusHp5
             );
-        responseCharaData.attack
-            .Should()
+        responseCharaData
+            .attack.Should()
             .Be(
                 charaData.MaxAtk
                     + charaData.PlusAtk0
@@ -598,8 +653,8 @@ public class CharaTest : TestFixture
             );
 
         responseCharaData.limit_break_count.Should().Be(4);
-        responseCharaData.mana_circle_piece_id_list
-            .Should()
+        responseCharaData
+            .mana_circle_piece_id_list.Should()
             .BeEquivalentTo(Enumerable.Range(1, 50));
 
         responseCharaData.skill_1_level.Should().Be(3);
@@ -637,8 +692,8 @@ public class CharaTest : TestFixture
             )
         ).data;
 
-        CharaUnitSetList responseCharaData = response.update_data_list.chara_unit_set_list
-            .Where(x => (Charas)x.chara_id == Charas.Celliera)
+        CharaUnitSetList responseCharaData = response
+            .update_data_list.chara_unit_set_list.Where(x => (Charas)x.chara_id == Charas.Celliera)
             .First();
         responseCharaData.chara_unit_set_detail_list.ToList()[0].dragon_key_id.Should().Be(5);
     }

@@ -1,9 +1,12 @@
 ﻿using DragaliaAPI.Database.Entities;
+using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Event;
+using DragaliaAPI.Features.Missions;
 using DragaliaAPI.Features.Reward;
 using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Shared.Definitions.Enums;
+using DragaliaAPI.Shared.MasterAsset.Models;
 
 namespace DragaliaAPI.Features.Dungeon.Record;
 
@@ -12,19 +15,19 @@ public class DungeonRecordRewardService(
     IRewardService rewardService,
     IAbilityCrestMultiplierService abilityCrestMultiplierService,
     IEventDropService eventDropService,
+    IMissionProgressionService missionProgressionService,
+    IQuestRepository questRepository,
     ILogger<DungeonRecordRewardService> logger
 ) : IDungeonRecordRewardService
 {
     public async Task<(
         QuestMissionStatus MissionStatus,
         IEnumerable<AtgenFirstClearSet> FirstClearRewards
-    )> ProcessQuestMissionCompletion(
-        PlayRecord playRecord,
-        DungeonSession session,
-        DbQuest questData
-    )
+    )> ProcessQuestMissionCompletion(PlayRecord playRecord, DungeonSession session)
     {
-        bool isFirstClear = questData.PlayCount == 0;
+        DbQuest questData = await questRepository.GetQuestDataAsync(session.QuestId);
+
+        bool isFirstClear = questData.State < 3;
 
         IEnumerable<AtgenFirstClearSet> firstClearRewards = isFirstClear
             ? await questCompletionService.GrantFirstClearRewards(questData.QuestId)
@@ -40,7 +43,7 @@ public class DungeonRecordRewardService(
         QuestMissionStatus status = await questCompletionService.CompleteQuestMissions(
             session,
             oldMissionStatus,
-            playRecord!
+            playRecord
         );
 
         questData.IsMissionClear1 = status.Missions[0];
@@ -58,10 +61,10 @@ public class DungeonRecordRewardService(
     {
         int manaDrop = 0;
         int coinDrop = 0;
-        List<AtgenDropAll> drops = new();
+        List<Entity> entities = new();
 
         foreach (
-            AtgenTreasureRecord record in playRecord?.treasure_record
+            AtgenTreasureRecord record in playRecord.treasure_record
                 ?? Enumerable.Empty<AtgenTreasureRecord>()
         )
         {
@@ -92,17 +95,16 @@ public class DungeonRecordRewardService(
                 manaDrop += enemyDropList.mana;
                 coinDrop += enemyDropList.coin;
 
-                foreach (AtgenDropList dropList in enemyDropList.drop_list)
-                {
-                    Entity reward = new(dropList.type, dropList.id, dropList.quantity);
-
-                    drops.Add(reward.ToDropAll());
-
-                    await rewardService.GrantReward(reward);
-                }
+                entities.AddRange(
+                    enemyDropList.drop_list.Select(x => new Entity(x.type, x.id, x.quantity))
+                );
             }
         }
 
+        entities = entities.Merge().ToList();
+        List<AtgenDropAll> drops = entities.Select(x => x.ToDropAll()).ToList();
+
+        await rewardService.GrantRewards(entities);
         await rewardService.GrantReward(new Entity(EntityTypes.Mana, Quantity: manaDrop));
         await rewardService.GrantReward(new Entity(EntityTypes.Rupies, Quantity: coinDrop));
 
@@ -115,10 +117,7 @@ public class DungeonRecordRewardService(
     )
     {
         (double materialMultiplier, double pointMultiplier) =
-            await abilityCrestMultiplierService.GetEventMultiplier(
-                session.Party,
-                session.QuestData.Gid
-            );
+            await abilityCrestMultiplierService.GetEventMultiplier(session.Party, session.QuestGid);
 
         (
             IEnumerable<AtgenScoreMissionSuccessList> scoreMissions,
@@ -126,9 +125,32 @@ public class DungeonRecordRewardService(
             int boostedPoints
         ) = await questCompletionService.CompleteQuestScoreMissions(
             session,
-            playRecord!,
+            playRecord,
             pointMultiplier
         );
+
+        if (totalPoints + boostedPoints > 0)
+        {
+            missionProgressionService.OnEventPointCollected(
+                session.QuestGid,
+                session.QuestVariation,
+                totalPoints + boostedPoints
+            );
+        }
+
+        (IEnumerable<AtgenScoringEnemyPointList> enemyScoreMissions, int enemyScore) =
+            await questCompletionService.CompleteEnemyScoreMissions(session, playRecord);
+
+        if (enemyScore > 0)
+        {
+            missionProgressionService.OnEventPointCollected(
+                session.QuestGid,
+                session.QuestVariation,
+                enemyScore
+            );
+        }
+
+        ArgumentNullException.ThrowIfNull(session.QuestData);
 
         IEnumerable<AtgenEventPassiveUpList> passiveUpList =
             await eventDropService.ProcessEventPassiveDrops(session.QuestData);
@@ -141,7 +163,8 @@ public class DungeonRecordRewardService(
 
         return new EventRewardData(
             ScoreMissions: scoreMissions,
-            TakeAccumulatePoint: totalPoints + boostedPoints,
+            EnemyScoreMissions: enemyScoreMissions,
+            TakeAccumulatePoint: totalPoints + boostedPoints + enemyScore,
             TakeBoostAccumulatePoint: boostedPoints,
             PassiveUpList: passiveUpList,
             EventDrops: eventDrops
@@ -150,9 +173,24 @@ public class DungeonRecordRewardService(
 
     public record EventRewardData(
         IEnumerable<AtgenScoreMissionSuccessList> ScoreMissions,
+        IEnumerable<AtgenScoringEnemyPointList> EnemyScoreMissions,
         int TakeAccumulatePoint,
         int TakeBoostAccumulatePoint,
         IEnumerable<AtgenEventPassiveUpList> PassiveUpList,
         IEnumerable<AtgenDropAll> EventDrops
     );
+}
+
+file static class Extensions
+{
+    public static IEnumerable<Entity> Merge(this IEnumerable<Entity> source) =>
+        source
+            .GroupBy(x => new { x.Id, x.Type })
+            .Select(
+                group =>
+                    group.Aggregate(
+                        new Entity(group.Key.Type, group.Key.Id, 0),
+                        (acc, current) => acc with { Quantity = acc.Quantity + current.Quantity }
+                    )
+            );
 }

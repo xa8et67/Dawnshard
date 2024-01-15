@@ -1,10 +1,15 @@
 ﻿using DragaliaAPI.Database.Repositories;
+using DragaliaAPI.Features.Missions;
 using DragaliaAPI.Features.Reward;
 using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
+using DragaliaAPI.Shared.Definitions.Enums.EventItemTypes;
 using DragaliaAPI.Shared.MasterAsset;
+using DragaliaAPI.Shared.MasterAsset.Models.Enemy;
+using DragaliaAPI.Shared.MasterAsset.Models.Event;
+using DragaliaAPI.Shared.MasterAsset.Models.Missions;
 using DragaliaAPI.Shared.MasterAsset.Models.QuestRewards;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,10 +17,83 @@ namespace DragaliaAPI.Features.Dungeon;
 
 public class QuestCompletionService(
     IRewardService rewardService,
+    IMissionProgressionService missionProgressionService,
     ILogger<QuestCompletionService> logger,
     IUnitRepository unitRepository
 ) : IQuestCompletionService
 {
+    public async Task<(
+        IEnumerable<AtgenScoringEnemyPointList> Enemies,
+        int Points
+    )> CompleteEnemyScoreMissions(DungeonSession session, PlayRecord record)
+    {
+        int scoringEnemyGroupId = int.Parse($"{session.QuestGid}01");
+
+        if (IsEarnTicketQuest(session.QuestId))
+            scoringEnemyGroupId++;
+
+        Dictionary<int, QuestScoringEnemy> scoringEnemies = MasterAsset
+            .QuestScoringEnemy.Enumerable.Where(x => x.ScoringEnemyGroupId == scoringEnemyGroupId)
+            .ToDictionary(x => x.EnemyListId, x => x);
+
+        if (scoringEnemies.Count == 0)
+            return (Enumerable.Empty<AtgenScoringEnemyPointList>(), 0);
+
+        // Assume all invasion events are single-area
+        AtgenTreasureRecord treasureRecord = record.treasure_record.First();
+        IEnumerable<AtgenEnemy> enemyList = session.EnemyList.GetValueOrDefault(
+            treasureRecord.area_idx,
+            []
+        );
+
+        IEnumerable<(int EnemyParam, int Count)> killedParamIds = enemyList
+            .Zip(treasureRecord.enemy_smash)
+            .Select(x => (x.First.param_id, x.Second.count));
+
+        int totalPoints = 0;
+        int totalEnemies = 0;
+        Dictionary<int, AtgenScoringEnemyPointList> results = new();
+
+        foreach ((int paramId, int count) in killedParamIds)
+        {
+            int enemyListId = GetEnemyListId(paramId);
+
+            if (!scoringEnemies.TryGetValue(enemyListId, out QuestScoringEnemy? questScoringEnemy))
+                continue;
+
+            if (!results.TryGetValue(questScoringEnemy.Id, out AtgenScoringEnemyPointList? value))
+            {
+                value = new() { scoring_enemy_id = questScoringEnemy.Id, };
+                results.Add(questScoringEnemy.Id, value);
+            }
+
+            int pointsGained = questScoringEnemy.Point * count;
+
+            totalPoints += pointsGained;
+            totalEnemies += count;
+
+            value.point += pointsGained;
+            value.smash_count += count;
+        }
+
+        int eventPointsId = int.Parse($"{session.QuestGid}01");
+
+        await rewardService.GrantReward(
+            new Entity(EntityTypes.EarnEventItem, eventPointsId, totalPoints)
+        );
+
+        missionProgressionService.EnqueueEvent(
+            MissionCompleteType.EarnEnemiesKilled,
+            totalEnemies,
+            totalEnemies,
+            session.QuestGid
+        );
+
+        logger.LogDebug("Calculated enemy scoring {points}", totalPoints);
+
+        return (results.Values, totalPoints);
+    }
+
     public async Task<(
         IEnumerable<AtgenScoreMissionSuccessList> Missions,
         int Points,
@@ -26,10 +104,9 @@ public class QuestCompletionService(
         double abilityMultiplier
     )
     {
-        // TODO: Add Enemy scoring
         List<AtgenScoreMissionSuccessList> missions = new();
 
-        int questId = session.QuestData.Id;
+        int questId = session.QuestId;
 
         if (
             !MasterAsset.QuestScoreMissionRewardInfo.TryGetValue(
@@ -68,16 +145,16 @@ public class QuestCompletionService(
         logger.LogDebug("Completed mission score missions {@missions}", missions);
 
         int questScoreMissionId = MasterAsset.QuestRewardData[questId].QuestScoreMissionId;
-        int baseQuantity = MasterAsset.QuestScoreMissionData[questScoreMissionId].Scores[
-            record.wave
-        ];
+        int baseQuantity = MasterAsset
+            .QuestScoreMissionData[questScoreMissionId]
+            .GetScore(record.wave, session.QuestVariation);
 
         double obtainedAmount = baseQuantity * (multiplier / 100.0f);
         int rewardQuantity = (int)Math.Floor(obtainedAmount);
 
-        EventKindType eventType = MasterAsset.EventData[
-            MasterAsset.QuestData[questId].Gid
-        ].EventKindType;
+        EventKindType eventType = MasterAsset
+            .EventData[MasterAsset.QuestData[questId].Gid]
+            .EventKindType;
 
         await rewardService.GrantReward(
             new Entity(eventType.ToItemType(), (int)info.RewardEntityId, rewardQuantity)
@@ -85,7 +162,7 @@ public class QuestCompletionService(
 
         int boostPoints = 0;
 
-        if (abilityMultiplier != 1)
+        if (abilityMultiplier > 1)
         {
             boostPoints = (int)Math.Floor(rewardQuantity * (abilityMultiplier - 1));
 
@@ -112,7 +189,7 @@ public class QuestCompletionService(
 
         bool[] newState = { currentState[0], currentState[1], currentState[2] };
 
-        QuestRewardData rewardData = MasterAsset.QuestRewardData[session.QuestData.Id];
+        QuestRewardData rewardData = MasterAsset.QuestRewardData[session.QuestId];
         for (int i = 0; i < 3; i++)
         {
             (QuestCompleteType type, int value) = rewardData.Missions[i];
@@ -168,7 +245,8 @@ public class QuestCompletionService(
                 => record.treasure_record.All(
                     x =>
                         x.enemy == null
-                        || !session.EnemyList[x.area_idx]
+                        || !session
+                            .EnemyList[x.area_idx]
                             .Select(y => y.enemy_idx)
                             .Except(x.enemy)
                             .Any()
@@ -282,8 +360,8 @@ public class QuestCompletionService(
     {
         IEnumerable<long> dragonKeyIds = party.Select(x => (long)x.equip_dragon_key_id).ToList();
 
-        IEnumerable<Dragons> dragons = await unitRepository.Dragons
-            .Where(x => dragonKeyIds.Contains(x.DragonKeyId))
+        IEnumerable<Dragons> dragons = await unitRepository
+            .Dragons.Where(x => dragonKeyIds.Contains(x.DragonKeyId))
             .Select(x => x.DragonId)
             .ToListAsync();
 
@@ -305,8 +383,8 @@ public class QuestCompletionService(
 
         QuestRewardData rewardData = MasterAsset.QuestRewardData[questId];
         foreach (
-            Entity rewardEntity in rewardData.FirstClearEntities
-                .Where(x => x.Type != EntityTypes.None)
+            Entity rewardEntity in rewardData
+                .FirstClearEntities.Where(x => x.Type != EntityTypes.None)
                 .Select(x => new Entity(x.Type, x.Id, x.Quantity))
         )
         {
@@ -318,4 +396,13 @@ public class QuestCompletionService(
 
         return rewards;
     }
+
+    private static int GetEnemyListId(int enemyParamId)
+    {
+        EnemyParam enemyParam = MasterAsset.EnemyParam[enemyParamId];
+        EnemyData enemyData = MasterAsset.EnemyData[enemyParam.DataId];
+        return enemyData.BookId;
+    }
+
+    private static bool IsEarnTicketQuest(int questId) => questId % 1000 > 400;
 }

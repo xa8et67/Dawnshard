@@ -1,25 +1,25 @@
-﻿using System.ComponentModel;
-using System.ComponentModel.DataAnnotations.Schema;
-using DragaliaAPI.Shared.Definitions.Enums;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Microsoft.EntityFrameworkCore;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics.CodeAnalysis;
+using DragaliaAPI.Database.Entities.Abstract;
+using DragaliaAPI.Shared.Definitions.Enums;
+using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Database.Entities;
 
 /// <summary>
 /// Wyrmprint set database entity.
 /// </summary>
-[Index(nameof(DeviceAccountId))]
-[PrimaryKey(nameof(DeviceAccountId), nameof(AbilityCrestSetNo))]
-public class DbAbilityCrestSet : IDbHasAccountId
+[PrimaryKey(nameof(ViewerId), nameof(AbilityCrestSetNo))]
+public class DbAbilityCrestSet : DbPlayerData
 {
-    /// <inheritdoc />
-    public virtual DbPlayer? Owner { get; set; }
+    public DbAbilityCrestSet() { }
 
-    /// <inheritdoc />
-    [ForeignKey(nameof(Owner))]
-    public required string DeviceAccountId { get; set; }
+    [SetsRequiredMembers]
+    public DbAbilityCrestSet(long viewerId, int setNo)
+    {
+        this.ViewerId = viewerId;
+        this.AbilityCrestSetNo = setNo;
+    }
 
     /// <summary>
     /// Gets or sets a value that dictates the wyrmprint set number.
@@ -70,20 +70,4 @@ public class DbAbilityCrestSet : IDbHasAccountId
     /// Gets or sets a value indicating the wyrmprint set's kaleidoscape print slot.
     /// </summary>
     public ulong TalismanKeyId { get; set; } = 0;
-
-    /// <summary>
-    /// EF Core / test constructor.
-    /// </summary>
-    public DbAbilityCrestSet() { }
-
-    /// <summary>
-    /// User-facing constructor.
-    /// </summary>
-    /// <param name="deviceAccountId">Primary key.</param>
-    [SetsRequiredMembers]
-    public DbAbilityCrestSet(string deviceAccountId, int id)
-    {
-        this.DeviceAccountId = deviceAccountId;
-        this.AbilityCrestSetNo = id;
-    }
 }

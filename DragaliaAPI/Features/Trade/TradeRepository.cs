@@ -18,9 +18,7 @@ public class TradeRepository : ITradeRepository
     }
 
     public IQueryable<DbPlayerTrade> Trades =>
-        this.apiContext.PlayerTrades.Where(
-            x => x.DeviceAccountId == this.playerIdentityService.AccountId
-        );
+        this.apiContext.PlayerTrades.Where(x => x.ViewerId == this.playerIdentityService.ViewerId);
 
     public async Task<ILookup<TradeType, DbPlayerTrade>> GetAllTradesAsync()
     {
@@ -42,17 +40,14 @@ public class TradeRepository : ITradeRepository
 
         DateTimeOffset actualTime = time ?? DateTimeOffset.UnixEpoch;
 
-        DbPlayerTrade? existing = await this.apiContext.PlayerTrades.FindAsync(
-            this.playerIdentityService.AccountId,
-            id
-        );
+        DbPlayerTrade? existing = await this.FindTrade(id);
 
         if (existing == null)
         {
             this.apiContext.PlayerTrades.Add(
                 new DbPlayerTrade
                 {
-                    DeviceAccountId = this.playerIdentityService.AccountId,
+                    ViewerId = this.playerIdentityService.ViewerId,
                     Type = type,
                     Id = id,
                     Count = count,
@@ -68,4 +63,7 @@ public class TradeRepository : ITradeRepository
 
         return false;
     }
+
+    public async Task<DbPlayerTrade?> FindTrade(int id) =>
+        await this.apiContext.PlayerTrades.FindAsync(this.playerIdentityService.ViewerId, id);
 }

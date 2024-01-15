@@ -1,9 +1,7 @@
 using System.Diagnostics;
 using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Database.Entities.Scaffold;
 using DragaliaAPI.Shared.PlayerDetails;
-using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Features.ClearParty;
 
@@ -20,13 +18,12 @@ public class ClearPartyRepository : IClearPartyRepository
 
     public IQueryable<DbQuestClearPartyUnit> QuestClearPartyUnits =>
         this.apiContext.QuestClearPartyUnits.Where(
-            x => x.DeviceAccountId == this.playerIdentityService.AccountId
+            x => x.ViewerId == this.playerIdentityService.ViewerId
         );
 
     public IQueryable<DbQuestClearPartyUnit> GetQuestClearParty(int questId, bool isMulti)
     {
-        return this.QuestClearPartyUnits
-            .Where(x => x.QuestId == questId && x.IsMulti == isMulti)
+        return this.QuestClearPartyUnits.Where(x => x.QuestId == questId && x.IsMulti == isMulti)
             .OrderBy(x => x.UnitNo);
     }
 

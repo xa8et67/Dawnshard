@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using DragaliaAPI.Photon.StateManager;
 using DragaliaAPI.Photon.StateManager.Authentication;
 using DragaliaAPI.Photon.StateManager.Models;
@@ -11,6 +12,16 @@ using StackExchange.Redis;
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateLogger();
+
+if (Environment.GetEnvironmentVariable("ENABLE_HTTPS") != null)
+{
+    X509Certificate2 certificate = X509Certificate2.CreateFromPemFile("cert.pem", "cert.key");
+
+    builder.WebHost.ConfigureKestrel(
+        serverOptions =>
+            serverOptions.ConfigureHttpsDefaults(options => options.ServerCertificate = certificate)
+    );
+}
 
 builder.Services.AddControllers();
 
@@ -37,14 +48,14 @@ builder.Host.UseSerilog(
     }
 );
 
-builder.Services
-    .AddOptions<RedisOptions>()
+builder
+    .Services.AddOptions<RedisOptions>()
     .BindConfiguration(nameof(RedisOptions))
     .Validate(x => x.KeyExpiryTimeMins > 0)
     .ValidateOnStart();
 
-builder.Services
-    .AddAuthentication()
+builder
+    .Services.AddAuthentication()
     .AddScheme<AuthenticationSchemeOptions, PhotonAuthenticationHandler>(
         nameof(PhotonAuthenticationHandler),
         null
@@ -116,5 +127,5 @@ app.Run();
 namespace DragaliaAPI.Photon.StateManager
 {
     // Needed for creating test fixture
-    public partial class Program { }
+    public class Program { }
 }

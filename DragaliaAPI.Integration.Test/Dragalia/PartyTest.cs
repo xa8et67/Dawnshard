@@ -1,8 +1,6 @@
 ﻿using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Models;
-using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Shared.Definitions.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -22,11 +20,7 @@ public class PartyTest : TestFixture
         this.AddCharacter(Charas.Ilia);
 
         await AddToDatabase(
-            new DbWeaponBody
-            {
-                DeviceAccountId = DeviceAccountId,
-                WeaponBodyId = WeaponBodies.DivineTrigger
-            }
+            new DbWeaponBody { ViewerId = ViewerId, WeaponBodyId = WeaponBodies.DivineTrigger }
         );
 
         await this.Client.PostMsgpack<PartySetPartySettingData>(
@@ -50,9 +44,9 @@ public class PartyTest : TestFixture
         );
 
         ApiContext apiContext = this.Services.GetRequiredService<ApiContext>();
-        DbParty dbparty = await apiContext.PlayerParties
-            .Include(x => x.Units)
-            .Where(x => x.DeviceAccountId == DeviceAccountId && x.PartyNo == 1)
+        DbParty dbparty = await apiContext
+            .PlayerParties.Include(x => x.Units)
+            .Where(x => x.ViewerId == ViewerId && x.PartyNo == 1)
             .SingleAsync();
 
         dbparty
@@ -60,15 +54,15 @@ public class PartyTest : TestFixture
             .BeEquivalentTo(
                 new DbParty()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     PartyNo = 1,
                     PartyName = "My New Party",
                 },
                 opts => opts.Excluding(x => x.Units)
             );
 
-        dbparty.Units
-            .Should()
+        dbparty
+            .Units.Should()
             .BeEquivalentTo(
                 new List<DbPartyUnit>()
                 {
@@ -76,7 +70,7 @@ public class PartyTest : TestFixture
                     {
                         UnitNo = 1,
                         PartyNo = 1,
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = ViewerId,
                         CharaId = Charas.Ilia,
                         EquipCrestSlotType1CrestId1 = AbilityCrests.ADragonyuleforIlia,
                         EquipWeaponBodyId = WeaponBodies.DivineTrigger,
@@ -86,7 +80,7 @@ public class PartyTest : TestFixture
                     {
                         UnitNo = 2,
                         PartyNo = 1,
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = ViewerId,
                         CharaId = Charas.Empty,
                         Party = dbparty,
                     },
@@ -94,7 +88,7 @@ public class PartyTest : TestFixture
                     {
                         UnitNo = 3,
                         PartyNo = 1,
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = ViewerId,
                         CharaId = Charas.Empty,
                         Party = dbparty,
                     },
@@ -102,13 +96,36 @@ public class PartyTest : TestFixture
                     {
                         UnitNo = 4,
                         PartyNo = 1,
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = ViewerId,
                         CharaId = Charas.Empty,
                         Party = dbparty,
                     },
                 },
                 opts => opts.Excluding(x => x.Id)
             );
+    }
+
+    [Fact]
+    public async Task SetPartySetting_IllegalCharacters_Handles()
+    {
+        Charas storyZethia = (Charas)19900001;
+        this.AddCharacter(storyZethia);
+
+        (
+            await this.Client.PostMsgpack<PartySetPartySettingData>(
+                "/party/set_party_setting",
+                new PartySetPartySettingRequest(
+                    1,
+                    new List<PartySettingList>()
+                    {
+                        new() { unit_no = 1, chara_id = storyZethia, }
+                    },
+                    "My New Party",
+                    false,
+                    0
+                )
+            )
+        ).data_headers.result_code.Should().Be(ResultCode.Success);
     }
 
     [Fact]
@@ -182,8 +199,8 @@ public class PartyTest : TestFixture
         );
 
         ApiContext apiContext = this.Services.GetRequiredService<ApiContext>();
-        DbPlayerUserData userData = await apiContext.PlayerUserData
-            .Where(x => x.DeviceAccountId == DeviceAccountId)
+        DbPlayerUserData userData = await apiContext
+            .PlayerUserData.Where(x => x.ViewerId == ViewerId)
             .SingleAsync();
 
         userData.MainPartyNo.Should().Be(2);
@@ -193,7 +210,7 @@ public class PartyTest : TestFixture
     public async Task UpdatePartyName_UpdatesDatabase()
     {
         DbParty party =
-            await this.ApiContext.PlayerParties.FindAsync(DeviceAccountId, 1)
+            await this.ApiContext.PlayerParties.FindAsync(ViewerId, 1)
             ?? throw new NullReferenceException();
 
         await this.Client.PostMsgpack<PartyUpdatePartyNameData>(

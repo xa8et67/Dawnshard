@@ -1,9 +1,5 @@
-using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Shared.Definitions.Enums;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace DragaliaAPI.Integration.Test.Dragalia;
 
@@ -47,7 +43,7 @@ public class SummonTest : TestFixture
         DbPlayerSummonHistory historyEntry =
             new()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 SummonId = 1,
                 SummonExecType = SummonExecTypes.DailyDeal,
                 ExecDate = DateTimeOffset.UtcNow,
@@ -112,7 +108,7 @@ public class SummonTest : TestFixture
     public async Task SummonRequest_SingleSummonWyrmite_ReturnsValidResult()
     {
         DbPlayerUserData userData = await this.ApiContext.PlayerUserData.SingleAsync(
-            x => x.DeviceAccountId == DeviceAccountId
+            x => x.ViewerId == ViewerId
         );
 
         await this.ApiContext.Entry(userData).ReloadAsync();
@@ -141,7 +137,7 @@ public class SummonTest : TestFixture
     public async Task SummonRequest_TenSummonWyrmite_ReturnsValidResult()
     {
         DbPlayerUserData userData = await this.ApiContext.PlayerUserData.SingleAsync(
-            x => x.DeviceAccountId == DeviceAccountId
+            x => x.ViewerId == ViewerId
         );
 
         SummonRequestData response = (
@@ -169,16 +165,18 @@ public class SummonTest : TestFixture
     {
         if (reward.entity_type == EntityTypes.Dragon)
         {
-            List<DbPlayerDragonData> dragonData = await this.ApiContext.PlayerDragonData
-                .Where(x => x.DeviceAccountId == DeviceAccountId)
+            List<DbPlayerDragonData> dragonData = await this.ApiContext.PlayerDragonData.Where(
+                x => x.ViewerId == ViewerId
+            )
                 .ToListAsync();
 
             dragonData.Where(x => (int)x.DragonId == reward.id).Should().NotBeEmpty();
         }
         else
         {
-            List<DbPlayerCharaData> charaData = await this.ApiContext.PlayerCharaData
-                .Where(x => x.DeviceAccountId == DeviceAccountId)
+            List<DbPlayerCharaData> charaData = await this.ApiContext.PlayerCharaData.Where(
+                x => x.ViewerId == ViewerId
+            )
                 .ToListAsync();
 
             charaData.Where(x => (int)x.CharaId == reward.id).Should().NotBeEmpty();

@@ -2,25 +2,16 @@ using System.Linq.Expressions;
 using System.Text.Json.Serialization;
 using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Database.Repositories;
-using DragaliaAPI.Features.Present;
-using DragaliaAPI.Features.Reward;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.Features.Presents;
-using DragaliaAPI.Shared.MasterAsset;
-using DragaliaAPI.Shared.MasterAsset.Models;
 using DragaliaAPI.Shared.PlayerDetails;
 using EntityGraphQL.Schema;
 using Microsoft.EntityFrameworkCore;
-using StackExchange.Redis;
-using ILogger = Serilog.ILogger;
 
 namespace DragaliaAPI.Features.GraphQL;
 
 public class PresentMutations : MutationBase
 {
-    private readonly ApiContext apiContext;
-    private readonly IPlayerIdentityService playerIdentityService;
     private readonly ILogger<PresentMutations> logger;
 
     public PresentMutations(
@@ -30,8 +21,6 @@ public class PresentMutations : MutationBase
     )
         : base(apiContext, playerIdentityService)
     {
-        this.apiContext = apiContext;
-        this.playerIdentityService = playerIdentityService;
         this.logger = logger;
     }
 
@@ -41,12 +30,15 @@ public class PresentMutations : MutationBase
         GivePresentArgs args
     )
     {
-        DbPlayer player = this.GetPlayer(args.ViewerId, query => query.Include(x => x.Presents));
+        using IDisposable userImpersonation = this.StartUserImpersonation(
+            args.ViewerId,
+            query => query.Include(x => x.Presents)
+        );
 
         DbPlayerPresent present =
             new()
             {
-                DeviceAccountId = player.AccountId,
+                ViewerId = this.Player.ViewerId,
                 EntityId = args.EntityId,
                 EntityType = args.EntityType,
                 EntityQuantity = args.EntityQuantity ?? 1,
@@ -55,7 +47,7 @@ public class PresentMutations : MutationBase
             };
 
         this.logger.LogInformation("Granting present {@present}", present);
-        player.Presents.Add(present);
+        this.Player.Presents.Add(present);
         db.SaveChanges();
 
         return (ctx) => ctx.PlayerPresents.First(x => x.PresentId == present.PresentId);
@@ -64,13 +56,16 @@ public class PresentMutations : MutationBase
     [GraphQLMutation("Clear a player's presents")]
     public Expression<Func<ApiContext, DbPlayer>> ClearPresents(ApiContext db, long viewerId)
     {
-        DbPlayer player = this.GetPlayer(viewerId, query => query.Include(x => x.Presents));
+        using IDisposable userImpersonation = this.StartUserImpersonation(
+            viewerId,
+            query => query.Include(x => x.Presents)
+        );
 
         this.logger.LogInformation("Clearing all player presents");
-        player.Presents.Clear();
+        this.Player.Presents.Clear();
         db.SaveChanges();
 
-        return (ctx) => ctx.Players.First(x => x.AccountId == player.AccountId);
+        return (ctx) => ctx.Players.First(x => x.AccountId == this.Player.AccountId);
     }
 
     [GraphQLArguments]

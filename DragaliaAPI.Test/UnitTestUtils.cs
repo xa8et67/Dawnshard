@@ -1,25 +1,11 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Net.Http.Headers;
-using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text.Json;
+﻿using System.Security.Claims;
 using AutoMapper;
 using DragaliaAPI.Controllers;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
-using DragaliaAPI.MessagePack;
-using DragaliaAPI.Middleware;
-using DragaliaAPI.Models;
 using DragaliaAPI.Shared.PlayerDetails;
-using FluentAssertions.Equivalency;
-using MessagePack;
-using MessagePack.Resolvers;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.VisualStudio.TestPlatform.ObjectModel.DataCollection;
 using MockQueryable.Moq;
 using Moq.Language.Flow;
 using Xunit.Abstractions;
@@ -32,12 +18,12 @@ public static class UnitTestUtils
     /// Consistent account id to be used in setups for unit tests.
     /// This is also what the user is authenticated as in the mock controller context.
     /// </summary>
-    public const string DeviceAccountId = "id";
+    public const string AccountId = "id";
 
     /// <summary>
     /// Same for ViewerId.
     /// </summary>
-    public const int ViewerId = 1;
+    public const long ViewerId = 1;
 
     public const int TimeComparisonThresholdSec = 1;
 
@@ -48,7 +34,7 @@ public static class UnitTestUtils
     /// <typeparam name="T">The type of response.data which the cast should yield.</typeparam>
     /// <param name="response">The ActionResult response from the controller</param>
     /// <returns>The inner data.</returns>
-    public static T? GetData<T>(this ActionResult<DragaliaResponse<object>> response)
+    public static T? GetData<T>(this DragaliaResult response)
         where T : class
     {
         DragaliaResponse<object>? innerResponse =
@@ -71,7 +57,7 @@ public static class UnitTestUtils
                     new ClaimsIdentity(
                         new List<Claim>()
                         {
-                            new Claim(CustomClaimType.AccountId, DeviceAccountId),
+                            new Claim(CustomClaimType.AccountId, AccountId),
                             new Claim(CustomClaimType.ViewerId, ViewerId.ToString())
                         }
                     )
@@ -93,8 +79,7 @@ public static class UnitTestUtils
                 options
                     .Using<DateTimeOffset>(
                         ctx =>
-                            ctx.Subject
-                                .Should()
+                            ctx.Subject.Should()
                                 .BeCloseTo(ctx.Expectation, TimeSpan.FromSeconds(thresholdSec))
                     )
                     .WhenTypeIs<DateTimeOffset>()
@@ -105,8 +90,7 @@ public static class UnitTestUtils
                 options
                     .Using<TimeSpan>(
                         ctx =>
-                            ctx.Subject
-                                .Should()
+                            ctx.Subject.Should()
                                 .BeCloseTo(ctx.Expectation, TimeSpan.FromSeconds(thresholdSec))
                     )
                     .WhenTypeIs<TimeSpan>()
@@ -128,4 +112,18 @@ public static class UnitTestUtils
                     .AsQueryable()
                     .BuildMock()
             );
+
+    public static bool IsEquivalent(this object input, object comparison, ITestOutputHelper? output)
+    {
+        try
+        {
+            input.Should().BeEquivalentTo(comparison);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            output?.WriteLine(ex.Message);
+            return false;
+        }
+    }
 }

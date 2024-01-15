@@ -11,7 +11,7 @@ public class TimeAttackRepository(
 {
     public IQueryable<DbReceivedRankingTierReward> ReceivedRewards =>
         apiContext.ReceivedRankingTierRewards.Where(
-            x => x.DeviceAccountId == playerIdentityService.AccountId
+            x => x.ViewerId == playerIdentityService.ViewerId
         );
 
     public async Task CreateOrUpdateClear(DbTimeAttackClear clear)

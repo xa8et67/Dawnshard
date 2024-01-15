@@ -1,10 +1,7 @@
 ﻿using DragaliaAPI.Controllers.Dragalia;
-using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
 using DragaliaAPI.Services.Game;
-using DragaliaAPI.Shared.Definitions.Enums;
-using Microsoft.AspNetCore.Mvc;
 
 namespace DragaliaAPI.Test.Controllers;
 
@@ -32,8 +29,7 @@ public class FriendControllerTest
     [Fact]
     public async Task GetSupportCharaDetailContainsCorrectInformationWhenFound()
     {
-        this.mockHelperService
-            .Setup(x => x.GetHelpers())
+        this.mockHelperService.Setup(x => x.GetHelpers())
             .ReturnsAsync(
                 new QuestGetSupportUserListData()
                 {
@@ -45,16 +41,15 @@ public class FriendControllerTest
                 }
             );
 
-        ActionResult<DragaliaResponse<object>> response =
-            await this.friendController.GetSupportCharaDetail(
-                new FriendGetSupportCharaDetailRequest() { support_viewer_id = 1000 }
-            );
+        DragaliaResult response = await this.friendController.GetSupportCharaDetail(
+            new FriendGetSupportCharaDetailRequest() { support_viewer_id = 1000 }
+        );
 
         FriendGetSupportCharaDetailData? data = response.GetData<FriendGetSupportCharaDetailData>();
         data.Should().NotBeNull();
 
-        data!.support_user_data_detail.user_support_data
-            .Should()
+        data!
+            .support_user_data_detail.user_support_data.Should()
             .BeEquivalentTo(TestData.supportListEuden);
         data!.support_user_data_detail.is_friend.Should().Be(true);
 
@@ -65,8 +60,7 @@ public class FriendControllerTest
     [Fact]
     public async Task GetSupportCharaDetailContainsDefaultInformationWhenNotFound()
     {
-        this.mockHelperService
-            .Setup(x => x.GetHelpers())
+        this.mockHelperService.Setup(x => x.GetHelpers())
             .ReturnsAsync(
                 new QuestGetSupportUserListData()
                 {
@@ -78,16 +72,15 @@ public class FriendControllerTest
                 }
             );
 
-        ActionResult<DragaliaResponse<object>> response =
-            await this.friendController.GetSupportCharaDetail(
-                new FriendGetSupportCharaDetailRequest() { support_viewer_id = 0 }
-            );
+        DragaliaResult response = await this.friendController.GetSupportCharaDetail(
+            new FriendGetSupportCharaDetailRequest() { support_viewer_id = 0 }
+        );
 
         FriendGetSupportCharaDetailData? data = response.GetData<FriendGetSupportCharaDetailData>();
         data.Should().NotBeNull();
 
-        data!.support_user_data_detail.user_support_data
-            .Should()
+        data!
+            .support_user_data_detail.user_support_data.Should()
             .BeEquivalentTo(HelperService.StubData.SupportListData.support_user_list.First());
 
         data!.support_user_data_detail.is_friend.Should().Be(false);

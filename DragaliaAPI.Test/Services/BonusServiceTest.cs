@@ -1,5 +1,4 @@
 ﻿using System.Text.Json;
-using Castle.Core.Logging;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Fort;
@@ -8,7 +7,6 @@ using DragaliaAPI.Services;
 using DragaliaAPI.Services.Game;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.Json;
-using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.Extensions.Logging;
 using MockQueryable.Moq;
 using static DragaliaAPI.Test.Utils.IdentityTestUtils;
@@ -43,30 +41,29 @@ public class BonusServiceTest
         // Not deserializing to LoadIndexData directly as fort_bonus_list is [JsonIgnore]'d
         JsonDocument savefile = JsonDocument.Parse(json);
 
-        IEnumerable<BuildList> inputBuildList = savefile.RootElement
-            .GetProperty("data")
+        IEnumerable<BuildList> inputBuildList = savefile
+            .RootElement.GetProperty("data")
             .GetProperty("build_list")
             .Deserialize<IEnumerable<BuildList>>(ApiJsonOptions.Instance)!;
 
-        IEnumerable<WeaponBodyList> inputWeaponList = savefile.RootElement
-            .GetProperty("data")
+        IEnumerable<WeaponBodyList> inputWeaponList = savefile
+            .RootElement.GetProperty("data")
             .GetProperty("weapon_body_list")
             .Deserialize<IEnumerable<WeaponBodyList>>(ApiJsonOptions.Instance)!;
 
-        FortBonusList expectedBonusList = savefile.RootElement
-            .GetProperty("data")
+        FortBonusList expectedBonusList = savefile
+            .RootElement.GetProperty("data")
             .GetProperty("fort_bonus_list")
             .Deserialize<FortBonusList>(ApiJsonOptions.Instance)!;
 
-        this.mockFortRepository
-            .SetupGet(x => x.Builds)
+        this.mockFortRepository.SetupGet(x => x.Builds)
             .Returns(
                 inputBuildList
                     .Select(
                         x =>
                             new DbFortBuild()
                             {
-                                DeviceAccountId = DeviceAccountId,
+                                ViewerId = ViewerId,
                                 PlantId = x.plant_id,
                                 Level = x.level
                             }
@@ -75,15 +72,14 @@ public class BonusServiceTest
                     .BuildMock()
             );
 
-        this.mockWeaponBodyRepository
-            .SetupGet(x => x.WeaponBodies)
+        this.mockWeaponBodyRepository.SetupGet(x => x.WeaponBodies)
             .Returns(
                 inputWeaponList
                     .Select(
                         x =>
                             new DbWeaponBody()
                             {
-                                DeviceAccountId = DeviceAccountId,
+                                ViewerId = ViewerId,
                                 WeaponBodyId = x.weapon_body_id,
                                 FortPassiveCharaWeaponBuildupCount =
                                     x.fort_passive_chara_weapon_buildup_count
@@ -110,14 +106,13 @@ public class BonusServiceTest
     {
         int flamesOfReflectionCompendiumId = 20816;
 
-        this.mockFortRepository
-            .SetupGet(x => x.Builds)
+        this.mockFortRepository.SetupGet(x => x.Builds)
             .Returns(
                 new List<DbFortBuild>()
                 {
                     new()
                     {
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = ViewerId,
                         PlantId = FortPlants.ArctosMonument,
                         Level = 10,
                     }

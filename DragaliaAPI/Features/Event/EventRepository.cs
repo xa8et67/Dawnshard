@@ -1,6 +1,5 @@
 ﻿using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Models;
 using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.EntityFrameworkCore;
@@ -11,27 +10,24 @@ public class EventRepository(ApiContext apiContext, IPlayerIdentityService playe
     : IEventRepository
 {
     public IQueryable<DbPlayerEventData> EventData =>
-        apiContext.PlayerEventData.Where(x => x.DeviceAccountId == playerIdentityService.AccountId);
+        apiContext.PlayerEventData.Where(x => x.ViewerId == playerIdentityService.ViewerId);
 
     public IQueryable<DbPlayerEventReward> Rewards =>
-        apiContext.PlayerEventRewards.Where(
-            x => x.DeviceAccountId == playerIdentityService.AccountId
-        );
+        apiContext.PlayerEventRewards.Where(x => x.ViewerId == playerIdentityService.ViewerId);
 
     public IQueryable<DbPlayerEventItem> Items =>
-        apiContext.PlayerEventItems.Where(
-            x => x.DeviceAccountId == playerIdentityService.AccountId
-        );
+        apiContext.PlayerEventItems.Where(x => x.ViewerId == playerIdentityService.ViewerId);
 
     public IQueryable<DbPlayerEventPassive> Passives =>
-        apiContext.PlayerEventPassives.Where(
-            x => x.DeviceAccountId == playerIdentityService.AccountId
-        );
+        apiContext.PlayerEventPassives.Where(x => x.ViewerId == playerIdentityService.ViewerId);
 
     public async Task<DbPlayerEventData?> GetEventDataAsync(int eventId)
     {
-        return await apiContext.PlayerEventData.FindAsync(playerIdentityService.AccountId, eventId);
+        return await apiContext.PlayerEventData.FindAsync(playerIdentityService.ViewerId, eventId);
     }
+
+    public async Task<bool> HasEventDataAsync(int eventId) =>
+        await this.EventData.Where(x => x.EventId == eventId).AnyAsync();
 
     public async Task<IEnumerable<DbPlayerEventReward>> GetEventRewardsAsync(
         int eventId,
@@ -61,7 +57,7 @@ public class EventRepository(ApiContext apiContext, IPlayerIdentityService playe
 
     public async Task<DbPlayerEventItem?> GetEventItemAsync(int itemId)
     {
-        return await apiContext.PlayerEventItems.FindAsync(playerIdentityService.AccountId, itemId);
+        return await apiContext.PlayerEventItems.FindAsync(playerIdentityService.ViewerId, itemId);
     }
 
     public async Task<DbPlayerEventItem> GetEventItemAsync(int eventId, int itemType)
@@ -89,7 +85,7 @@ public class EventRepository(ApiContext apiContext, IPlayerIdentityService playe
     public async Task<DbPlayerEventPassive?> GetEventPassiveAsync(int eventId, int passiveId)
     {
         return await apiContext.PlayerEventPassives.FindAsync(
-            playerIdentityService.AccountId,
+            playerIdentityService.ViewerId,
             eventId,
             passiveId
         );
@@ -97,11 +93,11 @@ public class EventRepository(ApiContext apiContext, IPlayerIdentityService playe
 
     public DbPlayerEventData CreateEventData(int eventId, bool customEventFlag = false)
     {
-        return apiContext.PlayerEventData
-            .Add(
+        return apiContext
+            .PlayerEventData.Add(
                 new DbPlayerEventData
                 {
-                    DeviceAccountId = playerIdentityService.AccountId,
+                    ViewerId = playerIdentityService.ViewerId,
                     EventId = eventId,
                     CustomEventFlag = customEventFlag
                 }
@@ -111,11 +107,11 @@ public class EventRepository(ApiContext apiContext, IPlayerIdentityService playe
 
     public DbPlayerEventReward CreateEventReward(int eventId, int rewardId)
     {
-        return apiContext.PlayerEventRewards
-            .Add(
+        return apiContext
+            .PlayerEventRewards.Add(
                 new DbPlayerEventReward
                 {
-                    DeviceAccountId = playerIdentityService.AccountId,
+                    ViewerId = playerIdentityService.ViewerId,
                     EventId = eventId,
                     RewardId = rewardId
                 }
@@ -130,16 +126,14 @@ public class EventRepository(ApiContext apiContext, IPlayerIdentityService playe
     {
         List<DbPlayerEventItem> items = new();
 
-        string accountId = playerIdentityService.AccountId;
-
         foreach ((int itemId, int itemType) in itemIds)
         {
             items.Add(
-                apiContext.PlayerEventItems
-                    .Add(
+                apiContext
+                    .PlayerEventItems.Add(
                         new DbPlayerEventItem
                         {
-                            DeviceAccountId = accountId,
+                            ViewerId = playerIdentityService.ViewerId,
                             EventId = eventId,
                             Id = itemId,
                             Type = itemType
@@ -164,11 +158,11 @@ public class EventRepository(ApiContext apiContext, IPlayerIdentityService playe
         foreach (int passiveId in passiveIds)
         {
             passives.Add(
-                apiContext.PlayerEventPassives
-                    .Add(
+                apiContext
+                    .PlayerEventPassives.Add(
                         new DbPlayerEventPassive
                         {
-                            DeviceAccountId = accountId,
+                            ViewerId = playerIdentityService.ViewerId,
                             EventId = eventId,
                             PassiveId = passiveId
                         }

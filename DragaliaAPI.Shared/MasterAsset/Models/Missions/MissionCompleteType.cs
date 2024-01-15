@@ -23,6 +23,11 @@ public enum MissionCompleteType
     /// </summary>
     FortLevelUp,
 
+    /// <summary>
+    /// EntityTypes entityType
+    /// </summary>
+    FortIncomeCollected,
+
     // Quest
     /// <summary>
     /// int questId, int questGroupId, QuestPlayModeTypes playMode
@@ -137,6 +142,46 @@ public enum MissionCompleteType
     /// int tradeId, EntityTypes type, int id
     /// </summary>
     TreasureTrade,
+
+    /// <summary>
+    /// int eventId
+    /// </summary>
+    EventParticipation,
+
+    /// <summary>
+    /// int eventId, VariationTypes variationType
+    /// </summary>
+    EventRegularBattleClear,
+
+    /// <summary>
+    /// int eventId, AbilityCrests crestId
+    /// </summary>
+    EventQuestClearWithCrest,
+
+    /// <summary>
+    /// int eventId, int questId
+    /// </summary>
+    EventPointCollection,
+
+    /// <summary>
+    /// int eventId, VariationTypes variationType, bool fullClear, int questId
+    /// </summary>
+    EventChallengeBattleClear,
+
+    /// <summary>
+    /// int eventId, int questId
+    /// </summary>
+    EventTrialClear,
+
+    /// <summary>
+    /// int progressionGroupId
+    /// </summary>
+    ProgressionGroupCleared,
+
+    /// <summary>
+    /// int eventId
+    /// </summary>
+    EarnEnemiesKilled,
 
     /// <summary>
     /// None

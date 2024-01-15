@@ -1,8 +1,5 @@
 ﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
-using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
-using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,10 +14,6 @@ public class TreasureTradeTest : TestFixture
     [Fact]
     public async Task GetListAll_NoTrades_ReturnsEmpty()
     {
-        this.ApiContext.PlayerTrades.RemoveRange(
-            this.ApiContext.PlayerTrades.Where(x => x.DeviceAccountId == DeviceAccountId)
-        );
-
         await this.ApiContext.SaveChangesAsync();
 
         TreasureTradeGetListAllData response = (
@@ -38,14 +31,10 @@ public class TreasureTradeTest : TestFixture
     [Fact]
     public async Task GetListAll_WithTrades_ReturnsTrades()
     {
-        this.ApiContext.PlayerTrades.RemoveRange(
-            this.ApiContext.PlayerTrades.Where(x => x.DeviceAccountId == DeviceAccountId)
-        );
-
         await this.AddToDatabase(
             new DbPlayerTrade()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 Id = 1000,
                 Count = 1,
                 Type = TradeType.Treasure,
@@ -60,8 +49,8 @@ public class TreasureTradeTest : TestFixture
             )
         ).data;
 
-        response.user_treasure_trade_list
-            .Should()
+        response
+            .user_treasure_trade_list.Should()
             .HaveCount(1)
             .And.ContainEquivalentOf(new UserTreasureTradeList(1000, 1, DateTimeOffset.UnixEpoch));
         response.treasure_trade_all_list.Should().NotBeEmpty();
@@ -74,15 +63,13 @@ public class TreasureTradeTest : TestFixture
         int preTradeAmount;
 
         using (
-            IDisposable ctx = this.Services
-                .GetRequiredService<IPlayerIdentityService>()
-                .StartUserImpersonation(DeviceAccountId)
+            IDisposable ctx = this.Services.GetRequiredService<IPlayerIdentityService>()
+                .StartUserImpersonation(viewer: ViewerId)
         )
         {
             preTradeAmount =
                 (
-                    await this.Services
-                        .GetRequiredService<IInventoryRepository>()
+                    await this.Services.GetRequiredService<IInventoryRepository>()
                         .GetMaterial(Materials.DamascusIngot)
                 )?.Quantity ?? 0;
         }
@@ -94,22 +81,41 @@ public class TreasureTradeTest : TestFixture
             )
         ).data;
 
-        response.user_treasure_trade_list
-            .Should()
+        response
+            .user_treasure_trade_list.Should()
             .HaveCount(1)
             .And.Contain(x => x.treasure_trade_id == 10010101 && x.trade_count == 1);
         response.treasure_trade_all_list.Should().NotBeEmpty();
         response.treasure_trade_list.Should().BeNullOrEmpty();
         response.update_data_list.Should().NotBeNull();
 
-        int newMatQuantity = this.ApiContext.PlayerMaterials
-            .AsNoTracking()
-            .Where(
-                x => x.DeviceAccountId == DeviceAccountId && x.MaterialId == Materials.DamascusIngot
-            )
+        int newMatQuantity = this.ApiContext.PlayerMaterials.AsNoTracking()
+            .Where(x => x.ViewerId == ViewerId && x.MaterialId == Materials.DamascusIngot)
             .Select(x => x.Quantity)
             .First();
 
         newMatQuantity.Should().Be(preTradeAmount + 1);
+    }
+
+    [Fact]
+    public async Task Trade_WeaponSkin_Trades()
+    {
+        TreasureTradeTradeData response = (
+            await Client.PostMsgpack<TreasureTradeTradeData>(
+                "treasure_trade/trade",
+                new TreasureTradeTradeRequest(1012, 10124101, null, 1)
+            )
+        ).data;
+
+        response
+            .user_treasure_trade_list.Should()
+            .HaveCount(1)
+            .And.Contain(x => x.treasure_trade_id == 10124101 && x.trade_count == 1);
+        response.treasure_trade_all_list.Should().NotBeEmpty();
+        response.treasure_trade_list.Should().BeNullOrEmpty();
+        response.update_data_list.Should().NotBeNull();
+        response
+            .update_data_list.weapon_skin_list.Should()
+            .Contain(x => x.weapon_skin_id == 30159921);
     }
 }

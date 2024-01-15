@@ -1,15 +1,13 @@
 ﻿using System.Diagnostics;
-using System.Linq;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Database.Utils;
+using DragaliaAPI.Features.Event;
 using DragaliaAPI.Features.PartyPower;
 using DragaliaAPI.Features.Trade;
-using DragaliaAPI.Models;
 using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
-using DragaliaAPI.Shared.MasterAsset.Models;
 using DragaliaAPI.Shared.MasterAsset.Models.Missions;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,7 +23,8 @@ public class MissionInitialProgressionService(
     IStoryRepository storyRepository,
     IUserDataRepository userDataRepository,
     ITradeRepository tradeRepository,
-    IPartyPowerRepository partyPowerRepository
+    IPartyPowerRepository partyPowerRepository,
+    IEventRepository eventRepository
 ) : IMissionInitialProgressionService
 {
     public async Task GetInitialMissionProgress(DbPlayerMission mission)
@@ -99,8 +98,8 @@ public class MissionInitialProgressionService(
                 => (await userDataRepository.GetUserDataAsync()).Level,
             MissionCompleteType.AbilityCrestTotalPlusCountUp
                 => (
-                    await abilityCrestRepository.AbilityCrests
-                        .Where(
+                    await abilityCrestRepository
+                        .AbilityCrests.Where(
                             x =>
                                 progressionInfo.Parameter == null
                                 || x.AbilityCrestId == (AbilityCrests)progressionInfo.Parameter
@@ -112,8 +111,8 @@ public class MissionInitialProgressionService(
                     .Max() ?? 0,
             MissionCompleteType.AbilityCrestLevelUp
                 => (
-                    await abilityCrestRepository.AbilityCrests
-                        .Where(
+                    await abilityCrestRepository
+                        .AbilityCrests.Where(
                             x =>
                                 progressionInfo.Parameter == null
                                 || x.AbilityCrestId == (AbilityCrests)progressionInfo.Parameter
@@ -155,6 +154,16 @@ public class MissionInitialProgressionService(
             MissionCompleteType.PartyOptimized => 0,
             MissionCompleteType.AbilityCrestTradeViewed => 0,
             MissionCompleteType.GuildCheckInRewardClaimed => amountToComplete, // TODO
+            MissionCompleteType.EventParticipation
+                => await this.GetEventParticipationProgress(progressionInfo.Parameter),
+            MissionCompleteType.EventRegularBattleClear => 0,
+            MissionCompleteType.EventQuestClearWithCrest => 0,
+            MissionCompleteType.EventPointCollection => 0,
+            MissionCompleteType.EventChallengeBattleClear => 0,
+            MissionCompleteType.EventTrialClear => 0,
+            MissionCompleteType.ProgressionGroupCleared => 0,
+            MissionCompleteType.FortIncomeCollected => 0,
+            MissionCompleteType.EarnEnemiesKilled => 0,
             MissionCompleteType.UnimplementedAutoComplete => amountToComplete,
             _
                 => throw new UnreachableException(
@@ -192,18 +201,33 @@ public class MissionInitialProgressionService(
 
     private async Task<int> GetTreasureTradeCount(int? tradeId, EntityTypes? type, int? id)
     {
-        List<int> trades = await tradeRepository.Trades
-            .Where(x => x.Type == TradeType.Treasure && (tradeId == null || x.Id == tradeId))
+        List<int> trades = await tradeRepository
+            .Trades.Where(x => x.Type == TradeType.Treasure && (tradeId == null || x.Id == tradeId))
             .Select(x => x.Id)
             .ToListAsync();
 
-        return trades
+        int treasureTradeCount = trades
             .Select(x => MasterAsset.TreasureTrade[x])
             .Count(
                 x =>
                     (type == null || x.DestinationEntityType == type)
                     && (id == null || x.DestinationEntityId == id)
             );
+
+        if (treasureTradeCount == 0 && type == EntityTypes.Wyrmprint)
+        {
+            /*
+             * Workaround: if a player imports an old pre-2.0 save, they will not have the trade
+             * for missions like 'Obtain a Glorious Tempest from Treasure Trade', but will then
+             * be unable to complete the mission because the trade shows as locked if the print
+             * is owned. (These trades were reworked and given new IDs in 2.0).
+            */
+            treasureTradeCount += await abilityCrestRepository.AbilityCrests.CountAsync(
+                x => x.AbilityCrestId == (AbilityCrests?)id
+            );
+        }
+
+        return treasureTradeCount;
     }
 
     private async Task<int> GetCharacterMaxLevel(Charas? charaId, UnitElement? element)
@@ -216,8 +240,8 @@ public class MissionInitialProgressionService(
         if (element != null)
         {
             return (
-                    await unitRepository.Charas
-                        .Select(x => new { x.CharaId, x.Level })
+                    await unitRepository
+                        .Charas.Select(x => new { x.CharaId, x.Level })
                         .ToListAsync()
                 )
                     .Where(x => MasterAsset.CharaData[x.CharaId].ElementalType == element)
@@ -252,8 +276,8 @@ public class MissionInitialProgressionService(
     {
         if (dragonId != null)
         {
-            return await unitRepository.Dragons
-                    .Where(x => x.DragonId == dragonId)
+            return await unitRepository
+                    .Dragons.Where(x => x.DragonId == dragonId)
                     .Select(x => (int?)x.Level)
                     .MaxAsync() ?? 0;
         }
@@ -261,8 +285,8 @@ public class MissionInitialProgressionService(
         if (element != null)
         {
             return (
-                    await unitRepository.Dragons
-                        .Select(x => new { x.DragonId, x.Level })
+                    await unitRepository
+                        .Dragons.Select(x => new { x.DragonId, x.Level })
                         .ToListAsync()
                 )
                     .Where(x => MasterAsset.DragonData[x.DragonId].ElementalType == element)
@@ -286,8 +310,8 @@ public class MissionInitialProgressionService(
         if (element != null)
         {
             return (
-                    await unitRepository.DragonReliabilities
-                        .Select(x => new { x.DragonId, x.Level })
+                    await unitRepository
+                        .DragonReliabilities.Select(x => new { x.DragonId, x.Level })
                         .ToListAsync()
                 )
                     .Where(x => MasterAsset.DragonData[x.DragonId].ElementalType == element)
@@ -306,21 +330,21 @@ public class MissionInitialProgressionService(
     {
         if (questId != null)
         {
-            return await questRepository.Quests
-                .Where(x => x.QuestId == questId)
+            return await questRepository
+                .Quests.Where(x => x.QuestId == questId)
                 .Select(x => x.PlayCount)
                 .FirstOrDefaultAsync();
         }
 
-        List<int> validQuests = MasterAsset.QuestData.Enumerable
-            .Where(
+        List<int> validQuests = MasterAsset
+            .QuestData.Enumerable.Where(
                 x => x.Gid == questGroupId && (playMode == null || x.QuestPlayModeType == playMode)
             )
             .Select(x => x.Id)
             .ToList();
 
-        return await questRepository.Quests
-                .Where(x => validQuests.Contains(x.QuestId))
+        return await questRepository
+                .Quests.Where(x => validQuests.Contains(x.QuestId))
                 .SumAsync(x => (int?)x.PlayCount) ?? 0;
     }
 
@@ -355,8 +379,8 @@ public class MissionInitialProgressionService(
 
         if (element != null)
         {
-            HashSet<Charas> validCharas = MasterAsset.CharaData.Enumerable
-                .Where(x => x.ElementalType == element)
+            HashSet<Charas> validCharas = MasterAsset
+                .CharaData.Enumerable.Where(x => x.ElementalType == element)
                 .Select(x => x.Id)
                 .ToHashSet();
 
@@ -406,12 +430,12 @@ public class MissionInitialProgressionService(
         return type switch
         {
             PlusCountType.Hp
-                => await abilityCrestRepository.AbilityCrests
-                    .Select(x => (int?)x.HpPlusCount)
+                => await abilityCrestRepository
+                    .AbilityCrests.Select(x => (int?)x.HpPlusCount)
                     .MaxAsync() ?? 0,
             PlusCountType.Atk
-                => await abilityCrestRepository.AbilityCrests
-                    .Select(x => (int?)x.AttackPlusCount)
+                => await abilityCrestRepository
+                    .AbilityCrests.Select(x => (int?)x.AttackPlusCount)
                     .MaxAsync() ?? 0,
             _
                 => throw new DragaliaException(
@@ -433,8 +457,8 @@ public class MissionInitialProgressionService(
             return await weaponRepository.FindAsync(bodyId.Value) != null ? 1 : 0;
         }
 
-        List<WeaponBodies> validWeaponBodies = MasterAsset.WeaponBody.Enumerable
-            .Where(
+        List<WeaponBodies> validWeaponBodies = MasterAsset
+            .WeaponBody.Enumerable.Where(
                 x =>
                     (element is null || x.ElementalType == element)
                     && (rarity is null || x.Rarity == rarity)
@@ -460,8 +484,8 @@ public class MissionInitialProgressionService(
             return (await weaponRepository.FindAsync(bodyId.Value))?.LimitOverCount ?? 0;
         }
 
-        List<WeaponBodies> validWeaponBodies = MasterAsset.WeaponBody.Enumerable
-            .Where(
+        List<WeaponBodies> validWeaponBodies = MasterAsset
+            .WeaponBody.Enumerable.Where(
                 x =>
                     (element is null || x.ElementalType == element)
                     && (rarity is null || x.Rarity == rarity)
@@ -470,8 +494,8 @@ public class MissionInitialProgressionService(
             .Select(x => x.Id)
             .ToList();
 
-        return await weaponRepository.WeaponBodies
-                .Where(x => validWeaponBodies.Contains(x.WeaponBodyId))
+        return await weaponRepository
+                .WeaponBodies.Where(x => validWeaponBodies.Contains(x.WeaponBodyId))
                 .SumAsync(x => (int?)x.LimitOverCount) ?? 0;
     }
 
@@ -483,13 +507,13 @@ public class MissionInitialProgressionService(
     {
         Debug.Assert(groupId != null, "groupId != null");
 
-        HashSet<int> eventGroupPool = MasterAsset.QuestEventGroup.Enumerable
-            .Where(x => x.BaseQuestGroupId == groupId)
+        HashSet<int> eventGroupPool = MasterAsset
+            .QuestEventGroup.Enumerable.Where(x => x.BaseQuestGroupId == groupId)
             .Select(x => x.Id)
             .ToHashSet();
 
-        List<int> questPool = MasterAsset.QuestData.Enumerable
-            .Where(x => eventGroupPool.Contains(x.Gid))
+        List<int> questPool = MasterAsset
+            .QuestData.Enumerable.Where(x => eventGroupPool.Contains(x.Gid))
             .Where(
                 x =>
                     (type == null || x.VariationType == type)
@@ -498,8 +522,14 @@ public class MissionInitialProgressionService(
             .Select(x => x.Id)
             .ToList();
 
-        return await questRepository.Quests
-                .Where(x => questPool.Contains(x.QuestId))
+        return await questRepository
+                .Quests.Where(x => questPool.Contains(x.QuestId))
                 .SumAsync(x => (int?)x.PlayCount) ?? 0;
+    }
+
+    private async Task<int> GetEventParticipationProgress(int? eventId)
+    {
+        ArgumentNullException.ThrowIfNull(eventId);
+        return await eventRepository.GetEventDataAsync(eventId.Value) != null ? 1 : 0;
     }
 }

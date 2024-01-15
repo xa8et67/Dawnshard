@@ -1,8 +1,8 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using AutoMapper;
 using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
+using DragaliaAPI.Database.Entities.Abstract;
 using DragaliaAPI.Features.Dmode;
 using DragaliaAPI.Features.Event;
 using DragaliaAPI.Features.Missions;
@@ -10,7 +10,6 @@ using DragaliaAPI.Features.Present;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
-using DragaliaAPI.Shared.MasterAsset.Models.Event;
 using DragaliaAPI.Shared.MasterAsset.Models.Missions;
 using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.EntityFrameworkCore;
@@ -32,12 +31,12 @@ public class UpdateDataService(
     {
         await missionProgressionService.ProcessMissionEvents();
 
-        List<IDbHasAccountId> entities = apiContext.ChangeTracker
-            .Entries<IDbHasAccountId>()
+        List<IDbPlayerData> entities = apiContext
+            .ChangeTracker.Entries<IDbPlayerData>()
             .Where(
                 x =>
                     (x.State is EntityState.Modified or EntityState.Added)
-                    && x.Entity.DeviceAccountId == playerIdentityService.AccountId
+                    && x.Entity.ViewerId == playerIdentityService.ViewerId
             )
             .Select(x => x.Entity)
             .ToList();
@@ -47,7 +46,7 @@ public class UpdateDataService(
         return await MapUpdateDataList(entities);
     }
 
-    private async Task<UpdateDataList> MapUpdateDataList(List<IDbHasAccountId> entities)
+    private async Task<UpdateDataList> MapUpdateDataList(List<IDbPlayerData> entities)
     {
         UpdateDataList list =
             new()
@@ -97,7 +96,12 @@ public class UpdateDataService(
                 talisman_list = ConvertEntities<TalismanList, DbTalisman>(entities),
                 summon_ticket_list = ConvertEntities<SummonTicketList, DbSummonTicket>(entities),
                 quest_event_list = ConvertEntities<QuestEventList, DbQuestEvent>(entities),
-                party_power_data = ConvertEntities<PartyPowerData, DbPartyPower>(entities)?.Single()
+                quest_treasure_list = ConvertEntities<QuestTreasureList, DbQuestTreasureList>(
+                    entities
+                ),
+                party_power_data = ConvertEntities<PartyPowerData, DbPartyPower>(entities)
+                    ?.Single(),
+                quest_wall_list = ConvertEntities<QuestWallList, DbPlayerQuestWall>(entities)
             };
 
         IEnumerable<DbPlayerMission> updatedMissions = entities.OfType<DbPlayerMission>();
@@ -259,10 +263,10 @@ public class UpdateDataService(
     }
 
     private List<TNetwork>? ConvertEntities<TNetwork, TDatabase>(
-        IEnumerable<IDbHasAccountId> baseEntries,
+        IEnumerable<IDbPlayerData> baseEntries,
         Func<TDatabase, bool>? filterPredicate = null
     )
-        where TDatabase : IDbHasAccountId
+        where TDatabase : IDbPlayerData
     {
         List<TDatabase> typedEntries = filterPredicate is not null
             ? baseEntries.OfType<TDatabase>().Where(filterPredicate).ToList()

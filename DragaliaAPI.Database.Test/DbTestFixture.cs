@@ -1,15 +1,12 @@
 ﻿using AutoMapper;
-using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.SavefileUpdate;
-using DragaliaAPI.Services;
 using DragaliaAPI.Services.Game;
 using DragaliaAPI.Test.Utils;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
-using Moq;
 
 namespace DragaliaAPI.Database.Test;
 
@@ -17,7 +14,7 @@ public class DbTestFixture : IDisposable
 {
     public ApiContext ApiContext { get; init; }
 
-    public const string DeviceAccountId = "id";
+    public const long ViewerId = 1;
 
     public DbTestFixture()
     {

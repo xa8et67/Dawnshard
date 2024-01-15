@@ -1,8 +1,4 @@
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Features.Present;
-using DragaliaAPI.Models;
-using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.Features.Presents;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,9 +17,6 @@ public class PresentTest : TestFixture
         AssertionOptions.AssertEquivalencyUsing(
             opts => opts.Excluding(member => member.Name == nameof(PresentDetailList.present_id))
         );
-
-        this.ApiContext.PlayerPresents.ExecuteDelete();
-        this.ApiContext.PlayerPresentHistory.ExecuteDelete();
     }
 
     [Fact]
@@ -34,14 +27,14 @@ public class PresentTest : TestFixture
             {
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.Wyrmite,
                     EntityQuantity = 100,
                     MessageId = PresentMessage.Maintenance,
                 },
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.Dew,
                     EntityQuantity = 200,
                     MessageId = PresentMessage.Chapter10Clear
@@ -55,8 +48,8 @@ public class PresentTest : TestFixture
                 new PresentGetPresentListRequest() { is_limit = false, present_id = 0 }
             );
 
-        response.data
-            .Should()
+        response
+            .data.Should()
             .BeEquivalentTo(
                 new PresentGetPresentListData()
                 {
@@ -99,7 +92,7 @@ public class PresentTest : TestFixture
             {
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.Wyrmite,
                     EntityQuantity = 100,
                     MessageId = PresentMessage.Maintenance,
@@ -107,7 +100,7 @@ public class PresentTest : TestFixture
                 },
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.Dew,
                     EntityQuantity = 200,
                     MessageId = PresentMessage.Chapter10Clear
@@ -121,8 +114,8 @@ public class PresentTest : TestFixture
                 new PresentGetPresentListRequest() { is_limit = true, present_id = 0 }
             );
 
-        response.data
-            .Should()
+        response
+            .data.Should()
             .BeEquivalentTo(
                 new PresentGetPresentListData()
                 {
@@ -157,7 +150,7 @@ public class PresentTest : TestFixture
                     new DbPlayerPresent()
                     {
                         PresentId = x,
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = ViewerId,
                         EntityType = EntityTypes.Rupies,
                         EntityQuantity = 100_000,
                         CreateTime = DateTimeOffset.UnixEpoch,
@@ -188,8 +181,8 @@ public class PresentTest : TestFixture
 
         secondResponse.data.present_list.Should().HaveCount(20);
 
-        firstResponse.data.present_list
-            .Concat(secondResponse.data.present_list)
+        firstResponse
+            .data.present_list.Concat(secondResponse.data.present_list)
             .Should()
             .OnlyHaveUniqueItems(x => x.present_id);
     }
@@ -197,12 +190,11 @@ public class PresentTest : TestFixture
     [Fact]
     public async Task Receive_ReceiveAllPresents_ClaimsAll()
     {
-        DbPlayerUserData oldUserData = this.ApiContext.PlayerUserData
-            .AsNoTracking()
-            .First(x => x.DeviceAccountId == DeviceAccountId);
+        DbPlayerUserData oldUserData = this.ApiContext.PlayerUserData.AsNoTracking()
+            .First(x => x.ViewerId == ViewerId);
 
         DbPlayerMaterial oldSquishums = this.ApiContext.PlayerMaterials.First(
-            x => x.DeviceAccountId == DeviceAccountId && x.MaterialId == Materials.Squishums
+            x => x.ViewerId == ViewerId && x.MaterialId == Materials.Squishums
         );
 
         List<DbPlayerPresent> presents =
@@ -210,52 +202,59 @@ public class PresentTest : TestFixture
             {
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.Wyrmite,
                     EntityQuantity = 100,
                 },
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.Dew,
                     EntityQuantity = 200,
                 },
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.Chara,
                     EntityId = (int)Charas.Akasha,
                 },
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.Wyrmprint,
                     EntityId = (int)AbilityCrests.ADogsDay,
                 },
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.Material,
                     EntityId = (int)Materials.Squishums,
                     EntityQuantity = 100,
                 },
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.Dragon,
                     EntityId = (int)Dragons.Arsene,
                 },
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.HustleHammer,
                     EntityQuantity = 100,
                 },
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.Rupies,
                     EntityQuantity = 100_000,
+                },
+                new()
+                {
+                    ViewerId = ViewerId,
+                    EntityType = EntityTypes.Title,
+                    EntityId = (int)Emblems.SupremeBogfish,
+                    EntityQuantity = 1,
                 }
             };
 
@@ -275,13 +274,13 @@ public class PresentTest : TestFixture
 
         response.data.update_data_list.user_data.coin.Should().Be(oldUserData.Coin + 100_000);
         response.data.update_data_list.user_data.crystal.Should().Be(oldUserData.Crystal + 100);
-        response.data.update_data_list.user_data.build_time_point
-            .Should()
+        response
+            .data.update_data_list.user_data.build_time_point.Should()
             .Be(oldUserData.BuildTimePoint + 100);
         response.data.update_data_list.user_data.dew_point.Should().Be(oldUserData.DewPoint + 200);
 
-        response.data.update_data_list.material_list
-            .Should()
+        response
+            .data.update_data_list.material_list.Should()
             .ContainEquivalentOf(
                 new MaterialList()
                 {
@@ -290,23 +289,23 @@ public class PresentTest : TestFixture
                 }
             );
 
-        response.data.update_data_list.chara_list
-            .Should()
+        response
+            .data.update_data_list.chara_list.Should()
             .Contain(x => x.chara_id == Charas.Akasha);
 
-        response.data.update_data_list.dragon_list
-            .Should()
+        response
+            .data.update_data_list.dragon_list.Should()
             .Contain(x => x.dragon_id == Dragons.Arsene);
-        response.data.update_data_list.dragon_reliability_list
-            .Should()
+        response
+            .data.update_data_list.dragon_reliability_list.Should()
             .Contain(x => x.dragon_id == Dragons.Arsene);
 
-        response.data.update_data_list.ability_crest_list
-            .Should()
+        response
+            .data.update_data_list.ability_crest_list.Should()
             .Contain(x => x.ability_crest_id == AbilityCrests.ADogsDay);
 
-        response.data.update_data_list.present_notice
-            .Should()
+        response
+            .data.update_data_list.present_notice.Should()
             .BeEquivalentTo(new PresentNotice() { present_count = 0, present_limit_count = 0, });
 
         // Not sure if entity_result is correct so won't test that
@@ -320,20 +319,20 @@ public class PresentTest : TestFixture
             {
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.Dragon,
                     EntityId = (int)Dragons.Raphael,
                 },
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.Wyrmite,
                     EntityQuantity = 100,
                     ReceiveLimitTime = DateTimeOffset.UtcNow + TimeSpan.FromDays(1)
                 },
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.Rupies,
                     EntityQuantity = 100_000,
                 },
@@ -353,37 +352,36 @@ public class PresentTest : TestFixture
         response.data.present_list.Should().ContainSingle();
         response.data.present_limit_list.Should().ContainSingle();
 
-        response.data.update_data_list.dragon_list
-            .Should()
+        response
+            .data.update_data_list.dragon_list.Should()
             .Contain(x => x.dragon_id == Dragons.Raphael);
-        response.data.update_data_list.dragon_reliability_list
-            .Should()
+        response
+            .data.update_data_list.dragon_reliability_list.Should()
             .Contain(x => x.dragon_id == Dragons.Raphael);
 
-        response.data.update_data_list.present_notice
-            .Should()
+        response
+            .data.update_data_list.present_notice.Should()
             .BeEquivalentTo(new PresentNotice() { present_count = 1, present_limit_count = 1, });
     }
 
     [Fact]
     public async Task Receive_DuplicateWyrmprint_ConvertsEntity()
     {
-        DbPlayerUserData oldUserData = this.ApiContext.PlayerUserData
-            .AsNoTracking()
-            .First(x => x.DeviceAccountId == DeviceAccountId);
+        DbPlayerUserData oldUserData = this.ApiContext.PlayerUserData.AsNoTracking()
+            .First(x => x.ViewerId == ViewerId);
 
         List<DbPlayerPresent> presents =
             new()
             {
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.Wyrmprint,
                     EntityId = (int)AbilityCrests.DearDiary,
                 },
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.Wyrmprint,
                     EntityId = (int)AbilityCrests.DearDiary,
                 },
@@ -401,14 +399,14 @@ public class PresentTest : TestFixture
 
         response.data.receive_present_id_list.Should().BeEquivalentTo(presentIdList);
 
-        response.data.update_data_list.ability_crest_list
-            .Should()
+        response
+            .data.update_data_list.ability_crest_list.Should()
             .ContainSingle()
             .And.Contain(x => x.ability_crest_id == AbilityCrests.DearDiary);
-        response.data.update_data_list.user_data.dew_point.Should().Be(oldUserData.DewPoint + 4000); // placeholder value
+        response.data.update_data_list.user_data.dew_point.Should().Be(oldUserData.DewPoint + 3000);
 
-        response.data.converted_entity_list
-            .Should()
+        response
+            .data.converted_entity_list.Should()
             .ContainSingle()
             .And.ContainEquivalentOf(
                 new ConvertedEntityList()
@@ -418,7 +416,7 @@ public class PresentTest : TestFixture
                     before_entity_quantity = 1,
                     after_entity_type = EntityTypes.Dew,
                     after_entity_id = 0,
-                    after_entity_quantity = 4000,
+                    after_entity_quantity = 3000,
                 }
             );
     }
@@ -431,13 +429,13 @@ public class PresentTest : TestFixture
             {
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.Chara,
                     EntityId = (int)Charas.Addis,
                 },
                 new()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     EntityType = EntityTypes.Chara,
                     EntityId = (int)Charas.Addis,
                 },
@@ -456,8 +454,8 @@ public class PresentTest : TestFixture
         response.data.receive_present_id_list.Should().Contain((ulong)presents.First().PresentId);
         response.data.delete_present_id_list.Should().Contain((ulong)presents.Last().PresentId);
 
-        response.data.update_data_list.chara_list
-            .Should()
+        response
+            .data.update_data_list.chara_list.Should()
             .ContainSingle()
             .And.Contain(x => x.chara_id == Charas.Addis);
     }
@@ -472,7 +470,7 @@ public class PresentTest : TestFixture
                     new DbPlayerPresentHistory()
                     {
                         Id = x,
-                        DeviceAccountId = DeviceAccountId,
+                        ViewerId = ViewerId,
                         EntityType = EntityTypes.Rupies,
                         EntityQuantity = 100_000,
                         CreateTime = DateTimeOffset.UnixEpoch,
@@ -489,8 +487,8 @@ public class PresentTest : TestFixture
                 new PresentGetHistoryListRequest() { present_history_id = 0 }
             );
 
-        firstResponse.data.present_history_list
-            .Should()
+        firstResponse
+            .data.present_history_list.Should()
             .HaveCount(100)
             .And.BeInDescendingOrder(x => x.id);
 
@@ -505,8 +503,8 @@ public class PresentTest : TestFixture
 
         secondResponse.data.present_history_list.Should().HaveCount(20);
 
-        firstResponse.data.present_history_list
-            .Concat(secondResponse.data.present_history_list)
+        firstResponse
+            .data.present_history_list.Concat(secondResponse.data.present_history_list)
             .Should()
             .OnlyHaveUniqueItems(x => x.id);
     }

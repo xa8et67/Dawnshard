@@ -1,11 +1,6 @@
 ﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
-using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Shared.Definitions.Enums;
-using DragaliaAPI.Shared.PlayerDetails;
 using DragaliaAPI.Test.Utils;
-using Microsoft.EntityFrameworkCore;
-using Moq;
 using static DragaliaAPI.Database.Test.DbTestFixture;
 
 namespace DragaliaAPI.Database.Test.Repositories;
@@ -34,17 +29,16 @@ public class QuestRepositoryTest : IClassFixture<DbTestFixture>
         await this.fixture.AddRangeToDatabase(
             new List<DbQuest>()
             {
-                new() { DeviceAccountId = DeviceAccountId, QuestId = 1 },
-                new() { DeviceAccountId = "other id", QuestId = 2 }
+                new() { ViewerId = ViewerId, QuestId = 1 },
+                new() { ViewerId = ViewerId + 1, QuestId = 2 }
             }
         );
 
-        this.questRepository.Quests
-            .Should()
+        this.questRepository.Quests.Should()
             .BeEquivalentTo(
                 new List<DbQuest>()
                 {
-                    new() { DeviceAccountId = DeviceAccountId, QuestId = 1 },
+                    new() { ViewerId = ViewerId, QuestId = 1 },
                 }
             )
             .And.BeEquivalentTo(this.questRepository.Quests);

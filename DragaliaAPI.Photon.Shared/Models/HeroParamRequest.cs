@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace DragaliaAPI.Photon.Shared.Models
+﻿namespace DragaliaAPI.Photon.Shared.Models
 {
     public class HeroParamRequest
     {
@@ -14,7 +9,7 @@ namespace DragaliaAPI.Photon.Shared.Models
     {
         public int ActorNr { get; set; }
 
-        public int ViewerId { get; set; }
+        public long ViewerId { get; set; }
 
         public int[] PartySlots { get; set; }
     }

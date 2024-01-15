@@ -182,16 +182,19 @@ public class MissionProgressionService(
         );
     }
 
-    public void OnDragonBondLevelUp(Dragons dragon, UnitElement element, int count, int total)
-    {
+    public void OnDragonBondLevelUp(
+        Dragons dragon,
+        UnitElement element,
+        int levelDiff,
+        int newLevel
+    ) =>
         EnqueueEvent(
             MissionCompleteType.DragonBondLevelUp,
-            count,
-            total,
+            levelDiff,
+            newLevel,
             (int)dragon,
             (int)element
         );
-    }
 
     public void OnItemSummon()
     {
@@ -223,6 +226,49 @@ public class MissionProgressionService(
         EnqueueEvent(MissionCompleteType.TreasureTrade, count, total, tradeId, (int)type, id);
     }
 
+    public void OnEventParticipation(int eventId) =>
+        EnqueueEvent(MissionCompleteType.EventParticipation, 1, 1, eventId);
+
+    public void OnEventRegularBattleCleared(int eventId, VariationTypes variationType) =>
+        EnqueueEvent(
+            MissionCompleteType.EventRegularBattleClear,
+            1,
+            1,
+            eventId,
+            (int)variationType
+        );
+
+    public void OnEventQuestClearedWithCrest(int eventId, AbilityCrests crest) =>
+        EnqueueEvent(MissionCompleteType.EventQuestClearWithCrest, 1, 1, eventId, (int)crest);
+
+    public void OnEventPointCollected(int eventId, VariationTypes variationType, int quantity) =>
+        EnqueueEvent(
+            MissionCompleteType.EventPointCollection,
+            quantity,
+            quantity,
+            eventId,
+            (int)variationType
+        );
+
+    public void OnEventChallengeBattleCleared(
+        int eventId,
+        VariationTypes variationType,
+        bool fullClear,
+        int questId
+    ) =>
+        EnqueueEvent(
+            MissionCompleteType.EventChallengeBattleClear,
+            1,
+            1,
+            eventId,
+            (int)variationType,
+            fullClear ? 1 : 0,
+            questId
+        );
+
+    public void OnEventTrialCleared(int eventId, VariationTypes variationType) =>
+        EnqueueEvent(MissionCompleteType.EventTrialClear, 1, 1, eventId, (int)variationType);
+
     public void EnqueueEvent(
         MissionCompleteType type,
         int value = 1,
@@ -252,73 +298,89 @@ public class MissionProgressionService(
 
         while (this.eventQueue.TryDequeue(out MissionEvent? evt))
         {
-            List<(MissionType Type, int Id)> affectedMissions =
-                MasterAsset.MissionProgressionInfo.Enumerable
-                    .Where(x => x.CompleteType == evt.Type)
-                    .Where(
-                        x =>
-                            (x.Parameter is null || x.Parameter == evt.Parameter)
-                            && (x.Parameter2 is null || x.Parameter2 == evt.Parameter2)
-                            && (x.Parameter3 is null || x.Parameter3 == evt.Parameter3)
-                            && (x.Parameter4 is null || x.Parameter4 == evt.Parameter4)
-                    )
-                    .Select(x => (x.MissionType, x.MissionId))
-                    .ToList();
-
-            if (affectedMissions.Any())
-            {
-                missionList ??= await missionRepository.Missions
-                    .Where(x => x.State == MissionState.InProgress)
-                    .ToListAsync();
-
-                foreach (
-                    DbPlayerMission progressingMission in missionList.Where(
-                        x =>
-                            affectedMissions.Contains((x.Type, x.Id))
-                            && x.State == MissionState.InProgress
-                    )
+            List<(MissionType Type, int Id)> affectedMissions = MasterAsset
+                .MissionProgressionInfo.Enumerable.Where(x => x.CompleteType == evt.Type)
+                .Where(
+                    x =>
+                        (x.Parameter is null || x.Parameter == evt.Parameter)
+                        && (x.Parameter2 is null || x.Parameter2 == evt.Parameter2)
+                        && (x.Parameter3 is null || x.Parameter3 == evt.Parameter3)
+                        && (x.Parameter4 is null || x.Parameter4 == evt.Parameter4)
                 )
+                .Select(x => (x.MissionType, x.MissionId))
+                .ToList();
+
+            if (affectedMissions.Count == 0)
+                continue;
+
+            missionList ??= await missionRepository
+                .Missions.Where(x => x.State == MissionState.InProgress)
+                .ToListAsync();
+
+            foreach (
+                DbPlayerMission progressingMission in missionList.Where(
+                    x =>
+                        affectedMissions.Contains((x.Type, x.Id))
+                        && x.State == MissionState.InProgress
+                )
+            )
+            {
+                Mission mission = Mission.From(progressingMission.Type, progressingMission.Id);
+
+                MissionProgressionInfo progressionInfo =
+                    MasterAsset.MissionProgressionInfo.Enumerable.Single(
+                        x =>
+                            x.MissionType == progressingMission.Type
+                            && x.MissionId == progressingMission.Id
+                    );
+
+                if (progressionInfo.UseTotalValue)
                 {
-                    Mission mission = Mission.From(progressingMission.Type, progressingMission.Id);
+                    if (progressingMission.Progress >= evt.TotalValue)
+                        continue;
 
-                    MissionProgressionInfo progressionInfo =
-                        MasterAsset.MissionProgressionInfo.Enumerable.Single(
-                            x =>
-                                x.MissionType == progressingMission.Type
-                                && x.MissionId == progressingMission.Id
-                        );
+                    progressingMission.Progress = evt.TotalValue;
+                }
+                else
+                {
+                    progressingMission.Progress += evt.Value;
+                }
 
-                    if (progressionInfo.UseTotalValue)
-                    {
-                        if (progressingMission.Progress >= evt.TotalValue)
-                            continue;
+                if (progressingMission.Progress >= mission.CompleteValue)
+                {
+                    logger.LogDebug(
+                        "Completed {missionType} mission {missionId}",
+                        progressingMission.Type,
+                        progressingMission.Id
+                    );
+                    progressingMission.State = MissionState.Completed;
 
-                        progressingMission.Progress = evt.TotalValue;
-                    }
-                    else
+                    if (progressionInfo.ProgressionGroupId != null)
                     {
-                        progressingMission.Progress += evt.Value;
-                    }
-
-                    if (progressingMission.Progress >= mission.CompleteValue)
-                    {
-                        logger.LogDebug(
-                            "Completed {missionType} mission {missionId}",
-                            progressingMission.Type,
-                            progressingMission.Id
-                        );
-                        progressingMission.State = MissionState.Completed;
-                    }
-                    else
-                    {
-                        logger.LogDebug(
-                            "Progressed {missionType} mission {missionId} ({currentCount}/{totalCount}",
-                            progressingMission.Type,
-                            progressingMission.Id,
-                            progressingMission.Progress,
-                            mission.CompleteValue
+                        this.eventQueue.Enqueue(
+                            new MissionEvent(
+                                MissionCompleteType.ProgressionGroupCleared,
+                                1,
+                                1,
+                                progressionInfo.ProgressionGroupId
+                            )
                         );
                     }
+
+                    if (progressionInfo.MissionType == MissionType.Daily)
+                    {
+                        await missionRepository.AddCompletedDailyMission(progressingMission);
+                    }
+                }
+                else
+                {
+                    logger.LogDebug(
+                        "Progressed {missionType} mission {missionId} ({currentCount}/{totalCount})",
+                        progressingMission.Type,
+                        progressingMission.Id,
+                        progressingMission.Progress,
+                        mission.CompleteValue
+                    );
                 }
             }
         }

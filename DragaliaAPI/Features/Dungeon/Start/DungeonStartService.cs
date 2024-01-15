@@ -2,18 +2,19 @@
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Entities.Scaffold;
 using DragaliaAPI.Database.Repositories;
+using DragaliaAPI.Features.Dungeon.AutoRepeat;
 using DragaliaAPI.Features.Event;
-using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Shared.MasterAsset.Models;
-using DragaliaAPI.Shared.MasterAsset;
-using Microsoft.EntityFrameworkCore;
-using DragaliaAPI.Shared.PlayerDetails;
-using DragaliaAPI.Shared.Definitions.Enums;
-using DragaliaAPI.Services;
-using DragaliaAPI.Features.Reward;
-using DragaliaAPI.Features.Shop;
 using DragaliaAPI.Features.Player;
 using DragaliaAPI.Features.Quest;
+using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shop;
+using DragaliaAPI.Models.Generated;
+using DragaliaAPI.Services;
+using DragaliaAPI.Shared.Definitions.Enums;
+using DragaliaAPI.Shared.MasterAsset;
+using DragaliaAPI.Shared.MasterAsset.Models;
+using DragaliaAPI.Shared.PlayerDetails;
+using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Features.Dungeon.Start;
 
@@ -31,7 +32,8 @@ public class DungeonStartService(
     IMapper mapper,
     ILogger<DungeonStartService> logger,
     IPaymentService paymentService,
-    IEventService eventService
+    IEventService eventService,
+    IAutoRepeatService autoRepeatService
 ) : IDungeonStartService
 {
     public async Task<bool> ValidateStamina(int questId, StaminaType staminaType)
@@ -45,6 +47,7 @@ public class DungeonStartService(
         int requiredStamina = await questService.GetQuestStamina(questId, staminaType);
         int currentStamina = await userService.GetAndUpdateStamina(staminaType);
 
+        // Makes auto repeat stamina work amazingly enough
         if (currentStamina < requiredStamina)
         {
             logger.LogInformation(
@@ -62,7 +65,8 @@ public class DungeonStartService(
 
     public async Task<IngameData> GetIngameData(
         int questId,
-        IEnumerable<int> partyNoList,
+        IList<int> partyNoList,
+        RepeatSetting? repeatSetting = null,
         ulong? supportViewerId = null
     )
     {
@@ -70,29 +74,121 @@ public class DungeonStartService(
             .GetPartyUnits(partyNoList)
             .AsNoTracking();
 
-        IEnumerable<PartySettingList> party = ProcessUnitList(
+        List<PartySettingList> party = ProcessUnitList(
             await partyQuery.ToListAsync(),
             partyNoList.First()
         );
 
-        IngameData result = await InitializeIngameData(questId, party, supportViewerId);
+        IngameData result = await InitializeIngameData(questId, supportViewerId);
 
         List<DbDetailedPartyUnit> detailedPartyUnits = await dungeonRepository
             .BuildDetailedPartyUnit(partyQuery, partyNoList.First())
             .ToListAsync();
 
+        QuestData questInfo = MasterAsset.QuestData.Get(questId);
+
         result.party_info.party_unit_list = await ProcessDetailedUnitList(detailedPartyUnits);
+        result.dungeon_key = await dungeonService.StartDungeon(
+            new()
+            {
+                QuestData = questInfo,
+                Party = party.Where(x => x.chara_id != 0),
+                SupportViewerId = supportViewerId
+            }
+        );
+
+        if (repeatSetting != null)
+        {
+            await autoRepeatService.SetRepeatSetting(repeatSetting);
+            result.repeat_state = 1;
+        }
+        else
+        {
+            await autoRepeatService.ClearRepeatInfo();
+        }
 
         return result;
     }
 
-    public async Task<IngameData> GetIngameData(
+    public async Task<IngameData> GetAssignUnitIngameData(
         int questId,
-        IEnumerable<PartySettingList> party,
+        IList<PartySettingList> party,
+        ulong? supportViewerId = null,
+        RepeatSetting? repeatSetting = null
+    )
+    {
+        IngameData result = await InitializeIngameData(questId, supportViewerId);
+
+        List<DbDetailedPartyUnit> detailedPartyUnits = new();
+
+        foreach (
+            IQueryable<DbDetailedPartyUnit> detailQuery in dungeonRepository.BuildDetailedPartyUnit(
+                party
+            )
+        )
+        {
+            detailedPartyUnits.Add(
+                await detailQuery.AsNoTracking().SingleOrDefaultAsync()
+                    ?? throw new InvalidOperationException(
+                        "Detailed party query returned no results"
+                    )
+            );
+        }
+
+        QuestData questInfo = MasterAsset.QuestData.Get(questId);
+
+        result.party_info.party_unit_list = await ProcessDetailedUnitList(detailedPartyUnits);
+        result.dungeon_key = await dungeonService.StartDungeon(
+            new()
+            {
+                QuestData = questInfo,
+                Party = party.Where(x => x.chara_id != 0),
+                SupportViewerId = supportViewerId
+            }
+        );
+
+        return result;
+    }
+
+    public async Task<IngameData> GetWallIngameData(
+        int wallId,
+        int wallLevel,
+        int partyNo,
         ulong? supportViewerId = null
     )
     {
-        IngameData result = await InitializeIngameData(questId, party, supportViewerId);
+        IQueryable<DbPartyUnit> partyQuery = partyRepository.GetPartyUnits(partyNo).AsNoTracking();
+
+        List<PartySettingList> party = ProcessUnitList(await partyQuery.ToListAsync(), partyNo);
+
+        IngameData result = await InitializeIngameData(0, supportViewerId);
+
+        List<DbDetailedPartyUnit> detailedPartyUnits = await dungeonRepository
+            .BuildDetailedPartyUnit(partyQuery, partyNo)
+            .ToListAsync();
+
+        result.party_info.party_unit_list = await ProcessDetailedUnitList(detailedPartyUnits);
+        result.dungeon_key = await dungeonService.StartDungeon(
+            new()
+            {
+                Party = party.Where(x => x.chara_id != 0),
+                WallId = wallId,
+                WallLevel = wallLevel,
+                SupportViewerId = supportViewerId
+            }
+        );
+
+        return result;
+    }
+
+    public async Task<IngameData> GetWallIngameData(
+        int wallId,
+        int wallLevel,
+        IList<PartySettingList> party,
+        ulong? supportViewerId = null
+    )
+    {
+        IngameData result = await InitializeIngameData(0, supportViewerId);
 
         List<DbDetailedPartyUnit> detailedPartyUnits = new();
 
@@ -111,6 +207,15 @@ public class DungeonStartService(
         }
 
         result.party_info.party_unit_list = await ProcessDetailedUnitList(detailedPartyUnits);
+        result.dungeon_key = await dungeonService.StartDungeon(
+            new()
+            {
+                Party = party.Where(x => x.chara_id != 0),
+                WallId = wallId,
+                WallLevel = wallLevel,
+                SupportViewerId = supportViewerId
+            }
+        );
 
         return result;
     }
@@ -213,10 +318,7 @@ public class DungeonStartService(
         return units;
     }
 
-    private IEnumerable<PartySettingList> ProcessUnitList(
-        List<DbPartyUnit> partyUnits,
-        int firstPartyNo
-    )
+    private List<PartySettingList> ProcessUnitList(List<DbPartyUnit> partyUnits, int firstPartyNo)
     {
         foreach (DbPartyUnit unit in partyUnits)
         {
@@ -224,20 +326,16 @@ public class DungeonStartService(
                 unit.UnitNo += 4;
         }
 
-        return partyUnits.Select(mapper.Map<PartySettingList>).OrderBy(x => x.unit_no);
+        return partyUnits.Select(mapper.Map<PartySettingList>).OrderBy(x => x.unit_no).ToList();
     }
 
-    private async Task<IngameData> InitializeIngameData(
-        int questId,
-        IEnumerable<PartySettingList> party,
-        ulong? supportViewerId = null
-    )
+    private async Task<IngameData> InitializeIngameData(int questId, ulong? supportViewerId = null)
     {
         IngameData result =
             new()
             {
                 quest_id = questId,
-                viewer_id = (ulong?)playerIdentityService.ViewerId ?? 0UL,
+                viewer_id = (ulong)playerIdentityService.ViewerId,
                 play_type = QuestPlayType.Default,
                 party_info = new() { support_data = new() },
                 start_time = DateTimeOffset.UtcNow,
@@ -262,15 +360,6 @@ public class DungeonStartService(
         result.dungeon_type = questInfo.DungeonType;
         result.reborn_limit = questInfo.RebornLimit;
         result.continue_limit = questInfo.ContinueLimit;
-
-        result.dungeon_key = await dungeonService.StartDungeon(
-            new()
-            {
-                QuestData = questInfo,
-                Party = party.Where(x => x.chara_id != 0),
-                SupportViewerId = supportViewerId
-            }
-        );
 
         result.party_info.fort_bonus_list = await bonusService.GetBonusList();
         result.party_info.event_boost = await bonusService.GetEventBoost(questInfo.Gid);

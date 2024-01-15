@@ -12,17 +12,15 @@ public interface IQuestCompletionService
         int BoostedPoints
     )> CompleteQuestScoreMissions(DungeonSession session, PlayRecord record, double multiplier);
 
+    Task<(IEnumerable<AtgenScoringEnemyPointList> Enemies, int Points)> CompleteEnemyScoreMissions(
+        DungeonSession session,
+        PlayRecord record
+    );
+
     public Task<QuestMissionStatus> CompleteQuestMissions(
         DungeonSession session,
         bool[] currentState,
         PlayRecord record
-    );
-
-    public Task<bool> IsQuestMissionCompleted(
-        QuestCompleteType type,
-        int completionValue,
-        PlayRecord record,
-        DungeonSession session
     );
 
     public Task<IEnumerable<AtgenFirstClearSet>> GrantFirstClearRewards(int questId);

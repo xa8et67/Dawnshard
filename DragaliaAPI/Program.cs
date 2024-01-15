@@ -1,36 +1,45 @@
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using DragaliaAPI;
 using DragaliaAPI.Database;
+using DragaliaAPI.Features.Blazor;
 using DragaliaAPI.Features.GraphQL;
+using DragaliaAPI.Features.Shared.Options;
+using DragaliaAPI.Features.TimeAttack;
+using DragaliaAPI.Features.Version;
 using DragaliaAPI.MessagePack;
 using DragaliaAPI.Middleware;
+using DragaliaAPI.Models;
 using DragaliaAPI.Models.Options;
 using DragaliaAPI.Services.Health;
 using DragaliaAPI.Shared;
 using DragaliaAPI.Shared.Json;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Serilog;
-using DragaliaAPI.Models;
+using DragaliaAPI.Shared.MasterAsset;
+using EntityGraphQL.AspNet;
+using EntityGraphQL.Schema;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
-using MudBlazor.Services;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
-using DragaliaAPI.Features.TimeAttack;
-using DragaliaAPI.Features.Version;
 using Microsoft.JSInterop;
-using DragaliaAPI;
+using MudBlazor;
+using MudBlazor.Services;
+using Serilog;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-IConfiguration config = builder.Configuration
-    .AddJsonFile("itemSummonOdds.json", optional: false, reloadOnChange: true)
+IConfiguration config = builder
+    .Configuration.AddJsonFile("itemSummonOdds.json", optional: false, reloadOnChange: true)
     .AddJsonFile("dragonfruitOdds.json", optional: false, reloadOnChange: true)
     .Build();
 
 builder.WebHost.UseStaticWebAssets();
 
-builder.Services
-    .Configure<BaasOptions>(config.GetRequiredSection("Baas"))
+builder
+    .Services.Configure<BaasOptions>(config.GetRequiredSection("Baas"))
     .Configure<LoginOptions>(config.GetRequiredSection("Login"))
     .Configure<DragalipatchOptions>(config.GetRequiredSection("Dragalipatch"))
     .Configure<RedisOptions>(config.GetRequiredSection("Redis"))
@@ -38,23 +47,31 @@ builder.Services
     .Configure<ItemSummonConfig>(config)
     .Configure<DragonfruitConfig>(config)
     .Configure<TimeAttackOptions>(config.GetRequiredSection(nameof(TimeAttackOptions)))
-    .Configure<ResourceVersionOptions>(config.GetRequiredSection(nameof(ResourceVersionOptions)));
+    .Configure<ResourceVersionOptions>(config.GetRequiredSection(nameof(ResourceVersionOptions)))
+    .Configure<BlazorOptions>(config.GetRequiredSection(nameof(BlazorOptions)))
+    .Configure<EventOptions>(config.GetRequiredSection(nameof(EventOptions)));
 
 builder.Services.AddServerSideBlazor();
-builder.Services.AddMudServices();
+builder.Services.AddMudServices(options =>
+{
+    options.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;
+    options.SnackbarConfiguration.VisibleStateDuration = 5000;
+    options.SnackbarConfiguration.ShowTransitionDuration = 500;
+    options.SnackbarConfiguration.HideTransitionDuration = 500;
+});
 
 // Ensure item summon weightings add to 100%
 builder.Services.AddOptions<ItemSummonConfig>().Validate(x => x.Odds.Sum(y => y.Rate) == 100_000);
-builder.Services
-    .AddOptions<DragonfruitConfig>()
+builder
+    .Services.AddOptions<DragonfruitConfig>()
     .Validate(x => x.FruitOdds.Values.All(y => y.Normal + y.Ripe + y.Succulent == 100));
 
 builder.Logging.ClearProviders();
 builder.Logging.AddSerilog();
 builder.Host.UseSerilog(
     (context, services, loggerConfig) =>
-        loggerConfig.ReadFrom
-            .Configuration(context.Configuration)
+        loggerConfig
+            .ReadFrom.Configuration(context.Configuration)
             .ReadFrom.Services(services)
             .Enrich.FromLogContext()
             // Blazor keeps throwing these errors from MudBlazor internals; there is nothing we can do about them
@@ -64,8 +81,8 @@ builder.Host.UseSerilog(
 // Add services to the container.
 
 builder.Services.AddControllers();
-builder.Services
-    .AddMvc()
+builder
+    .Services.AddMvc()
     .AddMvcOptions(option =>
     {
         option.OutputFormatters.Add(new CustomMessagePackOutputFormatter(CustomResolver.Options));
@@ -73,14 +90,15 @@ builder.Services
     })
     .AddJsonOptions(options => ApiJsonOptions.Action.Invoke(options.JsonSerializerOptions));
 
+builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddRazorPages();
-builder.Services
-    .AddHealthChecks()
+builder
+    .Services.AddHealthChecks()
     .AddDbContextCheck<ApiContext>()
     .AddCheck<RedisHealthCheck>("Redis", failureStatus: HealthStatus.Unhealthy);
 
-builder.Services
-    .AddAuthentication(opts =>
+builder
+    .Services.AddAuthentication(opts =>
     {
         opts.AddScheme<SessionAuthenticationHandler>(SchemeName.Session, null);
         opts.AddScheme<DeveloperAuthenticationHandler>(SchemeName.Developer, null);
@@ -96,8 +114,8 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-builder.Services
-    .AddResponseCompression()
+builder
+    .Services.AddResponseCompression()
     .ConfigureDatabaseServices(builder.Configuration.GetConnectionString("PostgresHost"))
     .ConfigureSharedServices()
     .AddAutoMapper(Assembly.GetExecutingAssembly())
@@ -108,10 +126,21 @@ builder.Services
     })
     .AddHttpContextAccessor();
 
+builder.Services.AddDataProtection().PersistKeysToDbContext<ApiContext>();
+
 builder.Services.ConfigureGameServices(builder.Configuration);
 builder.Services.ConfigureGraphQlSchema();
 
 WebApplication app = builder.Build();
+
+Stopwatch watch = new();
+app.Logger.LogInformation("Loading MasterAsset data.");
+
+watch.Start();
+RuntimeHelpers.RunClassConstructor(typeof(MasterAsset).TypeHandle);
+watch.Stop();
+
+app.Logger.LogInformation("Loaded MasterAsset in {time}.", watch.Elapsed);
 
 if (Environment.GetEnvironmentVariable("DISABLE_AUTO_MIGRATION") == null)
     app.MigrateDatabase();
@@ -144,6 +173,15 @@ app.MapWhen(
         applicationBuilder.UseEndpoints(endpoints =>
         {
             endpoints.MapControllers();
+            endpoints.MapGraphQL<ApiContext>(
+                configureEndpoint: endpoint =>
+                    endpoint.RequireAuthorization(
+                        policy =>
+                            policy
+                                .RequireAuthenticatedUser()
+                                .AddAuthenticationSchemes(SchemeName.Developer)
+                    )
+            );
         });
     }
 );
@@ -156,11 +194,12 @@ app.MapWhen(
 #pragma warning disable ASP0001
         applicationBuilder.UseAuthorization();
 #pragma warning restore ASP0001
+        applicationBuilder.UseAntiforgery();
+        applicationBuilder.UseMiddleware<PlayerIdentityLoggingMiddleware>();
         applicationBuilder.UseEndpoints(endpoints =>
         {
-            endpoints.MapBlazorHub();
             endpoints.MapRazorPages();
-            endpoints.MapFallbackToPage("/_Host");
+            endpoints.MapRazorComponents<App>().AddInteractiveServerRenderMode();
         });
     }
 );

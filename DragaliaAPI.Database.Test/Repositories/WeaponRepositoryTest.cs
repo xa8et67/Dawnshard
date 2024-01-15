@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using DragaliaAPI.Database.Entities;
+﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
@@ -40,12 +35,12 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
             {
                 new()
                 {
-                    DeviceAccountId = "other id",
+                    ViewerId = 2,
                     WeaponBodyId = Shared.Definitions.Enums.WeaponBodies.SoldiersBrand
                 },
                 new()
                 {
-                    DeviceAccountId = "id",
+                    ViewerId = 1,
                     WeaponBodyId = Shared.Definitions.Enums.WeaponBodies.AbsoluteAqua
                 }
             }
@@ -53,7 +48,23 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
 
         (await this.weaponRepository.WeaponBodies.ToListAsync())
             .Should()
-            .AllSatisfy(x => x.DeviceAccountId.Should().Be("id"));
+            .AllSatisfy(x => x.ViewerId.Should().Be(1));
+    }
+
+    [Fact]
+    public async Task GetPassiveAbilities_FiltersOutAstralBane()
+    {
+        await this.fixture.AddRangeToDatabase(
+            new List<DbWeaponPassiveAbility>()
+            {
+                new() { ViewerId = 1, WeaponPassiveAbilityId = 1010107 },
+                new() { ViewerId = 1, WeaponPassiveAbilityId = 1010108 }
+            }
+        );
+
+        this.weaponRepository.GetPassiveAbilities(WeaponBodies.Nothung)
+            .Should()
+            .NotContain(x => x.WeaponPassiveAbilityId == 1010108);
     }
 
     [Fact]
@@ -62,17 +73,15 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
         await this.weaponRepository.Add(WeaponBodies.Arondight);
         await this.fixture.ApiContext.SaveChangesAsync();
 
-        this.fixture.ApiContext.PlayerWeapons
-            .Single(
-                x =>
-                    x.WeaponBodyId == WeaponBodies.Arondight
-                    && x.DeviceAccountId == IdentityTestUtils.DeviceAccountId
-            )
+        this.fixture.ApiContext.PlayerWeapons.Single(
+            x =>
+                x.WeaponBodyId == WeaponBodies.Arondight && x.ViewerId == IdentityTestUtils.ViewerId
+        )
             .Should()
             .BeEquivalentTo(
                 new DbWeaponBody()
                 {
-                    DeviceAccountId = IdentityTestUtils.DeviceAccountId,
+                    ViewerId = IdentityTestUtils.ViewerId,
                     WeaponBodyId = WeaponBodies.Arondight
                 }
             );
@@ -88,12 +97,7 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
                 WeaponBodies.Blitzfang,
                 WeaponBodies.Camelot
             }.Select(
-                x =>
-                    new DbWeaponBody()
-                    {
-                        DeviceAccountId = IdentityTestUtils.DeviceAccountId,
-                        WeaponBodyId = x
-                    }
+                x => new DbWeaponBody() { ViewerId = IdentityTestUtils.ViewerId, WeaponBodyId = x }
             )
         );
 
@@ -114,7 +118,7 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
         await this.fixture.AddToDatabase(
             new DbWeaponBody()
             {
-                DeviceAccountId = IdentityTestUtils.DeviceAccountId,
+                ViewerId = IdentityTestUtils.ViewerId,
                 WeaponBodyId = WeaponBodies.Nothung
             }
         );
@@ -136,32 +140,55 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
         await this.fixture.AddToDatabase(
             new DbWeaponBody()
             {
-                DeviceAccountId = IdentityTestUtils.DeviceAccountId,
+                ViewerId = IdentityTestUtils.ViewerId,
                 WeaponBodyId = WeaponBodies.InfernoApogee
             }
         );
 
-        int passiveId = MasterAsset.WeaponBody
-            .Get(WeaponBodies.InfernoApogee)
+        int passiveId = MasterAsset
+            .WeaponBody.Get(WeaponBodies.InfernoApogee)
             .GetPassiveAbilityId(1);
         WeaponPassiveAbility passiveAbility = MasterAsset.WeaponPassiveAbility.Get(passiveId);
 
         await this.weaponRepository.AddPassiveAbility(WeaponBodies.InfernoApogee, passiveAbility);
         await this.fixture.ApiContext.SaveChangesAsync();
 
-        this.fixture.ApiContext.PlayerWeapons
-            .Single(x => x.WeaponBodyId == WeaponBodies.InfernoApogee)
+        this.fixture.ApiContext.PlayerWeapons.Single(
+            x => x.WeaponBodyId == WeaponBodies.InfernoApogee
+        )
             .UnlockWeaponPassiveAbilityNoList.Should()
             .BeEquivalentTo(Enumerable.Repeat(0, 14).Prepend(1));
-        this.fixture.ApiContext.PlayerPassiveAbilities
-            .Should()
+        this.fixture.ApiContext.PlayerPassiveAbilities.Should()
             .ContainEquivalentOf(
                 new DbWeaponPassiveAbility()
                 {
-                    DeviceAccountId = IdentityTestUtils.DeviceAccountId,
+                    ViewerId = IdentityTestUtils.ViewerId,
                     WeaponPassiveAbilityId = passiveId
                 }
             );
+    }
+
+    [Fact]
+    public async Task AddPassiveAbility_AbilityOwned_DoesNotThrow()
+    {
+        await this.fixture.AddToDatabase(
+            new DbWeaponBody()
+            {
+                ViewerId = IdentityTestUtils.ViewerId,
+                WeaponBodyId = WeaponBodies.RoaringWeald
+            }
+        );
+
+        int passiveId = MasterAsset
+            .WeaponBody.Get(WeaponBodies.RoaringWeald)
+            .GetPassiveAbilityId(1);
+        WeaponPassiveAbility passiveAbility = MasterAsset.WeaponPassiveAbility.Get(passiveId);
+
+        await this.weaponRepository.Invoking(
+            x => x.AddPassiveAbility(WeaponBodies.RoaringWeald, passiveAbility)
+        )
+            .Should()
+            .NotThrowAsync();
     }
 
     [Fact]
@@ -170,12 +197,11 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
         await this.weaponRepository.AddSkin(4);
         await this.fixture.ApiContext.SaveChangesAsync();
 
-        this.fixture.ApiContext.PlayerWeaponSkins
-            .Should()
+        this.fixture.ApiContext.PlayerWeaponSkins.Should()
             .ContainEquivalentOf(
                 new DbWeaponSkin()
                 {
-                    DeviceAccountId = IdentityTestUtils.DeviceAccountId,
+                    ViewerId = IdentityTestUtils.ViewerId,
                     WeaponSkinId = 4,
                     IsNew = false,
                     GetTime = DateTimeOffset.UtcNow

@@ -3,7 +3,6 @@ using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.PlayerDetails;
-using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Features.Stamp;
 
@@ -52,8 +51,7 @@ public class StampService : IStampService
                         x,
                         opts =>
                             opts.AfterMap(
-                                (src, dest) =>
-                                    dest.DeviceAccountId = this.playerIdentityService.AccountId
+                                (src, dest) => dest.ViewerId = this.playerIdentityService.ViewerId
                             )
                     )
             )

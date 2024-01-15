@@ -1,5 +1,4 @@
 ﻿using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Models.Generated;
 
 namespace DragaliaAPI.Integration.Test.Dragalia;
 
@@ -12,7 +11,7 @@ public class UserTest : TestFixture
     public async Task LinkedNAccount_ReturnsExpectedResponse()
     {
         DbPlayerUserData dbUserData = this.ApiContext.PlayerUserData.Single(
-            x => x.DeviceAccountId == DeviceAccountId
+            x => x.ViewerId == ViewerId
         );
 
         UserData expectedUserData = this.Mapper.Map<UserData>(dbUserData);
@@ -22,8 +21,8 @@ public class UserTest : TestFixture
                 "/user/linked_n_account",
                 new UserLinkedNAccountRequest()
             )
-        ).data
-            .Should()
+        )
+            .data.Should()
             .BeEquivalentTo(
                 new UserLinkedNAccountData()
                 {
@@ -41,8 +40,8 @@ public class UserTest : TestFixture
                 "/user/get_n_account_info",
                 new UserGetNAccountInfoRequest()
             )
-        ).data
-            .Should()
+        )
+            .data.Should()
             .BeEquivalentTo(
                 new UserGetNAccountInfoData()
                 {

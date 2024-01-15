@@ -4,13 +4,13 @@ using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Extensions;
 using DragaliaAPI.Features.Dmode;
 using DragaliaAPI.Features.Reward;
-using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models;
 using DragaliaAPI.Shared.MasterAsset.Models.Dmode;
+using DragaliaAPI.Shared.MasterAsset.Models.Enemy;
 using DragaliaAPI.Shared.MasterAsset.Models.QuestDrops;
 using Microsoft.EntityFrameworkCore;
 
@@ -397,8 +397,10 @@ public class DmodeDungeonService(
 
             int minRarity = GetMinRarity(floor.FloorNum);
 
-            DmodeDungeonItemData[] dragonPool = MasterAsset.DmodeDungeonItemData.Enumerable
-                .Where(x => x.DmodeDungeonItemType == DmodeDungeonItemType.Dragon)
+            DmodeDungeonItemData[] dragonPool = MasterAsset
+                .DmodeDungeonItemData.Enumerable.Where(
+                    x => x.DmodeDungeonItemType == DmodeDungeonItemType.Dragon
+                )
                 .Where(
                     x =>
                         floorData.dmode_dungeon_odds.dmode_select_dragon_list.All(
@@ -469,9 +471,9 @@ public class DmodeDungeonService(
                 continue;
 
             AtgenDmodeEnemy enemy = enemies[i];
-            int dmodeEnemyParamGroupId = MasterAsset.EnemyParam[
-                enemy.param_id
-            ].DmodeEnemyParamGroupId;
+            int dmodeEnemyParamGroupId = MasterAsset
+                .EnemyParam[enemy.param_id]
+                .DmodeEnemyParamGroupId;
 
             if (
                 !MasterAsset.DmodeEnemyParam.TryGetValue(
@@ -636,8 +638,8 @@ public class DmodeDungeonService(
             floorTheme = rdm.Next(floor.AvailableThemes);
         }
 
-        List<DmodeDungeonArea> areas = MasterAsset.DmodeDungeonArea.Enumerable
-            .Where(x => x.ThemeGroupId == floorTheme)
+        List<DmodeDungeonArea> areas = MasterAsset
+            .DmodeDungeonArea.Enumerable.Where(x => x.ThemeGroupId == floorTheme)
             .ToList();
 
         DmodeDungeonArea area = floor.Id is 45 or 50 // Agito bosses
@@ -745,8 +747,10 @@ public class DmodeDungeonService(
                 x => (int)x.dragon_id
             );
 
-            DmodeDungeonItemData[] dragonPool = MasterAsset.DmodeDungeonItemData.Enumerable
-                .Where(x => x.DmodeDungeonItemType == DmodeDungeonItemType.Dragon)
+            DmodeDungeonItemData[] dragonPool = MasterAsset
+                .DmodeDungeonItemData.Enumerable.Where(
+                    x => x.DmodeDungeonItemType == DmodeDungeonItemType.Dragon
+                )
                 .ExceptBy(alreadyOwnedDragonIds, x => x.Id)
                 .ToArray();
 
@@ -817,8 +821,8 @@ public class DmodeDungeonService(
     private DmodeDungeonItemList GenerateDungeonSkill()
     {
         DmodeDungeonItemData itemData = rdm.Next(
-            MasterAsset.DmodeDungeonItemData.Enumerable
-                .Where(
+            MasterAsset
+                .DmodeDungeonItemData.Enumerable.Where(
                     x =>
                         x.DmodeDungeonItemType == DmodeDungeonItemType.Skill
                         && DmodeHelper.AllowedSkillIds.Contains(x.Id)
@@ -835,8 +839,8 @@ public class DmodeDungeonService(
     private DmodeDungeonItemList GenerateDungeonWeapon(int rarity, WeaponTypes weaponType)
     {
         DmodeWeapon weapon = rdm.Next(
-            MasterAsset.DmodeDungeonItemData.Enumerable
-                .Where(
+            MasterAsset
+                .DmodeDungeonItemData.Enumerable.Where(
                     x => x.Rarity == rarity && x.DmodeDungeonItemType == DmodeDungeonItemType.Weapon
                 )
                 .Select(x => MasterAsset.DmodeWeapon[x.Id])
@@ -860,8 +864,8 @@ public class DmodeDungeonService(
     private DmodeDungeonItemList GenerateDungeonAbilityCrest(int rarity)
     {
         DmodeDungeonItemData itemData = rdm.Next(
-            MasterAsset.DmodeDungeonItemData.Enumerable
-                .Where(
+            MasterAsset
+                .DmodeDungeonItemData.Enumerable.Where(
                     x =>
                         x.Rarity == rarity
                         && x.DmodeDungeonItemType == DmodeDungeonItemType.AbilityCrest
@@ -894,8 +898,10 @@ public class DmodeDungeonService(
         if (strengthParamGroupId != 0)
         {
             DmodeStrengthParam param = rdm.Next(
-                MasterAsset.DmodeStrengthParam.Enumerable
-                    .Where(x => x.StrengthParamGroupId == strengthParamGroupId)
+                MasterAsset
+                    .DmodeStrengthParam.Enumerable.Where(
+                        x => x.StrengthParamGroupId == strengthParamGroupId
+                    )
                     .ToArray()
             );
 
@@ -905,8 +911,10 @@ public class DmodeDungeonService(
         if (strengthSkillGroupId != 0 && rdm.Next(100) > 50)
         {
             DmodeStrengthSkill skill = rdm.Next(
-                MasterAsset.DmodeStrengthSkill.Enumerable
-                    .Where(x => x.StrengthSkillGroupId == strengthSkillGroupId && x.SkillId != 0)
+                MasterAsset
+                    .DmodeStrengthSkill.Enumerable.Where(
+                        x => x.StrengthSkillGroupId == strengthSkillGroupId && x.SkillId != 0
+                    )
                     .ToArray()
             );
 
@@ -916,8 +924,8 @@ public class DmodeDungeonService(
         if (strengthAbilityGroupId != 0 && rdm.Next(100) > 50)
         {
             DmodeStrengthAbility ability = rdm.Next(
-                MasterAsset.DmodeStrengthAbility.Enumerable
-                    .Where(
+                MasterAsset
+                    .DmodeStrengthAbility.Enumerable.Where(
                         x => x.StrengthAbilityGroupId == strengthAbilityGroupId && x.AbilityId != 0
                     )
                     .ToArray()

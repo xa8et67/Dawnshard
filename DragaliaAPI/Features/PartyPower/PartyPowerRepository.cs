@@ -13,9 +13,9 @@ public class PartyPowerRepository(
 {
     public async Task<DbPartyPower> GetPartyPowerAsync()
     {
-        return await apiContext.PartyPowers.FindAsync(playerIdentityService.AccountId)
-            ?? apiContext.PartyPowers
-                .Add(new DbPartyPower { DeviceAccountId = playerIdentityService.AccountId })
+        return await apiContext.PartyPowers.FindAsync(playerIdentityService.ViewerId)
+            ?? apiContext
+                .PartyPowers.Add(new DbPartyPower { ViewerId = playerIdentityService.ViewerId })
                 .Entity;
     }
 

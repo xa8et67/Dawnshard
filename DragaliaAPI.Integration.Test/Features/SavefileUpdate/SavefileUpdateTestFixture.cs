@@ -14,15 +14,23 @@ public abstract class SavefileUpdateTestFixture : TestFixture
     )
         : base(factory, outputHelper)
     {
-        this.ApiContext.Players.ExecuteUpdate(u => u.SetProperty(e => e.SavefileVersion, 0));
-        this.MaxVersion = this.Services
-            .GetServices<ISavefileUpdate>()
+        this.MaxVersion = this.Services.GetServices<ISavefileUpdate>()
             .MaxBy(x => x.SavefileVersion)!
             .SavefileVersion;
     }
 
-    public int GetSavefileVersion()
+    protected int GetSavefileVersion()
     {
-        return this.ApiContext.Players.Find(DeviceAccountId)!.SavefileVersion;
+        return this.ApiContext.Players.Find(ViewerId)!.SavefileVersion;
     }
+
+    protected async Task LoadIndex()
+    {
+        await this.Client.PostMsgpack<LoadIndexData>("load/index", new LoadIndexRequest());
+    }
+
+    protected override async Task Setup() =>
+        await this.ApiContext.Players.ExecuteUpdateAsync(
+            u => u.SetProperty(e => e.SavefileVersion, 0)
+        );
 }

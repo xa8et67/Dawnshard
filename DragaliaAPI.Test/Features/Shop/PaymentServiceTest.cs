@@ -3,10 +3,8 @@ using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Dmode;
 using DragaliaAPI.Features.Event;
 using DragaliaAPI.Features.Item;
-using DragaliaAPI.Features.Player;
 using DragaliaAPI.Features.Shop;
 using DragaliaAPI.Features.Tickets;
-using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
@@ -58,7 +56,7 @@ public class PaymentServiceTest
         DbPlayerUserData userData =
             new()
             {
-                DeviceAccountId = IdentityTestUtils.DeviceAccountId,
+                ViewerId = IdentityTestUtils.ViewerId,
                 BuildTimePoint = type == PaymentTypes.HalidomHustleHammer ? total : 0,
                 Coin = type == PaymentTypes.Coin ? total : 0,
                 Crystal = type == PaymentTypes.Wyrmite ? total : 0,
@@ -69,8 +67,8 @@ public class PaymentServiceTest
 
         await this.paymentService.ProcessPayment(type, new PaymentTarget(total, cost), cost);
 
-        userData.BuildTimePoint
-            .Should()
+        userData
+            .BuildTimePoint.Should()
             .Be(type == PaymentTypes.HalidomHustleHammer ? total - cost : 0);
         userData.Coin.Should().Be(type == PaymentTypes.Coin ? total - cost : 0);
         userData.Crystal.Should().Be(type == PaymentTypes.Wyrmite ? total - cost : 0);
@@ -93,7 +91,7 @@ public class PaymentServiceTest
         DbPlayerUserData userData =
             new()
             {
-                DeviceAccountId = IdentityTestUtils.DeviceAccountId,
+                ViewerId = IdentityTestUtils.ViewerId,
                 BuildTimePoint = type == PaymentTypes.HalidomHustleHammer ? total : 0,
                 Coin = type == PaymentTypes.Coin ? total : 0,
                 Crystal = type == PaymentTypes.Wyrmite ? total : 0,
@@ -104,8 +102,8 @@ public class PaymentServiceTest
 
         await this.paymentService.ProcessPayment(type, null, cost);
 
-        userData.BuildTimePoint
-            .Should()
+        userData
+            .BuildTimePoint.Should()
             .Be(type == PaymentTypes.HalidomHustleHammer ? total - cost : 0);
         userData.Coin.Should().Be(type == PaymentTypes.Coin ? total - cost : 0);
         userData.Crystal.Should().Be(type == PaymentTypes.Wyrmite ? total - cost : 0);
@@ -128,7 +126,7 @@ public class PaymentServiceTest
         DbPlayerUserData userData =
             new()
             {
-                DeviceAccountId = IdentityTestUtils.DeviceAccountId,
+                ViewerId = IdentityTestUtils.ViewerId,
                 BuildTimePoint = type == PaymentTypes.HalidomHustleHammer ? total : 0,
                 Coin = type == PaymentTypes.Coin ? total : 0,
                 Crystal = type == PaymentTypes.Wyrmite ? total : 0,
@@ -137,8 +135,9 @@ public class PaymentServiceTest
 
         this.mockUserDataRepository.SetupUserData(userData);
 
-        await this.paymentService
-            .Invoking(x => x.ProcessPayment(type, new PaymentTarget(total, cost)))
+        await this.paymentService.Invoking(
+            x => x.ProcessPayment(type, new PaymentTarget(total, cost))
+        )
             .Should()
             .ThrowAsync<DragaliaException>()
             .Where(x => x.Code == ResultCode.CommonMaterialShort);
@@ -160,7 +159,7 @@ public class PaymentServiceTest
         DbPlayerUserData userData =
             new()
             {
-                DeviceAccountId = IdentityTestUtils.DeviceAccountId,
+                ViewerId = IdentityTestUtils.ViewerId,
                 BuildTimePoint = type == PaymentTypes.HalidomHustleHammer ? total : 0,
                 Coin = type == PaymentTypes.Coin ? total : 0,
                 Crystal = type == PaymentTypes.Wyrmite ? total : 0,
@@ -169,8 +168,7 @@ public class PaymentServiceTest
 
         this.mockUserDataRepository.SetupUserData(userData);
 
-        await this.paymentService
-            .Invoking(x => x.ProcessPayment(type, null, cost))
+        await this.paymentService.Invoking(x => x.ProcessPayment(type, null, cost))
             .Should()
             .ThrowAsync<DragaliaException>()
             .Where(x => x.Code == ResultCode.CommonMaterialShort);

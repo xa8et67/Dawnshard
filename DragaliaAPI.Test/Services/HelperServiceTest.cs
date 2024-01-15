@@ -1,7 +1,6 @@
 ﻿using AutoMapper;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Dungeon;
-using DragaliaAPI.Features.Dungeon.Record;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
 using DragaliaAPI.Services.Game;
@@ -42,12 +41,12 @@ public class HelperServiceTest
     [Fact]
     public void BuildHelperDataContainsCorrectInformationWhenFriended()
     {
-        UserSupportList? helperInfo = StubData.HelperList.support_user_list
-            .Where(helper => helper.viewer_id == 1000)
+        UserSupportList? helperInfo = StubData
+            .HelperList.support_user_list.Where(helper => helper.viewer_id == 1000)
             .FirstOrDefault();
 
-        AtgenSupportUserDetailList? helperDetails = StubData.HelperList.support_user_detail_list
-            .Where(helper => helper.viewer_id == 1000)
+        AtgenSupportUserDetailList? helperDetails = StubData
+            .HelperList.support_user_detail_list.Where(helper => helper.viewer_id == 1000)
             .FirstOrDefault();
 
         AtgenSupportData supportData = this.helperService.BuildHelperData(
@@ -59,35 +58,35 @@ public class HelperServiceTest
         supportData.name.Should().BeEquivalentTo("Euden");
         supportData.is_friend.Should().Be(true);
         supportData.chara_data.Should().BeEquivalentTo(TestData.supportListEuden.support_chara);
-        supportData.dragon_data
-            .Should()
+        supportData
+            .dragon_data.Should()
             .BeEquivalentTo(
                 TestData.supportListEuden.support_dragon,
                 o => o.Excluding(x => x.hp).Excluding(x => x.attack)
             );
-        supportData.weapon_body_data
-            .Should()
+        supportData
+            .weapon_body_data.Should()
             .BeEquivalentTo(TestData.supportListEuden.support_weapon_body);
-        supportData.crest_slot_type_1_crest_list
-            .Should()
+        supportData
+            .crest_slot_type_1_crest_list.Should()
             .BeEquivalentTo(TestData.supportListEuden.support_crest_slot_type_1_list);
-        supportData.crest_slot_type_2_crest_list
-            .Should()
+        supportData
+            .crest_slot_type_2_crest_list.Should()
             .BeEquivalentTo(TestData.supportListEuden.support_crest_slot_type_2_list);
-        supportData.crest_slot_type_3_crest_list
-            .Should()
+        supportData
+            .crest_slot_type_3_crest_list.Should()
             .BeEquivalentTo(TestData.supportListEuden.support_crest_slot_type_3_list);
     }
 
     [Fact]
     public void BuildHelperDataContainsCorrectInformationWhenNotFriended()
     {
-        UserSupportList? helperInfo = StubData.HelperList.support_user_list
-            .Where(helper => helper.viewer_id == 1001)
+        UserSupportList? helperInfo = StubData
+            .HelperList.support_user_list.Where(helper => helper.viewer_id == 1001)
             .FirstOrDefault();
 
-        AtgenSupportUserDetailList? helperDetails = StubData.HelperList.support_user_detail_list
-            .Where(helper => helper.viewer_id == 1001)
+        AtgenSupportUserDetailList? helperDetails = StubData
+            .HelperList.support_user_detail_list.Where(helper => helper.viewer_id == 1001)
             .FirstOrDefault();
 
         AtgenSupportData supportData = this.helperService.BuildHelperData(
@@ -99,23 +98,23 @@ public class HelperServiceTest
         supportData.name.Should().BeEquivalentTo("Elisanne");
         supportData.is_friend.Should().Be(false);
         supportData.chara_data.Should().BeEquivalentTo(TestData.supportListElisanne.support_chara);
-        supportData.dragon_data
-            .Should()
+        supportData
+            .dragon_data.Should()
             .BeEquivalentTo(
                 TestData.supportListElisanne.support_dragon,
                 o => o.Excluding(x => x.hp).Excluding(x => x.attack)
             );
-        supportData.weapon_body_data
-            .Should()
+        supportData
+            .weapon_body_data.Should()
             .BeEquivalentTo(TestData.supportListElisanne.support_weapon_body);
-        supportData.crest_slot_type_1_crest_list
-            .Should()
+        supportData
+            .crest_slot_type_1_crest_list.Should()
             .BeEquivalentTo(TestData.supportListElisanne.support_crest_slot_type_1_list);
-        supportData.crest_slot_type_2_crest_list
-            .Should()
+        supportData
+            .crest_slot_type_2_crest_list.Should()
             .BeEquivalentTo(TestData.supportListElisanne.support_crest_slot_type_2_list);
-        supportData.crest_slot_type_3_crest_list
-            .Should()
+        supportData
+            .crest_slot_type_3_crest_list.Should()
             .BeEquivalentTo(TestData.supportListElisanne.support_crest_slot_type_3_list);
     }
 

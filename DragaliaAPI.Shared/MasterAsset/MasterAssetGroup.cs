@@ -1,10 +1,10 @@
 ﻿using System.Collections.Immutable;
-using DragaliaAPI.Shared.Json;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text.Json;
+using DragaliaAPI.Shared.Json;
 
 namespace DragaliaAPI.Shared.MasterAsset;
 

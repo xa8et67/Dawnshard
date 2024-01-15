@@ -1,4 +1,5 @@
-﻿using DragaliaAPI.Database.Entities;
+﻿using System.Collections.Immutable;
+using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models;
@@ -15,6 +16,14 @@ public class WeaponRepository : IWeaponRepository
     private readonly IPlayerIdentityService playerIdentityService;
     private readonly ILogger<WeaponRepository> logger;
 
+    private static readonly ImmutableArray<int> AstralsBaneAbilityIds = ImmutableArray.Create(
+        595,
+        596,
+        597,
+        598,
+        599
+    );
+
     public WeaponRepository(
         ApiContext apiContext,
         IPlayerIdentityService playerIdentityService,
@@ -27,31 +36,32 @@ public class WeaponRepository : IWeaponRepository
     }
 
     public IQueryable<DbWeaponBody> WeaponBodies =>
-        this.apiContext.PlayerWeapons.Where(
-            x => x.DeviceAccountId == this.playerIdentityService.AccountId
-        );
+        this.apiContext.PlayerWeapons.Where(x => x.ViewerId == this.playerIdentityService.ViewerId);
 
     public IQueryable<DbWeaponSkin> WeaponSkins =>
         this.apiContext.PlayerWeaponSkins.Where(
-            x => x.DeviceAccountId == this.playerIdentityService.AccountId
+            x => x.ViewerId == this.playerIdentityService.ViewerId
         );
 
     public IQueryable<DbWeaponPassiveAbility> WeaponPassiveAbilities =>
         this.apiContext.PlayerPassiveAbilities.Where(
-            x => x.DeviceAccountId == this.playerIdentityService.AccountId
+            x => x.ViewerId == this.playerIdentityService.ViewerId
         );
 
     public IQueryable<DbWeaponPassiveAbility> GetPassiveAbilities(WeaponBodies id)
     {
         WeaponBody data = MasterAsset.WeaponBody.Get(id);
 
-        IEnumerable<int> searchIds = MasterAsset.WeaponPassiveAbility.Enumerable
-            .Where(x => x.WeaponType == data.WeaponType && x.ElementalType == data.ElementalType)
+        IEnumerable<int> searchIds = MasterAsset
+            .WeaponPassiveAbility.Enumerable.Where(
+                x => x.WeaponType == data.WeaponType && x.ElementalType == data.ElementalType
+            )
+            .ExceptBy(AstralsBaneAbilityIds, x => x.AbilityId) // Sending astral abilities in the list breaks scorch res. Don't ask me why.
             .Select(x => x.Id);
 
         return this.apiContext.PlayerPassiveAbilities.Where(
             x =>
-                x.DeviceAccountId == this.playerIdentityService.AccountId
+                x.ViewerId == this.playerIdentityService.ViewerId
                 && searchIds.Contains(x.WeaponPassiveAbilityId)
         );
     }
@@ -63,7 +73,7 @@ public class WeaponRepository : IWeaponRepository
         await this.apiContext.PlayerWeapons.AddAsync(
             new DbWeaponBody()
             {
-                DeviceAccountId = this.playerIdentityService.AccountId,
+                ViewerId = this.playerIdentityService.ViewerId,
                 WeaponBodyId = weaponBodyId
             }
         );
@@ -75,7 +85,7 @@ public class WeaponRepository : IWeaponRepository
 
         if (
             await this.apiContext.PlayerWeaponSkins.FindAsync(
-                this.playerIdentityService.AccountId,
+                this.playerIdentityService.ViewerId,
                 weaponSkinId
             )
             is not null
@@ -88,7 +98,7 @@ public class WeaponRepository : IWeaponRepository
         await this.apiContext.PlayerWeaponSkins.AddAsync(
             new DbWeaponSkin()
             {
-                DeviceAccountId = this.playerIdentityService.AccountId,
+                ViewerId = this.playerIdentityService.ViewerId,
                 WeaponSkinId = weaponSkinId,
                 GetTime = DateTimeOffset.UtcNow
             }
@@ -100,34 +110,38 @@ public class WeaponRepository : IWeaponRepository
         List<WeaponBodies> filtered = weaponIds.Where(x => x != WeaponBodiesEnum.Empty).ToList();
 
         return (
-                await this.WeaponBodies
-                    .Select(x => x.WeaponBodyId)
+                await this.WeaponBodies.Select(x => x.WeaponBodyId)
                     .Where(x => filtered.Contains(x))
                     .CountAsync()
             ) == filtered.Count;
     }
 
     public async Task<DbWeaponBody?> FindAsync(WeaponBodies id) =>
-        await this.apiContext.PlayerWeapons.FindAsync(this.playerIdentityService.AccountId, id);
+        await this.apiContext.PlayerWeapons.FindAsync(this.playerIdentityService.ViewerId, id);
 
     public async Task AddPassiveAbility(WeaponBodies id, WeaponPassiveAbility passiveAbility)
     {
-        this.logger.LogDebug(
-            "Unlocking passive ability no {no}",
-            passiveAbility.WeaponPassiveAbilityNo
-        );
+        this.logger.LogDebug("Unlocking passive ability {@ability}", passiveAbility);
 
         DbWeaponBody? entity = await this.FindAsync(id);
         ArgumentNullException.ThrowIfNull(entity);
 
-        List<int> passiveList = entity.UnlockWeaponPassiveAbilityNoList.ToList();
-        passiveList[passiveAbility.WeaponPassiveAbilityNo - 1] = 1;
-        entity.UnlockWeaponPassiveAbilityNoList = passiveList;
+        entity.UnlockWeaponPassiveAbilityNoList[passiveAbility.WeaponPassiveAbilityNo - 1] = 1;
+
+        if (
+            await this.WeaponPassiveAbilities.AnyAsync(
+                x => x.WeaponPassiveAbilityId == passiveAbility.Id
+            )
+        )
+        {
+            this.logger.LogDebug("Passive was already owned.");
+            return;
+        }
 
         await this.apiContext.PlayerPassiveAbilities.AddAsync(
             new()
             {
-                DeviceAccountId = this.playerIdentityService.AccountId,
+                ViewerId = this.playerIdentityService.ViewerId,
                 WeaponPassiveAbilityId = passiveAbility.Id
             }
         );

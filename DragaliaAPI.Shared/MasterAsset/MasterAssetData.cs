@@ -1,4 +1,6 @@
-﻿using System.Collections.ObjectModel;
+﻿using System.Collections.Frozen;
+using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text.Json;
@@ -26,12 +28,17 @@ public class MasterAssetData<TKey, TItem>
 
     private readonly string jsonFilename;
     private readonly Func<TItem, TKey> keySelector;
-    private readonly Lazy<InternalKeyedCollection> internalKeyCollection;
+    private readonly FrozenKeyedCollection internalKeyCollection;
 
     /// <summary>
     /// Gets a <see cref="IEnumerable{TItem}"/> of all the collection's values.
     /// </summary>
-    public IEnumerable<TItem> Enumerable => this.internalKeyCollection.Value.AsEnumerable();
+    public IEnumerable<TItem> Enumerable => this.internalKeyCollection.Items;
+
+    /// <summary>
+    /// Gets the number of items in the collection.
+    /// </summary>
+    public int Count => this.internalKeyCollection.Items.Length;
 
     /// <summary>
     /// Get a <typeparam name="TItem"> instance corresponding to the given <typeparam name="TKey"/> key.</typeparam>
@@ -58,7 +65,7 @@ public class MasterAssetData<TKey, TItem>
     /// <param name="key">The key to index with.</param>
     /// <returns>The returned value.</returns>
     /// <exception cref="KeyNotFoundException">The given key was not present in the collection.</exception>
-    public TItem this[TKey key] => this.internalKeyCollection.Value[key];
+    public TItem this[TKey key] => this.internalKeyCollection[key];
 
     /// <summary>
     /// Attempts to get a <typeparam name="TItem"> instance corresponding to the given <typeparam name="TKey"/> key.</typeparam>
@@ -67,7 +74,14 @@ public class MasterAssetData<TKey, TItem>
     /// <param name="item">The returned value, if the master data contained it.</param>
     /// <returns>A bool indicating whether the value was successfully retrieved.</returns>
     public bool TryGetValue(TKey key, [NotNullWhen(true)] out TItem? item) =>
-        this.internalKeyCollection.Value.TryGetValue(key, out item);
+        this.internalKeyCollection.TryGetValue(key, out item);
+
+    /// <summary>
+    /// Checks whether the master data contains the given <paramref name="key"/>.
+    /// </summary>
+    /// <param name="key">The key to check the existence of.</param>
+    /// <returns>A bool indicating whether that key is in the dictionary.</returns>
+    public bool ContainsKey(TKey key) => this.internalKeyCollection.ContainsKey(key);
 
     /// <summary>
     /// Creates a new instance of <see cref="MasterAssetData{TKey,TItem}"/>.
@@ -79,42 +93,44 @@ public class MasterAssetData<TKey, TItem>
     {
         this.jsonFilename = jsonFilename;
         this.keySelector = keySelector;
-        this.internalKeyCollection = new(DataFactory);
+        this.internalKeyCollection = DataFactory();
     }
 
-    private InternalKeyedCollection DataFactory()
+    private FrozenKeyedCollection DataFactory()
     {
-        InternalKeyedCollection result = new(this.keySelector);
         string path = Path.Join(
             Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
             JsonFolder,
             jsonFilename
         );
 
-        IEnumerable<TItem> items =
-            JsonSerializer.Deserialize<IEnumerable<TItem>>(
-                File.ReadAllText(path),
+        using FileStream fs = File.OpenRead(path);
+
+        IReadOnlyCollection<TItem> items =
+            JsonSerializer.Deserialize<IReadOnlyCollection<TItem>>(
+                fs,
                 MasterAssetJsonOptions.Instance
             ) ?? throw new JsonException("Deserialized IEnumerable was null");
 
-        foreach (TItem i in items)
-            result.Add(i);
-
-        return result;
+        return new FrozenKeyedCollection(items, this.keySelector);
     }
 
-    private class InternalKeyedCollection : KeyedCollection<TKey, TItem>
+    private class FrozenKeyedCollection
     {
-        private readonly Func<TItem, TKey> keySelector;
+        public ImmutableArray<TItem> Items { get; }
+        private readonly FrozenDictionary<TKey, TItem> dictionary;
 
-        public InternalKeyedCollection(Func<TItem, TKey> keySelector)
+        public FrozenKeyedCollection(IReadOnlyCollection<TItem> items, Func<TItem, TKey> selector)
         {
-            this.keySelector = keySelector;
+            this.dictionary = items.ToFrozenDictionary(selector, x => x);
+            this.Items = this.dictionary.Values;
         }
 
-        protected override TKey GetKeyForItem(TItem item)
-        {
-            return this.keySelector.Invoke(item);
-        }
+        public TItem this[TKey key] => this.dictionary[key];
+
+        public bool TryGetValue(TKey key, [NotNullWhen(true)] out TItem? item) =>
+            this.dictionary.TryGetValue(key, out item);
+
+        public bool ContainsKey(TKey key) => this.dictionary.ContainsKey(key);
     }
 }

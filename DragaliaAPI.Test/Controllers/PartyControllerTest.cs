@@ -1,12 +1,11 @@
 using AutoMapper;
 using DragaliaAPI.Controllers.Dragalia;
 using DragaliaAPI.Database.Repositories;
-using DragaliaAPI.Features.PartyPower;
 using DragaliaAPI.Features.Missions;
+using DragaliaAPI.Features.PartyPower;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
 using Microsoft.Extensions.Logging;
-using static DragaliaAPI.Test.UnitTestUtils;
 
 namespace DragaliaAPI.Test.Controllers;
 
@@ -51,8 +50,7 @@ public class PartyControllerTest
     [Fact]
     public async Task UpdatePartyName_CallsPartyRepository()
     {
-        this.mockPartyRepository
-            .Setup(x => x.UpdatePartyName(1, "Z Team"))
+        this.mockPartyRepository.Setup(x => x.UpdatePartyName(1, "Z Team"))
             .Returns(Task.CompletedTask);
 
         UpdateDataList updateDataList =

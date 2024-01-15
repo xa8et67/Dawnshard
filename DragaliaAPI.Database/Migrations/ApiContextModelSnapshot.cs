@@ -17,7 +17,7 @@ namespace DragaliaAPI.Database.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "7.0.5")
+                .HasAnnotation("ProductVersion", "8.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -42,8 +42,8 @@ namespace DragaliaAPI.Database.Migrations
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbAbilityCrest", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("AbilityCrestId")
                         .HasColumnType("integer");
@@ -72,17 +72,15 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<int>("LimitBreakCount")
                         .HasColumnType("integer");
 
-                    b.HasKey("DeviceAccountId", "AbilityCrestId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "AbilityCrestId");
 
                     b.ToTable("PlayerAbilityCrests");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbAbilityCrestSet", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("AbilityCrestSetNo")
                         .HasColumnType("integer");
@@ -115,11 +113,34 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<decimal>("TalismanKeyId")
                         .HasColumnType("numeric(20,0)");
 
-                    b.HasKey("DeviceAccountId", "AbilityCrestSetNo");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "AbilityCrestSetNo");
 
                     b.ToTable("PlayerAbilityCrestSets");
+                });
+
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbCompletedDailyMission", b =>
+                {
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Progress")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("ViewerId", "Id", "Date");
+
+                    b.ToTable("CompletedDailyMissions");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbDeviceAccount", b =>
@@ -138,8 +159,8 @@ namespace DragaliaAPI.Database.Migrations
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbEmblem", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("EmblemId")
                         .HasColumnType("integer")
@@ -153,17 +174,15 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("IsNew");
 
-                    b.HasKey("DeviceAccountId", "EmblemId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "EmblemId");
 
                     b.ToTable("Emblems");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbEquippedStamp", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("Slot")
                         .HasColumnType("integer");
@@ -171,9 +190,7 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<int>("StampId")
                         .HasColumnType("integer");
 
-                    b.HasKey("DeviceAccountId", "Slot");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "Slot");
 
                     b.ToTable("EquippedStamps");
                 });
@@ -191,10 +208,6 @@ namespace DragaliaAPI.Database.Migrations
 
                     b.Property<DateTimeOffset>("BuildStartDate")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DeviceAccountId")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<bool>("IsNew")
                         .HasColumnType("boolean");
@@ -214,34 +227,34 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<int>("PositionZ")
                         .HasColumnType("integer");
 
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
+
                     b.HasKey("BuildId");
 
-                    b.HasIndex("DeviceAccountId");
+                    b.HasIndex("ViewerId");
 
                     b.ToTable("PlayerFortBuilds");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbFortDetail", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("CarpenterNum")
                         .HasColumnType("integer")
                         .HasColumnName("CarpenterNum");
 
-                    b.HasKey("DeviceAccountId");
-
-                    b.HasIndex("DeviceAccountId")
-                        .IsUnique();
+                    b.HasKey("ViewerId");
 
                     b.ToTable("PlayerFortDetail");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbLoginBonus", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("Id")
                         .HasColumnType("integer");
@@ -252,7 +265,7 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<bool>("IsComplete")
                         .HasColumnType("boolean");
 
-                    b.HasKey("DeviceAccountId", "Id");
+                    b.HasKey("ViewerId", "Id");
 
                     b.ToTable("LoginBonuses");
                 });
@@ -283,8 +296,8 @@ namespace DragaliaAPI.Database.Migrations
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbParty", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("PartyNo")
                         .HasColumnType("integer");
@@ -294,23 +307,21 @@ namespace DragaliaAPI.Database.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.HasKey("DeviceAccountId", "PartyNo");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "PartyNo");
 
                     b.ToTable("PartyData");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPartyPower", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("MaxPartyPower")
                         .HasColumnType("integer")
                         .HasColumnName("MaxPartyPower");
 
-                    b.HasKey("DeviceAccountId");
+                    b.HasKey("ViewerId");
 
                     b.ToTable("PartyPowers");
                 });
@@ -322,10 +333,6 @@ namespace DragaliaAPI.Database.Migrations
 
                     b.Property<int>("CharaId")
                         .HasColumnType("integer");
-
-                    b.Property<string>("DeviceAccountId")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<int>("EditSkill1CharaId")
                         .HasColumnType("integer");
@@ -372,32 +379,43 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<int>("UnitNo")
                         .HasColumnType("integer");
 
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("DeviceAccountId");
-
-                    b.HasIndex("DeviceAccountId", "PartyNo");
+                    b.HasIndex("ViewerId", "PartyNo");
 
                     b.ToTable("PlayerPartyUnits");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayer", b =>
                 {
+                    b.Property<long>("ViewerId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("ViewerId"));
+
                     b.Property<string>("AccountId")
-                        .HasColumnType("text");
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
 
                     b.Property<int>("SavefileVersion")
                         .HasColumnType("integer");
 
-                    b.HasKey("AccountId");
+                    b.HasKey("ViewerId");
+
+                    b.HasIndex("AccountId");
 
                     b.ToTable("Players");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerBannerData", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("SummonBannerId")
                         .HasColumnType("integer")
@@ -443,17 +461,15 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("SummonPoints");
 
-                    b.HasKey("DeviceAccountId", "SummonBannerId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "SummonBannerId");
 
                     b.ToTable("PlayerBannerData");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerCharaData", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("CharaId")
                         .HasColumnType("integer")
@@ -555,37 +571,15 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("smallint")
                         .HasColumnName("Skill2Lvl");
 
-                    b.HasKey("DeviceAccountId", "CharaId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "CharaId");
 
                     b.ToTable("PlayerCharaData");
                 });
 
-            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerCurrency", b =>
-                {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
-
-                    b.Property<int>("CurrencyType")
-                        .HasColumnType("integer")
-                        .HasColumnName("CurrencyType");
-
-                    b.Property<long>("Quantity")
-                        .HasColumnType("bigint")
-                        .HasColumnName("Quantity");
-
-                    b.HasKey("DeviceAccountId", "CurrencyType");
-
-                    b.HasIndex("DeviceAccountId");
-
-                    b.ToTable("PlayerCurrency");
-                });
-
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerDmodeChara", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("CharaId")
                         .HasColumnType("integer")
@@ -615,17 +609,15 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("SelectedServitorId");
 
-                    b.HasKey("DeviceAccountId", "CharaId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "CharaId");
 
                     b.ToTable("PlayerDmodeCharas");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerDmodeDungeon", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("CharaId")
                         .HasColumnType("integer")
@@ -651,15 +643,15 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("State");
 
-                    b.HasKey("DeviceAccountId");
+                    b.HasKey("ViewerId");
 
                     b.ToTable("PlayerDmodeDungeons");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerDmodeExpedition", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("CharaId1")
                         .HasColumnType("integer")
@@ -689,15 +681,15 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("TargetFloor");
 
-                    b.HasKey("DeviceAccountId");
+                    b.HasKey("ViewerId");
 
                     b.ToTable("PlayerDmodeExpeditions");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerDmodeInfo", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("FloorSkipCount")
                         .HasColumnType("integer")
@@ -723,15 +715,15 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("RecoveryTime");
 
-                    b.HasKey("DeviceAccountId");
+                    b.HasKey("ViewerId");
 
                     b.ToTable("PlayerDmodeInfos");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerDmodeServitorPassive", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("PassiveId")
                         .HasColumnType("integer")
@@ -741,9 +733,7 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("Level");
 
-                    b.HasKey("DeviceAccountId", "PassiveId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "PassiveId");
 
                     b.ToTable("PlayerDmodeServitorPassives");
                 });
@@ -768,10 +758,6 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<byte>("AttackPlusCount")
                         .HasColumnType("smallint")
                         .HasColumnName("AttackPlusCount");
-
-                    b.Property<string>("DeviceAccountId")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<int>("DragonId")
                         .HasColumnType("integer")
@@ -809,18 +795,20 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("smallint")
                         .HasColumnName("Skill1Level");
 
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
+
                     b.HasKey("DragonKeyId");
 
-                    b.HasIndex("DeviceAccountId");
+                    b.HasIndex("ViewerId");
 
                     b.ToTable("PlayerDragonData");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerDragonGift", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text")
-                        .HasColumnName("DeviceAccountId");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("DragonGiftId")
                         .HasColumnType("integer")
@@ -830,17 +818,15 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("Quantity");
 
-                    b.HasKey("DeviceAccountId", "DragonGiftId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "DragonGiftId");
 
                     b.ToTable("PlayerDragonGift");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerDragonReliability", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("DragonId")
                         .HasColumnType("integer")
@@ -861,17 +847,15 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("smallint")
                         .HasColumnName("Level");
 
-                    b.HasKey("DeviceAccountId", "DragonId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "DragonId");
 
                     b.ToTable("PlayerDragonReliability");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerEventData", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("EventId")
                         .HasColumnType("integer")
@@ -881,17 +865,15 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("CustomEventFlag");
 
-                    b.HasKey("DeviceAccountId", "EventId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "EventId");
 
                     b.ToTable("PlayerEventData");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerEventItem", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("Id")
                         .HasColumnType("integer")
@@ -909,17 +891,17 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("Type");
 
-                    b.HasKey("DeviceAccountId", "Id");
+                    b.HasKey("ViewerId", "Id");
 
-                    b.HasIndex("DeviceAccountId", "EventId");
+                    b.HasIndex("ViewerId", "EventId");
 
                     b.ToTable("PlayerEventItems");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerEventPassive", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("EventId")
                         .HasColumnType("integer")
@@ -933,17 +915,15 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("Progress");
 
-                    b.HasKey("DeviceAccountId", "EventId", "PassiveId");
-
-                    b.HasIndex("DeviceAccountId", "EventId");
+                    b.HasKey("ViewerId", "EventId", "PassiveId");
 
                     b.ToTable("PlayerEventPassives");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerEventReward", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("EventId")
                         .HasColumnType("integer")
@@ -953,17 +933,15 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("RewardId");
 
-                    b.HasKey("DeviceAccountId", "EventId", "RewardId");
-
-                    b.HasIndex("DeviceAccountId", "EventId");
+                    b.HasKey("ViewerId", "EventId", "RewardId");
 
                     b.ToTable("PlayerEventRewards");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerMaterial", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("MaterialId")
                         .HasColumnType("integer")
@@ -973,17 +951,15 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("Quantity");
 
-                    b.HasKey("DeviceAccountId", "MaterialId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "MaterialId");
 
                     b.ToTable("PlayerMaterial");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerMission", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("Id")
                         .HasColumnType("integer")
@@ -1017,7 +993,7 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("State");
 
-                    b.HasKey("DeviceAccountId", "Id", "Type");
+                    b.HasKey("ViewerId", "Id", "Type");
 
                     b.ToTable("PlayerMissions");
                 });
@@ -1034,10 +1010,6 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<DateTimeOffset>("CreateTime")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("CreateTime");
-
-                    b.Property<string>("DeviceAccountId")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<int>("EntityId")
                         .HasColumnType("integer")
@@ -1095,9 +1067,12 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("State");
 
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
+
                     b.HasKey("PresentId");
 
-                    b.HasIndex("DeviceAccountId");
+                    b.HasIndex("ViewerId");
 
                     b.ToTable("PlayerPresent");
                 });
@@ -1110,10 +1085,6 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<DateTimeOffset>("CreateTime")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("CreateTime");
-
-                    b.Property<string>("DeviceAccountId")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<int>("EntityId")
                         .HasColumnType("integer")
@@ -1159,17 +1130,39 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("MessageParamValue4");
 
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("DeviceAccountId");
+                    b.HasIndex("ViewerId");
 
                     b.ToTable("PlayerPresentHistory");
                 });
 
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerQuestWall", b =>
+                {
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("WallId")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsStartNextLevel")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("WallLevel")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ViewerId", "WallId");
+
+                    b.ToTable("PlayerQuestWalls");
+                });
+
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerShopInfo", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("DailySummonCount")
                         .HasColumnType("integer");
@@ -1177,15 +1170,15 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<DateTimeOffset>("LastSummonTime")
                         .HasColumnType("timestamp with time zone");
 
-                    b.HasKey("DeviceAccountId");
+                    b.HasKey("ViewerId");
 
                     b.ToTable("PlayerShopInfos");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerShopPurchase", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("GoodsId")
                         .HasColumnType("integer");
@@ -1205,17 +1198,15 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<int>("ShopType")
                         .HasColumnType("integer");
 
-                    b.HasKey("DeviceAccountId", "GoodsId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "GoodsId");
 
                     b.ToTable("PlayerPurchases");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerStoryState", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("StoryType")
                         .HasColumnType("integer")
@@ -1229,9 +1220,7 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("State");
 
-                    b.HasKey("DeviceAccountId", "StoryType", "StoryId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "StoryType", "StoryId");
 
                     b.ToTable("PlayerStoryState");
                 });
@@ -1243,10 +1232,6 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("bigint");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("KeyId"));
-
-                    b.Property<string>("DeviceAccountId")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<int>("EntityAttackPlusCount")
                         .HasColumnType("integer")
@@ -1308,17 +1293,20 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("SummonPrizeRank");
 
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
+
                     b.HasKey("KeyId");
 
-                    b.HasIndex("DeviceAccountId");
+                    b.HasIndex("ViewerId");
 
                     b.ToTable("PlayerSummonHistory");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerTrade", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("Id")
                         .HasColumnType("integer")
@@ -1336,19 +1324,17 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("TradeType");
 
-                    b.HasKey("DeviceAccountId", "Id");
+                    b.HasKey("ViewerId", "Id");
 
-                    b.HasIndex("DeviceAccountId");
-
-                    b.HasIndex("DeviceAccountId", "Type");
+                    b.HasIndex("ViewerId", "Type");
 
                     b.ToTable("PlayerTrades");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerUseItem", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("ItemId")
                         .HasColumnType("integer")
@@ -1358,17 +1344,15 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("Quantity");
 
-                    b.HasKey("DeviceAccountId", "ItemId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "ItemId");
 
                     b.ToTable("PlayerUseItems");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerUserData", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("ActiveMemoryEventId")
                         .HasColumnType("integer");
@@ -1447,24 +1431,15 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<int>("TutorialStatus")
                         .HasColumnType("integer");
 
-                    b.Property<long>("ViewerId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("ViewerId"));
-
-                    b.HasKey("DeviceAccountId");
-
-                    b.HasIndex("DeviceAccountId")
-                        .IsUnique();
+                    b.HasKey("ViewerId");
 
                     b.ToTable("PlayerUserData");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbQuest", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("QuestId")
                         .HasColumnType("integer");
@@ -1502,17 +1477,15 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<int>("WeeklyPlayCount")
                         .HasColumnType("integer");
 
-                    b.HasKey("DeviceAccountId", "QuestId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "QuestId");
 
                     b.ToTable("PlayerQuests");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbQuestClearPartyUnit", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("QuestId")
                         .HasColumnType("integer");
@@ -1571,15 +1544,15 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<int>("EquippedTalismanEntityId")
                         .HasColumnType("integer");
 
-                    b.HasKey("DeviceAccountId", "QuestId", "IsMulti", "UnitNo");
+                    b.HasKey("ViewerId", "QuestId", "IsMulti", "UnitNo");
 
                     b.ToTable("QuestClearPartyUnits");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbQuestEvent", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("QuestEventId")
                         .HasColumnType("integer")
@@ -1621,17 +1594,29 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("WeeklyPlayCount");
 
-                    b.HasKey("DeviceAccountId", "QuestEventId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "QuestEventId");
 
                     b.ToTable("QuestEvents");
                 });
 
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbQuestTreasureList", b =>
+                {
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("QuestTreasureId")
+                        .HasColumnType("integer")
+                        .HasColumnName("QuestTreasureId");
+
+                    b.HasKey("ViewerId", "QuestTreasureId");
+
+                    b.ToTable("QuestTreasureList");
+                });
+
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbReceivedRankingTierReward", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("RewardId")
                         .HasColumnType("integer");
@@ -1639,9 +1624,7 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<int>("QuestId")
                         .HasColumnType("integer");
 
-                    b.HasKey("DeviceAccountId", "RewardId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "RewardId");
 
                     b.HasIndex("QuestId");
 
@@ -1650,8 +1633,8 @@ namespace DragaliaAPI.Database.Migrations
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbSetUnit", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("CharaId")
                         .HasColumnType("integer");
@@ -1693,9 +1676,7 @@ namespace DragaliaAPI.Database.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.HasKey("DeviceAccountId", "CharaId", "UnitSetNo");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "CharaId", "UnitSetNo");
 
                     b.ToTable("PlayerSetUnit");
                 });
@@ -1707,10 +1688,6 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("bigint");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("TicketKeyId"));
-
-                    b.Property<string>("DeviceAccountId")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<DateTimeOffset>("ExpirationTime")
                         .HasColumnType("timestamp with time zone")
@@ -1724,9 +1701,12 @@ namespace DragaliaAPI.Database.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("Type");
 
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
+
                     b.HasKey("TicketKeyId");
 
-                    b.HasIndex("DeviceAccountId");
+                    b.HasIndex("ViewerId");
 
                     b.ToTable("PlayerSummonTickets");
                 });
@@ -1744,10 +1724,6 @@ namespace DragaliaAPI.Database.Migrations
 
                     b.Property<int>("AdditionalHp")
                         .HasColumnType("integer");
-
-                    b.Property<string>("DeviceAccountId")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<DateTimeOffset>("GetTime")
                         .HasColumnType("timestamp with time zone");
@@ -1770,9 +1746,12 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<int>("TalismanId")
                         .HasColumnType("integer");
 
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
+
                     b.HasKey("TalismanKeyId");
 
-                    b.HasIndex("DeviceAccountId");
+                    b.HasIndex("ViewerId");
 
                     b.ToTable("PlayerTalismans");
                 });
@@ -1782,8 +1761,8 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<string>("GameId")
                         .HasColumnType("text");
 
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("UnitNo")
                         .HasColumnType("integer");
@@ -1842,7 +1821,7 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<int>("TalismanAbility2")
                         .HasColumnType("integer");
 
-                    b.HasKey("GameId", "DeviceAccountId", "UnitNo");
+                    b.HasKey("GameId", "ViewerId", "UnitNo");
 
                     b.ToTable("TimeAttackClearUnits");
                 });
@@ -1852,24 +1831,24 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<string>("GameId")
                         .HasColumnType("text");
 
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("PartyInfo")
                         .IsRequired()
                         .HasColumnType("jsonb");
 
-                    b.HasKey("GameId", "DeviceAccountId");
+                    b.HasKey("GameId", "ViewerId");
 
-                    b.HasIndex("DeviceAccountId");
+                    b.HasIndex("ViewerId");
 
                     b.ToTable("TimeAttackPlayers");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbWeaponBody", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("WeaponBodyId")
                         .HasColumnType("integer");
@@ -1904,36 +1883,32 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<int>("LimitOverCount")
                         .HasColumnType("integer");
 
-                    b.Property<string>("UnlockWeaponPassiveAbilityNoString")
+                    b.Property<int[]>("UnlockWeaponPassiveAbilityNoList")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("integer[]");
 
-                    b.HasKey("DeviceAccountId", "WeaponBodyId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "WeaponBodyId");
 
                     b.ToTable("PlayerWeapons");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbWeaponPassiveAbility", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("WeaponPassiveAbilityId")
                         .HasColumnType("integer");
 
-                    b.HasKey("DeviceAccountId", "WeaponPassiveAbilityId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "WeaponPassiveAbilityId");
 
                     b.ToTable("PlayerPassiveAbilities");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbWeaponSkin", b =>
                 {
-                    b.Property<string>("DeviceAccountId")
-                        .HasColumnType("text");
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
 
                     b.Property<int>("WeaponSkinId")
                         .HasColumnType("integer");
@@ -1944,18 +1919,35 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<bool>("IsNew")
                         .HasColumnType("boolean");
 
-                    b.HasKey("DeviceAccountId", "WeaponSkinId");
-
-                    b.HasIndex("DeviceAccountId");
+                    b.HasKey("ViewerId", "WeaponSkinId");
 
                     b.ToTable("PlayerWeaponSkins");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("FriendlyName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Xml")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DataProtectionKeys");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbAbilityCrest", b =>
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("AbilityCrestList")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1966,7 +1958,18 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("AbilityCrestSetList")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbCompletedDailyMission", b =>
+                {
+                    b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
+                        .WithMany()
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1976,8 +1979,8 @@ namespace DragaliaAPI.Database.Migrations
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbEmblem", b =>
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
-                        .WithMany()
-                        .HasForeignKey("DeviceAccountId")
+                        .WithMany("Emblems")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1988,7 +1991,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("EquippedStampList")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1999,7 +2002,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("BuildList")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2010,7 +2013,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithOne("FortDetail")
-                        .HasForeignKey("DragaliaAPI.Database.Entities.DbFortDetail", "DeviceAccountId")
+                        .HasForeignKey("DragaliaAPI.Database.Entities.DbFortDetail", "ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2021,7 +2024,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany()
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2032,7 +2035,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("PartyList")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2043,7 +2046,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithOne("PartyPower")
-                        .HasForeignKey("DragaliaAPI.Database.Entities.DbPartyPower", "DeviceAccountId")
+                        .HasForeignKey("DragaliaAPI.Database.Entities.DbPartyPower", "ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2054,7 +2057,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbParty", "Party")
                         .WithMany("Units")
-                        .HasForeignKey("DeviceAccountId", "PartyNo")
+                        .HasForeignKey("ViewerId", "PartyNo")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2065,7 +2068,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("UserSummonList")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2076,18 +2079,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("CharaList")
-                        .HasForeignKey("DeviceAccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Owner");
-                });
-
-            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerCurrency", b =>
-                {
-                    b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
-                        .WithMany("Currencies")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2098,7 +2090,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("DmodeCharas")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2109,7 +2101,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithOne("DmodeDungeon")
-                        .HasForeignKey("DragaliaAPI.Database.Entities.DbPlayerDmodeDungeon", "DeviceAccountId")
+                        .HasForeignKey("DragaliaAPI.Database.Entities.DbPlayerDmodeDungeon", "ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2120,7 +2112,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithOne("DmodeExpedition")
-                        .HasForeignKey("DragaliaAPI.Database.Entities.DbPlayerDmodeExpedition", "DeviceAccountId")
+                        .HasForeignKey("DragaliaAPI.Database.Entities.DbPlayerDmodeExpedition", "ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2131,7 +2123,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithOne("DmodeInfo")
-                        .HasForeignKey("DragaliaAPI.Database.Entities.DbPlayerDmodeInfo", "DeviceAccountId")
+                        .HasForeignKey("DragaliaAPI.Database.Entities.DbPlayerDmodeInfo", "ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2142,7 +2134,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("DmodeServitorPassives")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2153,7 +2145,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("DragonList")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2164,7 +2156,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("DragonGiftList")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2175,7 +2167,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("DragonReliabilityList")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2186,7 +2178,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany()
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2197,7 +2189,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany()
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2208,7 +2200,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany()
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2219,7 +2211,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany()
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2230,7 +2222,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("MaterialList")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2241,7 +2233,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany()
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2252,7 +2244,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("Presents")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2263,7 +2255,18 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("PresentHistory")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerQuestWall", b =>
+                {
+                    b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
+                        .WithMany("QuestWalls")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2274,7 +2277,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithOne("ShopInfo")
-                        .HasForeignKey("DragaliaAPI.Database.Entities.DbPlayerShopInfo", "DeviceAccountId")
+                        .HasForeignKey("DragaliaAPI.Database.Entities.DbPlayerShopInfo", "ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2285,7 +2288,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany()
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2296,7 +2299,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("StoryStates")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2307,7 +2310,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("SummonHistory")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2317,8 +2320,8 @@ namespace DragaliaAPI.Database.Migrations
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerTrade", b =>
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
-                        .WithMany()
-                        .HasForeignKey("DeviceAccountId")
+                        .WithMany("Trades")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2329,7 +2332,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany()
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2340,7 +2343,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithOne("UserData")
-                        .HasForeignKey("DragaliaAPI.Database.Entities.DbPlayerUserData", "DeviceAccountId")
+                        .HasForeignKey("DragaliaAPI.Database.Entities.DbPlayerUserData", "ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2351,7 +2354,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("QuestList")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2362,7 +2365,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany()
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2373,7 +2376,18 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("QuestEvents")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbQuestTreasureList", b =>
+                {
+                    b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
+                        .WithMany("QuestTreasureList")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2382,20 +2396,20 @@ namespace DragaliaAPI.Database.Migrations
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbReceivedRankingTierReward", b =>
                 {
-                    b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Player")
+                    b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany()
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Player");
+                    b.Navigation("Owner");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbSetUnit", b =>
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("UnitSets")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2405,8 +2419,8 @@ namespace DragaliaAPI.Database.Migrations
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbSummonTicket", b =>
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
-                        .WithMany()
-                        .HasForeignKey("DeviceAccountId")
+                        .WithMany("SummonTickets")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2417,7 +2431,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("TalismanList")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2428,7 +2442,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbTimeAttackPlayer", "Player")
                         .WithMany("Units")
-                        .HasForeignKey("GameId", "DeviceAccountId")
+                        .HasForeignKey("GameId", "ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2437,15 +2451,15 @@ namespace DragaliaAPI.Database.Migrations
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbTimeAttackPlayer", b =>
                 {
-                    b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Player")
-                        .WithMany()
-                        .HasForeignKey("DeviceAccountId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("DragaliaAPI.Database.DbTimeAttackClear", "Clear")
                         .WithMany("Players")
                         .HasForeignKey("GameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Player")
+                        .WithMany()
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2458,7 +2472,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("WeaponBodyList")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2469,7 +2483,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("WeaponPassiveAbilityList")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2480,7 +2494,7 @@ namespace DragaliaAPI.Database.Migrations
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
                         .WithMany("WeaponSkinList")
-                        .HasForeignKey("DeviceAccountId")
+                        .HasForeignKey("ViewerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -2507,8 +2521,6 @@ namespace DragaliaAPI.Database.Migrations
 
                     b.Navigation("CharaList");
 
-                    b.Navigation("Currencies");
-
                     b.Navigation("DmodeCharas");
 
                     b.Navigation("DmodeDungeon");
@@ -2524,6 +2536,8 @@ namespace DragaliaAPI.Database.Migrations
                     b.Navigation("DragonList");
 
                     b.Navigation("DragonReliabilityList");
+
+                    b.Navigation("Emblems");
 
                     b.Navigation("EquippedStampList");
 
@@ -2543,13 +2557,21 @@ namespace DragaliaAPI.Database.Migrations
 
                     b.Navigation("QuestList");
 
+                    b.Navigation("QuestTreasureList");
+
+                    b.Navigation("QuestWalls");
+
                     b.Navigation("ShopInfo");
 
                     b.Navigation("StoryStates");
 
                     b.Navigation("SummonHistory");
 
+                    b.Navigation("SummonTickets");
+
                     b.Navigation("TalismanList");
+
+                    b.Navigation("Trades");
 
                     b.Navigation("UnitSets");
 

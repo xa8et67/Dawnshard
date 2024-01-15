@@ -6,7 +6,7 @@ using DragaliaAPI.Features.Missions;
 using DragaliaAPI.Features.Player;
 using DragaliaAPI.Features.Reward;
 using DragaliaAPI.Features.Shop;
-using DragaliaAPI.Models;
+using DragaliaAPI.Helpers;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Models.Options;
 using DragaliaAPI.Services.Exceptions;
@@ -32,6 +32,9 @@ public class FortServiceTest
     private readonly Mock<IRewardService> mockRewardService;
     private readonly Mock<IOptionsMonitor<DragonfruitConfig>> mockConfig;
     private readonly Mock<IUserService> mockUserService;
+    private readonly Mock<IDateTimeProvider> mockDateTimeProvider;
+
+    private readonly DateTimeOffset FixedTime = DateTimeOffset.UtcNow;
 
     private readonly IFortService fortService;
 
@@ -48,9 +51,9 @@ public class FortServiceTest
         this.mockRewardService = new(MockBehavior.Strict);
         this.mockConfig = new(MockBehavior.Strict);
         this.mockUserService = new(MockBehavior.Strict);
+        this.mockDateTimeProvider = new(MockBehavior.Strict);
 
-        this.mockConfig
-            .SetupGet(x => x.CurrentValue)
+        this.mockConfig.SetupGet(x => x.CurrentValue)
             .Returns(
                 new DragonfruitConfig
                 {
@@ -98,8 +101,11 @@ public class FortServiceTest
             mockPaymentService.Object,
             mockRewardService.Object,
             mockConfig.Object,
-            mockUserService.Object
+            mockUserService.Object,
+            mockDateTimeProvider.Object
         );
+
+        mockDateTimeProvider.SetupGet(x => x.UtcNow).Returns(FixedTime);
 
         UnitTestUtils.ApplyDateTimeAssertionOptions();
     }
@@ -114,7 +120,7 @@ public class FortServiceTest
                 {
                     new()
                     {
-                        DeviceAccountId = "id",
+                        ViewerId = 1,
                         BuildId = 4,
                         BuildEndDate = new(2023, 04, 18, 18, 32, 35, TimeSpan.Zero),
                         BuildStartDate = new(2023, 04, 18, 18, 32, 34, TimeSpan.Zero),
@@ -159,9 +165,7 @@ public class FortServiceTest
     {
         mockFortRepository
             .Setup(x => x.GetFortDetail())
-            .ReturnsAsync(
-                new DbFortDetail() { CarpenterNum = existingCarpenters, DeviceAccountId = "id" }
-            );
+            .ReturnsAsync(new DbFortDetail() { CarpenterNum = existingCarpenters, ViewerId = 1 });
         mockFortRepository.Setup(x => x.GetActiveCarpenters()).ReturnsAsync(0);
         mockFortRepository
             .Setup(x => x.UpdateFortMaximumCarpenter(existingCarpenters + 1))
@@ -186,7 +190,7 @@ public class FortServiceTest
     {
         mockFortRepository
             .Setup(x => x.GetFortDetail())
-            .ReturnsAsync(new DbFortDetail() { CarpenterNum = 5, DeviceAccountId = "id" });
+            .ReturnsAsync(new DbFortDetail() { CarpenterNum = 5, ViewerId = 1 });
         mockFortRepository.Setup(x => x.GetActiveCarpenters()).ReturnsAsync(0);
 
         await fortService
@@ -204,7 +208,7 @@ public class FortServiceTest
     {
         mockFortRepository
             .Setup(x => x.GetFortDetail())
-            .ReturnsAsync(new DbFortDetail() { CarpenterNum = 4, DeviceAccountId = "id" });
+            .ReturnsAsync(new DbFortDetail() { CarpenterNum = 4, ViewerId = 1 });
         mockFortRepository.Setup(x => x.GetActiveCarpenters()).ReturnsAsync(0);
 
         await fortService
@@ -220,14 +224,14 @@ public class FortServiceTest
     [Fact]
     public async Task LevelupAtOnce_UpgradesBuilding()
     {
-        DbPlayerUserData userData = new() { DeviceAccountId = "id", BuildTimePoint = 1 };
+        DbPlayerUserData userData = new() { ViewerId = 1, BuildTimePoint = 1 };
         DbFortBuild build =
             new()
             {
-                DeviceAccountId = "id",
+                ViewerId = 1,
                 Level = 2,
-                BuildStartDate = DateTimeOffset.UtcNow,
-                BuildEndDate = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(5)
+                BuildStartDate = FixedTime,
+                BuildEndDate = FixedTime + TimeSpan.FromSeconds(5)
             };
 
         mockFortMissionProgressionService
@@ -245,6 +249,7 @@ public class FortServiceTest
         mockPaymentService.VerifyAll();
         mockFortMissionProgressionService.VerifyAll();
         mockFortRepository.VerifyAll();
+        mockDateTimeProvider.VerifyAll();
     }
 
     [Fact]
@@ -254,9 +259,9 @@ public class FortServiceTest
             new()
             {
                 BuildId = 1,
-                DeviceAccountId = "id",
-                BuildStartDate = DateTimeOffset.UtcNow,
-                BuildEndDate = DateTimeOffset.UtcNow + TimeSpan.FromDays(1),
+                ViewerId = 1,
+                BuildStartDate = FixedTime,
+                BuildEndDate = FixedTime + TimeSpan.FromDays(1),
                 Level = 2,
             };
         mockFortRepository.Setup(x => x.GetBuilding(1)).ReturnsAsync(build);
@@ -277,9 +282,9 @@ public class FortServiceTest
             new()
             {
                 BuildId = 1,
-                DeviceAccountId = "id",
-                BuildStartDate = DateTimeOffset.UtcNow,
-                BuildEndDate = DateTimeOffset.UtcNow + TimeSpan.FromDays(1),
+                ViewerId = 1,
+                BuildStartDate = FixedTime,
+                BuildEndDate = FixedTime + TimeSpan.FromDays(1),
                 Level = 0,
             };
         mockFortRepository.Setup(x => x.GetBuilding(1)).ReturnsAsync(build);
@@ -297,7 +302,7 @@ public class FortServiceTest
             new()
             {
                 BuildId = 1,
-                DeviceAccountId = "id",
+                ViewerId = 1,
                 BuildStartDate = DateTimeOffset.UnixEpoch,
                 BuildEndDate = DateTimeOffset.UnixEpoch,
                 Level = 3,
@@ -323,9 +328,9 @@ public class FortServiceTest
             new()
             {
                 BuildId = 1,
-                DeviceAccountId = "id",
+                ViewerId = 1,
                 BuildStartDate = DateTimeOffset.UnixEpoch,
-                BuildEndDate = DateTimeOffset.UtcNow - TimeSpan.FromMinutes(1),
+                BuildEndDate = FixedTime - TimeSpan.FromMinutes(1),
                 Level = 2,
             };
         mockFortRepository.Setup(x => x.GetBuilding(1)).ReturnsAsync(build);
@@ -341,6 +346,7 @@ public class FortServiceTest
         build.BuildEndDate.Should().Be(DateTimeOffset.UnixEpoch);
 
         mockFortRepository.VerifyAll();
+        mockDateTimeProvider.VerifyAll();
     }
 
     [Fact]
@@ -350,7 +356,7 @@ public class FortServiceTest
             new()
             {
                 BuildId = 1,
-                DeviceAccountId = "id",
+                ViewerId = 1,
                 BuildStartDate = DateTimeOffset.MinValue,
                 BuildEndDate = DateTimeOffset.MaxValue,
                 Level = 2,
@@ -367,16 +373,17 @@ public class FortServiceTest
         build.BuildEndDate.Should().Be(DateTimeOffset.MaxValue);
 
         mockFortRepository.VerifyAll();
+        mockDateTimeProvider.VerifyAll();
     }
 
     [Fact]
     public async Task BuildStart_StartsBuilding()
     {
-        mockPlayerIdentityService.SetupGet(x => x.AccountId).Returns("id");
+        mockPlayerIdentityService.SetupGet(x => x.ViewerId).Returns(1);
 
         mockFortRepository
             .Setup(x => x.GetFortDetail())
-            .ReturnsAsync(new DbFortDetail() { DeviceAccountId = "id", CarpenterNum = 4 });
+            .ReturnsAsync(new DbFortDetail() { ViewerId = 1, CarpenterNum = 4 });
         mockFortRepository.Setup(x => x.GetActiveCarpenters()).ReturnsAsync(1);
         mockFortRepository
             .Setup(x => x.AddBuild(It.IsAny<DbFortBuild>()))
@@ -388,7 +395,7 @@ public class FortServiceTest
                         .BeEquivalentTo(
                             new DbFortBuild()
                             {
-                                DeviceAccountId = "id",
+                                ViewerId = 1,
                                 PlantId = FortPlants.BlueFlowers,
                                 Level = 0,
                                 PositionX = 2,
@@ -422,7 +429,7 @@ public class FortServiceTest
     {
         mockFortRepository
             .Setup(x => x.GetFortDetail())
-            .ReturnsAsync(new DbFortDetail() { DeviceAccountId = "id", CarpenterNum = 1 });
+            .ReturnsAsync(new DbFortDetail() { ViewerId = 1, CarpenterNum = 1 });
         mockFortRepository.Setup(x => x.GetActiveCarpenters()).ReturnsAsync(1);
 
         await fortService
@@ -442,7 +449,7 @@ public class FortServiceTest
         DbFortBuild build =
             new()
             {
-                DeviceAccountId = "id",
+                ViewerId = 1,
                 Level = 20,
                 PlantId = FortPlants.Dragonata
             };
@@ -453,7 +460,7 @@ public class FortServiceTest
 
         mockFortRepository
             .Setup(x => x.GetFortDetail())
-            .ReturnsAsync(new DbFortDetail() { DeviceAccountId = "id", CarpenterNum = 4 });
+            .ReturnsAsync(new DbFortDetail() { ViewerId = 1, CarpenterNum = 4 });
         mockFortRepository.Setup(x => x.GetActiveCarpenters()).ReturnsAsync(1);
         mockFortRepository.Setup(x => x.GetBuilding(1)).ReturnsAsync(build);
 
@@ -476,17 +483,15 @@ public class FortServiceTest
         await fortService.LevelupStart(1);
 
         build.Level.Should().Be(20);
-        build.BuildStartDate.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(1));
-        build.BuildEndDate
-            .Should()
-            .BeCloseTo(
-                DateTimeOffset.UtcNow + TimeSpan.FromSeconds(21600),
-                TimeSpan.FromSeconds(1)
-            );
+        build.BuildStartDate.Should().BeCloseTo(FixedTime, TimeSpan.FromSeconds(1));
+        build
+            .BuildEndDate.Should()
+            .BeCloseTo(FixedTime + TimeSpan.FromSeconds(21600), TimeSpan.FromSeconds(1));
 
         mockFortRepository.VerifyAll();
         mockInventoryRepository.VerifyAll();
         mockUserDataRepository.VerifyAll();
+        mockDateTimeProvider.VerifyAll();
     }
 
     [Fact]
@@ -495,14 +500,14 @@ public class FortServiceTest
         DbFortBuild build =
             new()
             {
-                DeviceAccountId = "id",
+                ViewerId = 1,
                 Level = 20,
                 PlantId = FortPlants.Dragonata
             };
 
         mockFortRepository
             .Setup(x => x.GetFortDetail())
-            .ReturnsAsync(new DbFortDetail() { DeviceAccountId = "id", CarpenterNum = 1 });
+            .ReturnsAsync(new DbFortDetail() { ViewerId = 1, CarpenterNum = 1 });
         mockFortRepository.Setup(x => x.GetActiveCarpenters()).ReturnsAsync(1);
         mockFortRepository.Setup(x => x.GetBuilding(1)).ReturnsAsync(build);
 
@@ -526,7 +531,7 @@ public class FortServiceTest
         DbFortBuild build =
             new()
             {
-                DeviceAccountId = "id",
+                ViewerId = 1,
                 Level = 20,
                 PlantId = FortPlants.Dragonata,
                 PositionX = 2,
@@ -549,12 +554,12 @@ public class FortServiceTest
         DbFortBuild build =
             new()
             {
-                DeviceAccountId = "wyrmite",
+                ViewerId = 1,
                 BuildId = 444,
                 Level = 5,
                 PlantId = FortPlants.Smithy,
-                BuildStartDate = DateTimeOffset.UtcNow,
-                BuildEndDate = DateTimeOffset.UtcNow + TimeSpan.FromDays(7)
+                BuildStartDate = FixedTime,
+                BuildEndDate = FixedTime + TimeSpan.FromDays(7)
             };
 
         mockFortRepository.Setup(x => x.GetBuilding(444)).ReturnsAsync(build);
@@ -578,6 +583,51 @@ public class FortServiceTest
         mockFortMissionProgressionService.VerifyAll();
         mockPaymentService.VerifyAll();
         mockPlayerIdentityService.VerifyAll();
+        mockDateTimeProvider.VerifyAll();
+    }
+
+    [Fact]
+    public async Task LevelupAtOnce_PartialWyrmite_ConsumesPayment()
+    {
+        DbFortBuild build =
+            new()
+            {
+                ViewerId = 1,
+                BuildId = 445,
+                Level = 5,
+                PlantId = FortPlants.Smithy,
+                BuildStartDate = FixedTime - TimeSpan.FromDays(1),
+                BuildEndDate = FixedTime + TimeSpan.FromDays(6)
+            };
+
+        const int wyrmiteDifference = 24 * 60 / 12;
+
+        mockFortRepository.Setup(x => x.GetBuilding(445)).ReturnsAsync(build);
+        mockPaymentService
+            .Setup(
+                x =>
+                    x.ProcessPayment(
+                        PaymentTypes.Wyrmite,
+                        null,
+                        It.IsInRange(
+                            840 - wyrmiteDifference,
+                            842 - wyrmiteDifference,
+                            Range.Inclusive
+                        )
+                    )
+            )
+            .Returns(Task.CompletedTask);
+
+        mockFortMissionProgressionService
+            .Setup(x => x.OnFortPlantLevelUp(FortPlants.Smithy, 6))
+            .Returns(Task.CompletedTask);
+
+        await fortService.LevelupAtOnce(PaymentTypes.Wyrmite, 445);
+
+        mockFortMissionProgressionService.VerifyAll();
+        mockPaymentService.VerifyAll();
+        mockPlayerIdentityService.VerifyAll();
+        mockDateTimeProvider.VerifyAll();
     }
 
     [Fact]
@@ -586,15 +636,15 @@ public class FortServiceTest
         DbFortBuild build =
             new()
             {
-                DeviceAccountId = "hustler",
-                BuildId = 445,
+                ViewerId = 1,
+                BuildId = 446,
                 Level = 5,
                 PlantId = FortPlants.Smithy,
-                BuildStartDate = DateTimeOffset.UtcNow,
-                BuildEndDate = DateTimeOffset.UtcNow + TimeSpan.FromDays(7)
+                BuildStartDate = FixedTime,
+                BuildEndDate = FixedTime + TimeSpan.FromDays(7)
             };
 
-        mockFortRepository.Setup(x => x.GetBuilding(445)).ReturnsAsync(build);
+        mockFortRepository.Setup(x => x.GetBuilding(446)).ReturnsAsync(build);
         mockPaymentService
             .Setup(x => x.ProcessPayment(PaymentTypes.HalidomHustleHammer, null, 1))
             .Returns(Task.CompletedTask);
@@ -603,9 +653,10 @@ public class FortServiceTest
             .Setup(x => x.OnFortPlantLevelUp(FortPlants.Smithy, 6))
             .Returns(Task.CompletedTask);
 
-        await fortService.LevelupAtOnce(PaymentTypes.HalidomHustleHammer, 445);
+        await fortService.LevelupAtOnce(PaymentTypes.HalidomHustleHammer, 446);
 
         mockFortMissionProgressionService.VerifyAll();
         mockPaymentService.VerifyAll();
+        mockDateTimeProvider.VerifyAll();
     }
 }

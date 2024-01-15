@@ -8,7 +8,7 @@ public class UnitReverseMapProfile : Profile
 {
     public UnitReverseMapProfile()
     {
-        this.AddGlobalIgnore("DeviceAccount");
+        this.AddGlobalIgnore("ViewerId");
         this.AddGlobalIgnore("Owner");
 
         this.CreateMap<DragonList, DbPlayerDragonData>()
@@ -29,8 +29,7 @@ public class UnitReverseMapProfile : Profile
 
         this.CreateMap<AbilityCrestList, DbAbilityCrest>();
 
-        this.CreateMap<WeaponBodyList, DbWeaponBody>()
-            .ForMember(x => x.UnlockWeaponPassiveAbilityNoString, opts => opts.Ignore());
+        this.CreateMap<WeaponBodyList, DbWeaponBody>();
 
         this.CreateMap<PartyList, DbParty>()
             .ForMember(x => x.Units, opts => opts.MapFrom(src => src.party_setting_list));

@@ -1,6 +1,4 @@
 ﻿using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Shared;
-using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,54 +16,53 @@ public class QuestRepository : IQuestRepository
     }
 
     public IQueryable<DbQuest> Quests =>
-        this.apiContext.PlayerQuests.Where(
-            x => x.DeviceAccountId == this.playerIdentityService.AccountId
-        );
+        this.apiContext.PlayerQuests.Where(x => x.ViewerId == this.playerIdentityService.ViewerId);
 
     public IQueryable<DbQuestEvent> QuestEvents =>
-        this.apiContext.QuestEvents.Where(
-            x => x.DeviceAccountId == this.playerIdentityService.AccountId
+        this.apiContext.QuestEvents.Where(x => x.ViewerId == this.playerIdentityService.ViewerId);
+
+    public IQueryable<DbQuestTreasureList> QuestTreasureList =>
+        this.apiContext.QuestTreasureList.Where(
+            x => x.ViewerId == this.playerIdentityService.ViewerId
         );
 
     private async Task<DbQuest?> FindQuestAsync(int questId)
     {
-        return await apiContext.PlayerQuests.FindAsync(playerIdentityService.AccountId, questId);
+        return await apiContext.PlayerQuests.FindAsync(playerIdentityService.ViewerId, questId);
     }
 
     public async Task<DbQuest> GetQuestDataAsync(int questId)
     {
         DbQuest? questData = await FindQuestAsync(questId);
-        questData ??= this.apiContext.PlayerQuests
-            .Add(
-                new DbQuest()
-                {
-                    DeviceAccountId = this.playerIdentityService.AccountId,
-                    QuestId = questId
-                }
-            )
-            .Entity;
+        questData ??= this.apiContext.PlayerQuests.Add(
+            new DbQuest { ViewerId = this.playerIdentityService.ViewerId, QuestId = questId }
+        ).Entity;
         return questData;
     }
 
     private async Task<DbQuestEvent?> FindQuestEventAsync(int questEventId)
     {
-        return await apiContext.QuestEvents.FindAsync(
-            playerIdentityService.AccountId,
-            questEventId
-        );
+        return await apiContext.QuestEvents.FindAsync(playerIdentityService.ViewerId, questEventId);
     }
 
     public async Task<DbQuestEvent> GetQuestEventAsync(int questEventId)
     {
         return await FindQuestEventAsync(questEventId)
-            ?? apiContext.QuestEvents
-                .Add(
+            ?? apiContext
+                .QuestEvents.Add(
                     new DbQuestEvent
                     {
-                        DeviceAccountId = playerIdentityService.AccountId,
+                        ViewerId = playerIdentityService.ViewerId,
                         QuestEventId = questEventId
                     }
                 )
                 .Entity;
+    }
+
+    public async Task DeleteQuests(IEnumerable<int> questIds)
+    {
+        List<DbQuest> questEntities = await this.Quests.Where(x => questIds.Contains(x.QuestId))
+            .ToListAsync();
+        this.apiContext.PlayerQuests.RemoveRange(questEntities);
     }
 }

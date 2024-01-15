@@ -1,6 +1,4 @@
-﻿using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Shared.Definitions.Enums;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Integration.Test.Features.Trade;
 
@@ -35,9 +33,8 @@ public class AbilityCrestTradeTest : TestFixture
             )
         ).data;
 
-        AbilityCrests ability_crest_id = data.update_data_list.ability_crest_list
-            .First()
-            .ability_crest_id;
+        AbilityCrests ability_crest_id =
+            data.update_data_list.ability_crest_list.First().ability_crest_id;
         int dewpoint = data.update_data_list.user_data.dew_point;
 
         ability_crest_id.Should().Be(expected_crest_id);
@@ -46,9 +43,9 @@ public class AbilityCrestTradeTest : TestFixture
 
     private int GetDewpoint()
     {
-        return ApiContext.PlayerUserData
-            .AsNoTracking()
-            .Where(x => x.DeviceAccountId == DeviceAccountId)
+        return ApiContext
+            .PlayerUserData.AsNoTracking()
+            .Where(x => x.ViewerId == ViewerId)
             .Select(x => x.DewPoint)
             .First();
     }

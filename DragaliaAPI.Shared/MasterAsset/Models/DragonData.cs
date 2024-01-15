@@ -1,6 +1,4 @@
-﻿using System.Text.Json.Serialization;
-using DragaliaAPI.Shared.Definitions.Enums;
-using DragaliaAPI.Shared.Json;
+﻿using DragaliaAPI.Shared.Definitions.Enums;
 
 namespace DragaliaAPI.Shared.MasterAsset.Models;
 
@@ -36,7 +34,9 @@ public record DragonData(
     DragonLimitBreakTypes LimitBreakId,
     int FavoriteType,
     int SellCoin,
-    int SellDewPoint
+    int SellDewPoint,
+    int BaseId,
+    int VariationId
 )
 {
     public readonly int[][] Abilities =

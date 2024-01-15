@@ -1,7 +1,4 @@
-﻿using System.Collections.Immutable;
-using System.Text.Json.Serialization;
-using DragaliaAPI.Shared.Definitions.Enums;
-using DragaliaAPI.Shared.Json;
+﻿using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset.Models.ManaCircle;
 
 namespace DragaliaAPI.Shared.MasterAsset.Models;
@@ -87,7 +84,9 @@ public record CharaData(
     int ExAbility2Data5,
     EntityTypes EditReleaseEntityType1,
     int EditReleaseEntityId1,
-    int EditReleaseEntityQuantity1
+    int EditReleaseEntityQuantity1,
+    int BaseId,
+    int VariationId
 )
 {
     public bool HasManaSpiral => this.MaxLimitBreakCount > 4;

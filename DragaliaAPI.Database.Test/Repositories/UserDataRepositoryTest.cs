@@ -2,7 +2,6 @@
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Shared.PlayerDetails;
 using DragaliaAPI.Test.Utils;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Database.Test.Repositories;
@@ -18,9 +17,8 @@ public class UserDataRepositoryTest : IClassFixture<DbTestFixture>
     {
         this.fixture = fixture;
         this.mockPlayerIdentityService = new(MockBehavior.Strict);
-        this.mockPlayerIdentityService
-            .SetupGet(x => x.AccountId)
-            .Returns(IdentityTestUtils.DeviceAccountId);
+        this.mockPlayerIdentityService.SetupGet(x => x.ViewerId)
+            .Returns(IdentityTestUtils.ViewerId);
 
         this.userDataRepository = new UserDataRepository(
             this.fixture.ApiContext,
@@ -38,7 +36,7 @@ public class UserDataRepositoryTest : IClassFixture<DbTestFixture>
     [Fact]
     public async Task GetPlayerInfo_InvalidId_ReturnsEmptyQueryable()
     {
-        this.mockPlayerIdentityService.SetupGet(x => x.AccountId).Returns("wrong id");
+        this.mockPlayerIdentityService.SetupGet(x => x.ViewerId).Returns(400);
         (await this.userDataRepository.UserData.ToListAsync()).Should().BeEmpty();
     }
 
@@ -48,8 +46,7 @@ public class UserDataRepositoryTest : IClassFixture<DbTestFixture>
         await this.userDataRepository.UpdateName("Euden 2");
         await this.userDataRepository.SaveChangesAsync();
 
-        this.fixture.ApiContext.PlayerUserData
-            .Single(x => x.DeviceAccountId == IdentityTestUtils.DeviceAccountId)
+        this.fixture.ApiContext.PlayerUserData.Single(x => x.ViewerId == IdentityTestUtils.ViewerId)
             .Name.Should()
             .Be("Euden 2");
     }
@@ -60,9 +57,7 @@ public class UserDataRepositoryTest : IClassFixture<DbTestFixture>
     public async Task CheckCoin_ReturnsExpectedResult(long checkValue, bool expectedResult)
     {
         DbPlayerUserData userData = (
-            await this.fixture.ApiContext.PlayerUserData.FindAsync(
-                IdentityTestUtils.DeviceAccountId
-            )
+            await this.fixture.ApiContext.PlayerUserData.FindAsync(IdentityTestUtils.ViewerId)
         )!;
         userData.Coin = 200;
         await this.fixture.ApiContext.SaveChangesAsync();
@@ -73,16 +68,18 @@ public class UserDataRepositoryTest : IClassFixture<DbTestFixture>
     [Fact]
     public async Task UpdateCoin_UpdatesCoin()
     {
-        long oldCoin = await this.fixture.ApiContext.PlayerUserData
-            .Where(x => x.DeviceAccountId == IdentityTestUtils.DeviceAccountId)
+        long oldCoin = await this.fixture.ApiContext.PlayerUserData.Where(
+            x => x.ViewerId == IdentityTestUtils.ViewerId
+        )
             .Select(x => x.Coin)
             .SingleAsync();
 
         await this.userDataRepository.UpdateCoin(2000);
         await this.fixture.ApiContext.SaveChangesAsync();
 
-        long newCoin = await this.fixture.ApiContext.PlayerUserData
-            .Where(x => x.DeviceAccountId == IdentityTestUtils.DeviceAccountId)
+        long newCoin = await this.fixture.ApiContext.PlayerUserData.Where(
+            x => x.ViewerId == IdentityTestUtils.ViewerId
+        )
             .Select(x => x.Coin)
             .SingleAsync();
 
@@ -92,16 +89,18 @@ public class UserDataRepositoryTest : IClassFixture<DbTestFixture>
     [Fact]
     public async Task UpdateDewpoint_UpdatesDewpoint()
     {
-        int oldDewpoint = await this.fixture.ApiContext.PlayerUserData
-            .Where(x => x.DeviceAccountId == IdentityTestUtils.DeviceAccountId)
+        int oldDewpoint = await this.fixture.ApiContext.PlayerUserData.Where(
+            x => x.ViewerId == IdentityTestUtils.ViewerId
+        )
             .Select(x => x.DewPoint)
             .SingleAsync();
 
         await this.userDataRepository.UpdateDewpoint(4000);
         await this.fixture.ApiContext.SaveChangesAsync();
 
-        int newDewpoint = await this.fixture.ApiContext.PlayerUserData
-            .Where(x => x.DeviceAccountId == IdentityTestUtils.DeviceAccountId)
+        int newDewpoint = await this.fixture.ApiContext.PlayerUserData.Where(
+            x => x.ViewerId == IdentityTestUtils.ViewerId
+        )
             .Select(x => x.DewPoint)
             .SingleAsync();
 
@@ -121,8 +120,9 @@ public class UserDataRepositoryTest : IClassFixture<DbTestFixture>
 
         exception.Message.Should().Be("Player cannot have negative eldwater");
 
-        int dewpoint = await this.fixture.ApiContext.PlayerUserData
-            .Where(x => x.DeviceAccountId == IdentityTestUtils.DeviceAccountId)
+        int dewpoint = await this.fixture.ApiContext.PlayerUserData.Where(
+            x => x.ViewerId == IdentityTestUtils.ViewerId
+        )
             .Select(x => x.DewPoint)
             .SingleAsync();
 
@@ -148,8 +148,9 @@ public class UserDataRepositoryTest : IClassFixture<DbTestFixture>
         await this.userDataRepository.SetDewpoint(10001);
         await this.fixture.ApiContext.SaveChangesAsync();
 
-        int dewpoint = await this.fixture.ApiContext.PlayerUserData
-            .Where(x => x.DeviceAccountId == IdentityTestUtils.DeviceAccountId)
+        int dewpoint = await this.fixture.ApiContext.PlayerUserData.Where(
+            x => x.ViewerId == IdentityTestUtils.ViewerId
+        )
             .Select(x => x.DewPoint)
             .SingleAsync();
 
@@ -159,8 +160,9 @@ public class UserDataRepositoryTest : IClassFixture<DbTestFixture>
     [Fact]
     public async Task SetDewpoint_ThrowsExceptionWhenNegative()
     {
-        int oldDewpoint = await this.fixture.ApiContext.PlayerUserData
-            .Where(x => x.DeviceAccountId == IdentityTestUtils.DeviceAccountId)
+        int oldDewpoint = await this.fixture.ApiContext.PlayerUserData.Where(
+            x => x.ViewerId == IdentityTestUtils.ViewerId
+        )
             .Select(x => x.DewPoint)
             .SingleAsync();
 
@@ -171,8 +173,9 @@ public class UserDataRepositoryTest : IClassFixture<DbTestFixture>
 
         exception.Message.Should().Be("Player cannot have negative eldwater");
 
-        int newDewpoint = await this.fixture.ApiContext.PlayerUserData
-            .Where(x => x.DeviceAccountId == IdentityTestUtils.DeviceAccountId)
+        int newDewpoint = await this.fixture.ApiContext.PlayerUserData.Where(
+            x => x.ViewerId == IdentityTestUtils.ViewerId
+        )
             .Select(x => x.DewPoint)
             .SingleAsync();
 

@@ -57,22 +57,21 @@ public class HeroParamService : IHeroParamService
         this.playerIdentityService = playerIdentityService;
     }
 
-    public async Task<IEnumerable<HeroParam>> GetHeroParam(long viewerId, int partySlot)
+    public async Task<List<HeroParam>> GetHeroParam(long viewerId, int partySlot)
     {
         this.logger.LogDebug("Fetching HeroParam for slot {partySlots}", partySlot);
 
-        DbPlayerUserData userData = await this.userDataRepository
-            .GetViewerData(viewerId)
+        DbPlayerUserData userData = await this.userDataRepository.GetViewerData(viewerId)
             .SingleAsync();
 
-        using IDisposable ctx = this.playerIdentityService.StartUserImpersonation(
-            userData.DeviceAccountId,
-            viewerId
-        );
+        using IDisposable ctx = this.playerIdentityService.StartUserImpersonation(viewerId);
 
-        List<DbDetailedPartyUnit> detailedPartyUnits = await this.dungeonRepository
-            .BuildDetailedPartyUnit(partyRepository.GetPartyUnits(partySlot), partySlot)
-            .ToListAsync();
+        List<DbDetailedPartyUnit> detailedPartyUnits =
+            await this.dungeonRepository.BuildDetailedPartyUnit(
+                partyRepository.GetPartyUnits(partySlot),
+                partySlot
+            )
+                .ToListAsync();
 
         this.logger.LogDebug("Retrieved {n} party units", detailedPartyUnits.Count);
 
@@ -80,15 +79,16 @@ public class HeroParamService : IHeroParamService
         {
             if (unit.WeaponBodyData is not null)
             {
-                unit.GameWeaponPassiveAbilityList = await this.weaponRepository
-                    .GetPassiveAbilities(unit.WeaponBodyData.WeaponBodyId)
+                unit.GameWeaponPassiveAbilityList = await this.weaponRepository.GetPassiveAbilities(
+                    unit.WeaponBodyData.WeaponBodyId
+                )
                     .ToListAsync();
             }
         }
 
         FortBonusList bonusList = await this.bonusService.GetBonusList();
 
-        return detailedPartyUnits.Select(x => MapHeroParam(x, bonusList));
+        return detailedPartyUnits.Select(x => MapHeroParam(x, bonusList)).ToList();
     }
 
     private static HeroParam MapHeroParam(DbDetailedPartyUnit unit, FortBonusList fortBonusList)
@@ -139,8 +139,9 @@ public class HeroParamService : IHeroParamService
             result.weaponBodyAbility2Lv = unit.WeaponBodyData.Ability2Level;
             result.weaponBodySkillLv = unit.WeaponBodyData.SkillLevel;
             result.weaponBodySkillNo = unit.WeaponBodyData.SkillNo;
-            result.weaponPassiveAbilityIds = unit.GameWeaponPassiveAbilityList
-                .Select(x => x.WeaponPassiveAbilityId)
+            result.weaponPassiveAbilityIds = unit.GameWeaponPassiveAbilityList.Select(
+                x => x.WeaponPassiveAbilityId
+            )
                 .ToArray();
         }
         else

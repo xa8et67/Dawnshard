@@ -1,7 +1,4 @@
 ﻿using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Models;
-using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Shared.Definitions.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Integration.Test.Features.Item;
@@ -9,27 +6,21 @@ namespace DragaliaAPI.Integration.Test.Features.Item;
 public class ItemTest : TestFixture
 {
     public ItemTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
-        : base(factory, outputHelper)
-    {
-        ApiContext.PlayerUseItems.Where(x => x.DeviceAccountId == DeviceAccountId).ExecuteDelete();
+        : base(factory, outputHelper) { }
 
-        ApiContext.PlayerUseItems.Add(
+    protected override async Task Setup()
+    {
+        await this.AddToDatabase(
             new DbPlayerUseItem()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 ItemId = UseItem.Honey,
                 Quantity = 50
             }
         );
 
-        DbPlayerUserData userData = ApiContext.PlayerUserData.Single(
-            x => x.DeviceAccountId == DeviceAccountId
-        );
-
-        userData.StaminaSingle = 5;
-
-        ApiContext.SaveChanges();
-        ApiContext.ChangeTracker.Clear();
+        await this.ApiContext.PlayerUserData.Where(x => x.ViewerId == this.ViewerId)
+            .ExecuteUpdateAsync(e => e.SetProperty(p => p.StaminaSingle, 5));
     }
 
     [Fact]
@@ -40,8 +31,7 @@ public class ItemTest : TestFixture
             new ItemGetListRequest()
         );
 
-        resp.data.item_list
-            .Should()
+        resp.data.item_list.Should()
             .HaveCount(1)
             .And.ContainEquivalentOf(new ItemList(UseItem.Honey, 50));
     }
@@ -60,8 +50,7 @@ public class ItemTest : TestFixture
         resp.data.recover_data.recover_stamina_type.Should().Be(UseItemEffect.RecoverStamina);
         resp.data.recover_data.recover_stamina_point.Should().Be(10);
         resp.data.update_data_list.user_data.stamina_single.Should().Be(15);
-        resp.data.update_data_list.item_list
-            .Should()
+        resp.data.update_data_list.item_list.Should()
             .ContainEquivalentOf(new ItemList(UseItem.Honey, 49));
     }
 
@@ -79,8 +68,7 @@ public class ItemTest : TestFixture
         resp.data.recover_data.recover_stamina_type.Should().Be(UseItemEffect.RecoverStamina);
         resp.data.recover_data.recover_stamina_point.Should().Be(10 * 5);
         resp.data.update_data_list.user_data.stamina_single.Should().Be(5 + (10 * 5));
-        resp.data.update_data_list.item_list
-            .Should()
+        resp.data.update_data_list.item_list.Should()
             .ContainEquivalentOf(new ItemList(UseItem.Honey, 45));
     }
 }

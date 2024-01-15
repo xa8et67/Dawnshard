@@ -1,6 +1,4 @@
-using DragaliaAPI.Controllers.Dragalia;
 using DragaliaAPI.Features.ClearParty;
-using DragaliaAPI.Features.Dungeon;
 using DragaliaAPI.Features.Quest;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
@@ -13,9 +11,9 @@ public class QuestControllerTest
 {
     private readonly Mock<IStoryService> mockStoryService;
     private readonly Mock<IHelperService> mockHelperService;
-    private readonly Mock<IQuestDropService> mockQuestRewardService;
     private readonly Mock<IUpdateDataService> mockUpdateDataService;
     private readonly Mock<IClearPartyService> mockClearPartyService;
+    private readonly Mock<IQuestTreasureService> mockQuestTreasureService;
     private readonly Mock<ILogger<QuestController>> mockLogger;
 
     private readonly QuestController questController;
@@ -24,17 +22,17 @@ public class QuestControllerTest
     {
         this.mockStoryService = new(MockBehavior.Strict);
         this.mockHelperService = new(MockBehavior.Strict);
-        this.mockQuestRewardService = new(MockBehavior.Strict);
         this.mockUpdateDataService = new(MockBehavior.Strict);
         this.mockClearPartyService = new(MockBehavior.Strict);
+        this.mockQuestTreasureService = new(MockBehavior.Strict);
         this.mockLogger = new(MockBehavior.Loose);
 
         this.questController = new(
             this.mockStoryService.Object,
             this.mockHelperService.Object,
-            this.mockQuestRewardService.Object,
             this.mockUpdateDataService.Object,
             this.mockClearPartyService.Object,
+            this.mockQuestTreasureService.Object,
             this.mockLogger.Object
         );
     }
@@ -42,8 +40,7 @@ public class QuestControllerTest
     [Fact]
     public async Task ReadStory_ProducesExpectedResponse()
     {
-        this.mockStoryService
-            .Setup(x => x.ReadStory(StoryTypes.Quest, 1))
+        this.mockStoryService.Setup(x => x.ReadStory(StoryTypes.Quest, 1))
             .ReturnsAsync(
                 new List<AtgenBuildEventRewardEntityList>()
                 {
@@ -63,8 +60,7 @@ public class QuestControllerTest
                 }
             );
 
-        this.mockUpdateDataService
-            .Setup(x => x.SaveChangesAsync())
+        this.mockUpdateDataService.Setup(x => x.SaveChangesAsync())
             .ReturnsAsync(new UpdateDataList());
 
         (await this.questController.ReadStory(new QuestReadStoryRequest() { quest_story_id = 1 }))

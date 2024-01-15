@@ -13,6 +13,7 @@ public class FortControllerTest
     private readonly Mock<IBonusService> mockBonusService;
     private readonly Mock<IUpdateDataService> mockUpdateDataService;
     private readonly Mock<IRewardService> mockRewardService;
+    private readonly Mock<IDragonService> mockDragonService;
 
     private readonly FortController fortController;
 
@@ -22,12 +23,14 @@ public class FortControllerTest
         mockBonusService = new(MockBehavior.Strict);
         mockUpdateDataService = new(MockBehavior.Strict);
         mockRewardService = new(MockBehavior.Strict);
+        mockDragonService = new(MockBehavior.Strict);
 
         fortController = new(
             mockFortService.Object,
             mockBonusService.Object,
             mockUpdateDataService.Object,
-            mockRewardService.Object
+            mockRewardService.Object,
+            mockDragonService.Object
         );
     }
 
@@ -63,11 +66,14 @@ public class FortControllerTest
 
         mockBonusService.Setup(x => x.GetBonusList()).ReturnsAsync(bonusList);
 
+        this.mockDragonService.Setup(x => x.GetFreeGiftCount()).ReturnsAsync(2);
+
         FortGetDataData data = (await fortController.GetData()).GetData<FortGetDataData>()!;
 
         data.build_list.Should().BeEquivalentTo(buildList);
         data.fort_bonus_list.Should().BeEquivalentTo(bonusList);
         data.fort_detail.Should().BeEquivalentTo(detail);
+        data.dragon_contact_free_gift_count.Should().Be(2);
 
         mockFortService.VerifyAll();
         mockBonusService.VerifyAll();
@@ -157,7 +163,7 @@ public class FortControllerTest
 
         mockFortService
             .Setup(x => x.CancelBuild(1))
-            .ReturnsAsync(new DbFortBuild() { DeviceAccountId = "id", BuildId = 1 });
+            .ReturnsAsync(new DbFortBuild() { ViewerId = 1, BuildId = 1 });
         mockFortService.Setup(x => x.GetFortDetail()).ReturnsAsync(detail);
 
         mockUpdateDataService.Setup(x => x.SaveChangesAsync()).ReturnsAsync(updateDataList);
@@ -224,7 +230,7 @@ public class FortControllerTest
         DbFortBuild build =
             new()
             {
-                DeviceAccountId = "id",
+                ViewerId = 1,
                 BuildId = 10,
                 BuildStartDate = DateTimeOffset.UtcNow,
                 BuildEndDate = DateTimeOffset.UtcNow,
@@ -320,7 +326,7 @@ public class FortControllerTest
 
         mockFortService
             .Setup(x => x.CancelLevelup(1))
-            .ReturnsAsync(new DbFortBuild() { DeviceAccountId = "id", BuildId = 1 });
+            .ReturnsAsync(new DbFortBuild() { ViewerId = 1, BuildId = 1 });
         mockFortService.Setup(x => x.GetFortDetail()).ReturnsAsync(detail);
 
         mockUpdateDataService.Setup(x => x.SaveChangesAsync()).ReturnsAsync(updateDataList);
@@ -390,7 +396,7 @@ public class FortControllerTest
         DbFortBuild build =
             new()
             {
-                DeviceAccountId = "id",
+                ViewerId = 1,
                 BuildId = 10,
                 BuildStartDate = DateTimeOffset.UtcNow,
                 BuildEndDate = DateTimeOffset.UtcNow + TimeSpan.FromHours(2),
@@ -439,7 +445,7 @@ public class FortControllerTest
 
         mockFortService
             .Setup(x => x.Move(1, 2, 3))
-            .ReturnsAsync(new DbFortBuild() { DeviceAccountId = "id", BuildId = 1 });
+            .ReturnsAsync(new DbFortBuild() { ViewerId = 1, BuildId = 1 });
 
         mockBonusService.Setup(x => x.GetBonusList()).ReturnsAsync(bonusList);
 

@@ -14,7 +14,7 @@ public class EmblemRepository(
 ) : IEmblemRepository
 {
     public IQueryable<DbEmblem> Emblems =>
-        apiContext.Emblems.Where(x => x.DeviceAccountId == playerIdentityService.AccountId);
+        apiContext.Emblems.Where(x => x.ViewerId == playerIdentityService.ViewerId);
 
     public async Task<IEnumerable<DbEmblem>> GetEmblemsAsync()
     {
@@ -23,11 +23,11 @@ public class EmblemRepository(
 
     public DbEmblem AddEmblem(Emblems emblem)
     {
-        return apiContext.Emblems
-            .Add(
+        return apiContext
+            .Emblems.Add(
                 new DbEmblem
                 {
-                    DeviceAccountId = playerIdentityService.AccountId,
+                    ViewerId = playerIdentityService.ViewerId,
                     EmblemId = emblem,
                     GetTime = dateTimeProvider.UtcNow,
                     IsNew = true
@@ -38,6 +38,6 @@ public class EmblemRepository(
 
     public async Task<bool> HasEmblem(Emblems emblem)
     {
-        return await apiContext.Emblems.FindAsync(playerIdentityService.AccountId, emblem) != null;
+        return await apiContext.Emblems.FindAsync(playerIdentityService.ViewerId, emblem) != null;
     }
 }

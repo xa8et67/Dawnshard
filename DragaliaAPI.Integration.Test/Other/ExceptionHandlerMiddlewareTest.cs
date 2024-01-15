@@ -1,7 +1,6 @@
 ﻿using System.Net;
 using DragaliaAPI.Models;
 using MessagePack;
-using Xunit.Abstractions;
 
 namespace DragaliaAPI.Integration.Test.Other;
 
@@ -44,8 +43,8 @@ public class ExceptionHandlerMiddlewareTest : TestFixture
         );
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        response.Headers
-            .Should()
+        response
+            .Headers.Should()
             .ContainKey("Is-Required-Refresh-Id-Token")
             .WhoseValue.Should()
             .Contain("true");

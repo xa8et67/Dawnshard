@@ -1,14 +1,9 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
 using System.Security.Claims;
-using System.Security.Cryptography.X509Certificates;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using DragaliaAPI.Blazor.Authentication;
 using DragaliaAPI.Database;
 using DragaliaAPI.Models.Options;
-using DragaliaAPI.Services;
-using DragaliaAPI.Services.Api;
 using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -17,8 +12,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
-using Microsoft.IdentityModel.Tokens;
-using Npgsql.Internal.TypeHandlers.NetworkHandlers;
 
 namespace DragaliaAPI.Blazor.Pages;
 
@@ -49,7 +42,7 @@ public class OAuthCallbackModel(
         if (!result.Succeeded)
         {
             logger.LogInformation("Authenticate result failure.");
-            return Unauthorized();
+            return this.StatusCode(401, $"Authentication failure: {result.Failure?.Message}");
         }
 
         await this.HttpContext.SignInAsync(
@@ -126,14 +119,16 @@ public class OAuthCallbackModel(
 
         identity.AddClaim(new Claim(CustomClaimType.AccountId, userId.UserId));
 
-        // TODO: handle users without a save
-        var playerInfo = await apiContext.PlayerUserData
-            .Where(x => x.DeviceAccountId == userId.UserId)
-            .Select(x => new { x.Name, x.ViewerId })
+        var playerInfo = await apiContext
+            .Players.Include(x => x.UserData)
+            .Where(x => x.AccountId == userId.UserId)
+            .Select(x => new { x.UserData!.Name, x.ViewerId })
             .FirstOrDefaultAsync();
 
         if (playerInfo is null)
-            return AuthenticateResult.Fail("Player did not have a savefile.");
+            return AuthenticateResult.Fail(
+                "Account did not have an associated Dawnshard save file."
+            );
 
         identity.AddClaim(new Claim(CustomClaimType.AccountId, userId.UserId));
         identity.AddClaim(new Claim(CustomClaimType.PlayerName, playerInfo.Name));

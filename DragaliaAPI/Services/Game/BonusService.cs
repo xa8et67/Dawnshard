@@ -11,9 +11,7 @@ using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models;
 using DragaliaAPI.Shared.MasterAsset.Models.Event;
-using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.EntityFrameworkCore;
-using Serilog;
 
 namespace DragaliaAPI.Services.Game;
 
@@ -29,13 +27,15 @@ public class BonusService(
     public async Task<FortBonusList> GetBonusList()
     {
         IEnumerable<int> buildIds = (
-            await fortRepository.Builds
+            await fortRepository
+                .Builds.AsNoTracking()
                 .Where(x => x.Level != 0)
                 .Select(x => new { x.PlantId, x.Level })
                 .ToListAsync()
         ).Select(x => MasterAssetUtils.GetPlantDetailId(x.PlantId, x.Level));
 
-        IEnumerable<WeaponBodies> weaponIds = await weaponRepository.WeaponBodies
+        IEnumerable<WeaponBodies> weaponIds = await weaponRepository
+            .WeaponBodies.AsNoTracking()
             .Where(x => x.FortPassiveCharaWeaponBuildupCount != 0)
             .Select(x => x.WeaponBodyId)
             .ToListAsync();
@@ -77,8 +77,8 @@ public class BonusService(
             return null;
         }
 
-        int level = await fortRepository.Builds
-            .Where(x => x.PlantId == eventData.EventFortId)
+        int level = await fortRepository
+            .Builds.Where(x => x.PlantId == eventData.EventFortId)
             .Select(x => x.Level)
             .SingleOrDefaultAsync();
 

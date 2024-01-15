@@ -1,13 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Docker.DotNet.Models;
-using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Models;
-using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Shared.Definitions.Enums;
+﻿using DragaliaAPI.Database.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Integration.Test.Features.DmodeDungeon;
@@ -47,8 +38,8 @@ public class DmodeDungeonTest : TestFixture
             );
 
         floorResponse.data.dmode_floor_data.dmode_area_info.floor_num.Should().Be(1);
-        floorResponse.data.dmode_floor_data.dmode_dungeon_odds.dmode_dungeon_item_list
-            .Should()
+        floorResponse
+            .data.dmode_floor_data.dmode_dungeon_odds.dmode_dungeon_item_list.Should()
             .OnlyHaveUniqueItems(item => item.item_no);
     }
 
@@ -57,9 +48,8 @@ public class DmodeDungeonTest : TestFixture
     {
         this.AddCharacter(Charas.Shingen);
 
-        DbPlayerDmodeInfo oldInfo = this.ApiContext.PlayerDmodeInfos
-            .AsNoTracking()
-            .First(x => x.DeviceAccountId == DeviceAccountId);
+        DbPlayerDmodeInfo oldInfo = this.ApiContext.PlayerDmodeInfos.AsNoTracking()
+            .First(x => x.ViewerId == ViewerId);
 
         await this.Client.PostMsgpack<DmodeDungeonStartData>(
             "dmode_dungeon/start",
@@ -90,22 +80,21 @@ public class DmodeDungeonTest : TestFixture
             );
 
         floorResponse.data.dmode_floor_data.dmode_area_info.floor_num.Should().Be(30);
-        floorResponse.data.dmode_floor_data.dmode_dungeon_odds.dmode_dungeon_item_list
-            .Should()
+        floorResponse
+            .data.dmode_floor_data.dmode_dungeon_odds.dmode_dungeon_item_list.Should()
             .OnlyHaveUniqueItems(item => item.item_no);
-        floorResponse.data.dmode_floor_data.dmode_unit_info.dmode_hold_dragon_list
-            .Should()
+        floorResponse
+            .data.dmode_floor_data.dmode_unit_info.dmode_hold_dragon_list.Should()
             .NotBeEmpty();
-        floorResponse.data.dmode_floor_data.dmode_dungeon_odds.dmode_dungeon_item_list
-            .Should()
+        floorResponse
+            .data.dmode_floor_data.dmode_dungeon_odds.dmode_dungeon_item_list.Should()
             .Contain(x => x.item_state == DmodeDungeonItemState.EquipWeapon);
-        floorResponse.data.dmode_floor_data.dmode_dungeon_odds.dmode_dungeon_item_list
-            .Should()
+        floorResponse
+            .data.dmode_floor_data.dmode_dungeon_odds.dmode_dungeon_item_list.Should()
             .Contain(x => x.item_state == DmodeDungeonItemState.EquipCrest);
 
-        this.ApiContext.PlayerDmodeInfos
-            .AsNoTracking()
-            .First(x => x.DeviceAccountId == DeviceAccountId)
+        this.ApiContext.PlayerDmodeInfos.AsNoTracking()
+            .First(x => x.ViewerId == ViewerId)
             .FloorSkipCount.Should()
             .Be(oldInfo.FloorSkipCount + 1);
     }
@@ -115,9 +104,8 @@ public class DmodeDungeonTest : TestFixture
     {
         this.AddCharacter(Charas.Shingen);
 
-        DbPlayerDmodeInfo oldInfo = this.ApiContext.PlayerDmodeInfos
-            .AsNoTracking()
-            .First(x => x.DeviceAccountId == DeviceAccountId);
+        DbPlayerDmodeInfo oldInfo = this.ApiContext.PlayerDmodeInfos.AsNoTracking()
+            .First(x => x.ViewerId == ViewerId);
 
         await this.Client.PostMsgpack<DmodeDungeonStartData>(
             "dmode_dungeon/start",
@@ -139,9 +127,8 @@ public class DmodeDungeonTest : TestFixture
             new DmodeDungeonUserHaltRequest() { }
         );
 
-        this.ApiContext.PlayerDmodeDungeons
-            .AsNoTracking()
-            .First(x => x.DeviceAccountId == DeviceAccountId)
+        this.ApiContext.PlayerDmodeDungeons.AsNoTracking()
+            .First(x => x.ViewerId == ViewerId)
             .State.Should()
             .Be(DungeonState.Halting);
 
@@ -152,9 +139,8 @@ public class DmodeDungeonTest : TestFixture
 
         (await this.GetDungeonState()).Should().Be(DungeonState.RestartEnd);
 
-        this.ApiContext.PlayerDmodeInfos
-            .AsNoTracking()
-            .First(x => x.DeviceAccountId == DeviceAccountId)
+        this.ApiContext.PlayerDmodeInfos.AsNoTracking()
+            .First(x => x.ViewerId == ViewerId)
             .RecoveryCount.Should()
             .Be(oldInfo.RecoveryCount + 1);
     }
@@ -162,9 +148,8 @@ public class DmodeDungeonTest : TestFixture
     private async Task<DungeonState> GetDungeonState()
     {
         return (
-            await this.ApiContext.PlayerDmodeDungeons
-                .AsNoTracking()
-                .FirstAsync(x => x.DeviceAccountId == DeviceAccountId)
+            await this.ApiContext.PlayerDmodeDungeons.AsNoTracking()
+                .FirstAsync(x => x.ViewerId == ViewerId)
         ).State;
     }
 }

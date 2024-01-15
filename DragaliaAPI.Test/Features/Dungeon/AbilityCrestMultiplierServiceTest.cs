@@ -28,20 +28,19 @@ public class AbilityCrestMultiplierServiceTest
     {
         int flamesOfReflectionCompendiumId = 20816;
 
-        this.mockAbilityCrestRepository
-            .Setup(x => x.AbilityCrests)
+        this.mockAbilityCrestRepository.Setup(x => x.AbilityCrests)
             .Returns(
                 new List<DbAbilityCrest>()
                 {
                     new()
                     {
-                        DeviceAccountId = "id",
+                        ViewerId = 1,
                         AbilityCrestId = AbilityCrests.SistersDayOut,
                         LimitBreakCount = 4
                     },
                     new()
                     {
-                        DeviceAccountId = "id",
+                        ViewerId = 1,
                         AbilityCrestId = AbilityCrests.TheDragonSmiths,
                         LimitBreakCount = 4
                     }
@@ -91,20 +90,19 @@ public class AbilityCrestMultiplierServiceTest
     {
         int flamesOfReflectionCompendiumId = 20816;
 
-        this.mockAbilityCrestRepository
-            .Setup(x => x.AbilityCrests)
+        this.mockAbilityCrestRepository.Setup(x => x.AbilityCrests)
             .Returns(
                 new List<DbAbilityCrest>()
                 {
                     new()
                     {
-                        DeviceAccountId = "id",
+                        ViewerId = 1,
                         AbilityCrestId = AbilityCrests.SistersDayOut,
                         LimitBreakCount = 4
                     },
                     new()
                     {
-                        DeviceAccountId = "id",
+                        ViewerId = 1,
                         AbilityCrestId = AbilityCrests.TotheExtreme,
                         LimitBreakCount = 4
                     }
@@ -139,20 +137,19 @@ public class AbilityCrestMultiplierServiceTest
     {
         int flamesOfReflectionCompendiumId = 20816;
 
-        this.mockAbilityCrestRepository
-            .Setup(x => x.AbilityCrests)
+        this.mockAbilityCrestRepository.Setup(x => x.AbilityCrests)
             .Returns(
                 new List<DbAbilityCrest>()
                 {
                     new()
                     {
-                        DeviceAccountId = "id",
+                        ViewerId = 1,
                         AbilityCrestId = AbilityCrests.SistersDayOut,
                         LimitBreakCount = 4
                     },
                     new()
                     {
-                        DeviceAccountId = "id",
+                        ViewerId = 1,
                         AbilityCrestId = AbilityCrests.TotheExtreme,
                         LimitBreakCount = 4
                     }
@@ -192,20 +189,19 @@ public class AbilityCrestMultiplierServiceTest
     {
         int flamesOfReflectionCompendiumId = 20816;
 
-        this.mockAbilityCrestRepository
-            .Setup(x => x.AbilityCrests)
+        this.mockAbilityCrestRepository.Setup(x => x.AbilityCrests)
             .Returns(
                 new List<DbAbilityCrest>()
                 {
                     new()
                     {
-                        DeviceAccountId = "id",
+                        ViewerId = 1,
                         AbilityCrestId = AbilityCrests.SistersDayOut,
                         LimitBreakCount = 0
                     },
                     new()
                     {
-                        DeviceAccountId = "id",
+                        ViewerId = 1,
                         AbilityCrestId = AbilityCrests.TheDragonSmiths,
                         LimitBreakCount = 0
                     },
@@ -240,14 +236,13 @@ public class AbilityCrestMultiplierServiceTest
     {
         int accursedArchivesCompendiumId = 20831;
 
-        this.mockAbilityCrestRepository
-            .Setup(x => x.AbilityCrests)
+        this.mockAbilityCrestRepository.Setup(x => x.AbilityCrests)
             .Returns(
                 new List<DbAbilityCrest>()
                 {
                     new()
                     {
-                        DeviceAccountId = "id",
+                        ViewerId = 1,
                         AbilityCrestId = AbilityCrests.SistersDayOut,
                         LimitBreakCount = 4
                     }

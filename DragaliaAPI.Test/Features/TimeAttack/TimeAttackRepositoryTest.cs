@@ -40,7 +40,7 @@ public class TimeAttackRepositoryTest : RepositoryTestFixture
                     new()
                     {
                         GameId = gameId,
-                        DeviceAccountId = "id",
+                        ViewerId = 1,
                         PartyInfo = "{}"
                     }
                 }
@@ -67,7 +67,7 @@ public class TimeAttackRepositoryTest : RepositoryTestFixture
                     new()
                     {
                         GameId = gameId,
-                        DeviceAccountId = "id 2",
+                        ViewerId = 2,
                         PartyInfo = "{}"
                     }
                 }
@@ -86,7 +86,7 @@ public class TimeAttackRepositoryTest : RepositoryTestFixture
                     new()
                     {
                         GameId = gameId,
-                        DeviceAccountId = "id 3",
+                        ViewerId = 3,
                         PartyInfo = "{}"
                     }
                 }
@@ -96,8 +96,7 @@ public class TimeAttackRepositoryTest : RepositoryTestFixture
         await this.ApiContext.SaveChangesAsync();
 
         this.ApiContext.TimeAttackClears.Should().Contain(x => x.GameId == gameId);
-        this.ApiContext.TimeAttackClears
-            .First(x => x.GameId == gameId)
+        this.ApiContext.TimeAttackClears.First(x => x.GameId == gameId)
             .Players.Should()
             .BeEquivalentTo(
                 new List<DbTimeAttackPlayer>()
@@ -105,13 +104,13 @@ public class TimeAttackRepositoryTest : RepositoryTestFixture
                     new()
                     {
                         GameId = gameId,
-                        DeviceAccountId = "id 2",
+                        ViewerId = 2,
                         PartyInfo = "{}"
                     },
                     new()
                     {
                         GameId = gameId,
-                        DeviceAccountId = "id 3",
+                        ViewerId = 3,
                         PartyInfo = "{}"
                     }
                 },

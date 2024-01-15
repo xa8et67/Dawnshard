@@ -18,13 +18,11 @@ public class PresentRepository : IPresentRepository
 
     public IQueryable<DbPlayerPresentHistory> PresentHistory =>
         apiContext.PlayerPresentHistory.Where(
-            x => x.DeviceAccountId == this.playerIdentityService.AccountId
+            x => x.ViewerId == this.playerIdentityService.ViewerId
         );
 
     public IQueryable<DbPlayerPresent> Presents =>
-        apiContext.PlayerPresents.Where(
-            x => x.DeviceAccountId == this.playerIdentityService.AccountId
-        );
+        apiContext.PlayerPresents.Where(x => x.ViewerId == this.playerIdentityService.ViewerId);
 
     public void AddPlayerPresents(IEnumerable<DbPlayerPresent> playerPresents)
     {
@@ -33,10 +31,10 @@ public class PresentRepository : IPresentRepository
 
     public async Task DeletePlayerPresents(IEnumerable<long> presentIds)
     {
-        ICollection<DbPlayerPresent> playerPresents = await apiContext.PlayerPresents
-            .Where(
+        ICollection<DbPlayerPresent> playerPresents = await apiContext
+            .PlayerPresents.Where(
                 x =>
-                    x.DeviceAccountId == this.playerIdentityService.AccountId
+                    x.ViewerId == this.playerIdentityService.ViewerId
                     && presentIds.Contains(x.PresentId)
             )
             .ToListAsync();

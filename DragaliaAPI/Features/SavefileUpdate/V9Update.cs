@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-using System.Diagnostics;
 using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
@@ -29,7 +27,8 @@ public class V9Update(
     public async Task Apply()
     {
         IEnumerable<(Charas Id, SortedSet<int> ManaNodes)> charaManaData = (
-            await unitRepository.Charas
+            await unitRepository
+                .Charas
                 /* .Where(x => x.Rarity == 3) // A 3-star character could have been upgraded */
                 .Where(x => x.CharaId != Charas.ThePrince && x.CharaId != Charas.MegaMan) // No stories
                 .Select(x => new { x.CharaId, x.ManaNodeUnlockCount })
@@ -113,7 +112,7 @@ public class V9Update(
         apiContext.PlayerStoryState.Add(
             new DbPlayerStoryState()
             {
-                DeviceAccountId = playerIdentityService.AccountId,
+                ViewerId = playerIdentityService.ViewerId,
                 StoryId = storyId,
                 State = 0,
                 StoryType = StoryTypes.Chara

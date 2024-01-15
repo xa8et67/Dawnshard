@@ -1,5 +1,4 @@
-﻿using System.Security.Cryptography;
-using DragaliaAPI.Database.Entities;
+﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,16 +17,15 @@ public class PartyRepository : BaseRepository, IPartyRepository
     }
 
     public IQueryable<DbParty> Parties =>
-        this.apiContext.PlayerParties
-            .Include(x => x.Units.OrderBy(x => x.UnitNo))
-            .Where(x => x.DeviceAccountId == this.playerIdentityService.AccountId);
+        this.apiContext.PlayerParties.Include(x => x.Units.OrderBy(x => x.UnitNo))
+            .Where(x => x.ViewerId == this.playerIdentityService.ViewerId);
 
     public IQueryable<DbPartyUnit> GetPartyUnits(IEnumerable<int> partySlots)
     {
-        return apiContext.PlayerPartyUnits
-            .Where(
+        return apiContext
+            .PlayerPartyUnits.Where(
                 x =>
-                    x.DeviceAccountId == this.playerIdentityService.AccountId
+                    x.ViewerId == this.playerIdentityService.ViewerId
                     && partySlots.Contains(x.PartyNo)
             )
             .OrderBy(x => x.PartyNo == partySlots.First())
@@ -48,10 +46,10 @@ public class PartyRepository : BaseRepository, IPartyRepository
     {
         // TODO: this method executes a query where it deletes the old units and adds the new ones
         // Could it be optimized by updating the units instead? Anticipate that most changes will be small
-        DbParty existingParty = await apiContext.PlayerParties
-            .Where(
+        DbParty existingParty = await apiContext
+            .PlayerParties.Where(
                 x =>
-                    x.DeviceAccountId == this.playerIdentityService.AccountId
+                    x.ViewerId == this.playerIdentityService.ViewerId
                     && x.PartyNo == newParty.PartyNo
             )
             .Include(x => x.Units)
@@ -65,11 +63,9 @@ public class PartyRepository : BaseRepository, IPartyRepository
 
     public async Task UpdatePartyName(int partyNo, string newName)
     {
-        DbParty existingParty = await apiContext.PlayerParties
-            .Where(
-                x =>
-                    x.DeviceAccountId == this.playerIdentityService.AccountId
-                    && x.PartyNo == partyNo
+        DbParty existingParty = await apiContext
+            .PlayerParties.Where(
+                x => x.ViewerId == this.playerIdentityService.ViewerId && x.PartyNo == partyNo
             )
             .Include(x => x.Units) // Need to return full unit list in update_data_list
             .SingleAsync();
@@ -88,7 +84,7 @@ public class PartyRepository : BaseRepository, IPartyRepository
                 original.FirstOrDefault(x => x.UnitNo == i)
                     ?? new()
                     {
-                        DeviceAccountId = original.First().DeviceAccountId,
+                        ViewerId = original.First().ViewerId,
                         PartyNo = original.First().PartyNo,
                         UnitNo = i,
                         CharaId = 0

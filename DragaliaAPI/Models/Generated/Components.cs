@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using DragaliaAPI.Controllers.Dragalia;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
+using DragaliaAPI.Database.Utils;
 using DragaliaAPI.Features.Event;
 using DragaliaAPI.Features.Present;
 using DragaliaAPI.MessagePack;
@@ -12,6 +13,7 @@ using DragaliaAPI.Photon.Shared.Enums;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.Features.Presents;
 using DragaliaAPI.Shared.Json;
+using DragaliaAPI.Shared.Definitions.Enums.Dungeon;
 using MessagePack;
 
 namespace DragaliaAPI.Models.Generated;
@@ -1984,7 +1986,7 @@ public class AtgenEnemy
     [MessagePackFormatter(typeof(BoolToIntFormatter))]
     public bool is_rare { get; set; }
     public int param_id { get; set; }
-    public IEnumerable<EnemyDropList> enemy_drop_list { get; set; }
+    public List<EnemyDropList> enemy_drop_list { get; set; }
 
     public AtgenEnemy(
         int piece,
@@ -1992,7 +1994,7 @@ public class AtgenEnemy
         bool is_pop,
         bool is_rare,
         int param_id,
-        IEnumerable<EnemyDropList> enemy_drop_list
+        List<EnemyDropList> enemy_drop_list
     )
     {
         this.piece = piece;
@@ -2586,9 +2588,11 @@ public class AtgenMainStoryMissionStateList
 public class AtgenMissionParamsList
 {
     public int daily_mission_id { get; set; }
-    public int day_no { get; set; }
+    
+    [MessagePackFormatter(typeof(DayNoFormatter))]
+    public DateOnly day_no { get; set; }
 
-    public AtgenMissionParamsList(int daily_mission_id, int day_no)
+    public AtgenMissionParamsList(int daily_mission_id, DateOnly day_no)
     {
         this.daily_mission_id = daily_mission_id;
         this.day_no = day_no;
@@ -2620,9 +2624,9 @@ public class AtgenMissionsClearSet
 public class AtgenMonthlyWallReceiveList
 {
     public int quest_group_id { get; set; }
-    public int is_receive_reward { get; set; }
+    public RewardStatus is_receive_reward { get; set; }
 
-    public AtgenMonthlyWallReceiveList(int quest_group_id, int is_receive_reward)
+    public AtgenMonthlyWallReceiveList(int quest_group_id, RewardStatus is_receive_reward)
     {
         this.quest_group_id = quest_group_id;
         this.is_receive_reward = is_receive_reward;
@@ -3465,9 +3469,10 @@ public class AtgenShopGiftList
     public int dragon_gift_id { get; set; }
     public int price { get; set; }
 
-    public int is_buy { get; set; }
+    [MessagePackFormatter(typeof(BoolToIntFormatter))]
+    public bool is_buy { get; set; }
 
-    public AtgenShopGiftList(int dragon_gift_id, int price, int is_buy)
+    public AtgenShopGiftList(int dragon_gift_id, int price, bool is_buy)
     {
         this.dragon_gift_id = dragon_gift_id;
         this.price = price;
@@ -4252,14 +4257,14 @@ public class AtgenUserWallRewardList
 {
     public int quest_group_id { get; set; }
     public int sum_wall_level { get; set; }
-    public int last_reward_date { get; set; }
-    public int reward_status { get; set; }
+    public DateTimeOffset last_reward_date { get; set; }
+    public RewardStatus reward_status { get; set; }
 
     public AtgenUserWallRewardList(
         int quest_group_id,
         int sum_wall_level,
-        int last_reward_date,
-        int reward_status
+        DateTimeOffset last_reward_date,
+        RewardStatus reward_status
     )
     {
         this.quest_group_id = quest_group_id;
@@ -4964,8 +4969,11 @@ public class DailyMissionList
 {
     public int daily_mission_id { get; set; }
     public int progress { get; set; }
-    public int state { get; set; }
-    public int day_no { get; set; }
+    public MissionState state { get; set; }
+    
+    [MessagePackFormatter(typeof(DayNoFormatter))]
+    public DateOnly day_no { get; set; }
+    
     public int weekly_mission_id { get; set; }
     public int week_no { get; set; }
     public DateTimeOffset end_date { get; set; }
@@ -4976,8 +4984,8 @@ public class DailyMissionList
     public DailyMissionList(
         int daily_mission_id,
         int progress,
-        int state,
-        int day_no,
+        MissionState state,
+        DateOnly day_no,
         int weekly_mission_id,
         int week_no,
         DateTimeOffset end_date,
@@ -5709,9 +5717,9 @@ public class EnemyDropList
 {
     public int coin { get; set; }
     public int mana { get; set; }
-    public IEnumerable<AtgenDropList> drop_list { get; set; } = Enumerable.Empty<AtgenDropList>();
+    public List<AtgenDropList> drop_list { get; set; } = new();
 
-    public EnemyDropList(int coin, int mana, IEnumerable<AtgenDropList> drop_list)
+    public EnemyDropList(int coin, int mana, List<AtgenDropList> drop_list)
     {
         this.coin = coin;
         this.mana = mana;
@@ -8101,11 +8109,11 @@ public class RepeatData
 [MessagePackObject(true)]
 public class RepeatSetting
 {
-    public int repeat_type { get; set; }
+    public RepeatSettingType repeat_type { get; set; }
     public int repeat_count { get; set; }
-    public IEnumerable<int> use_item_list { get; set; }
+    public List<UseItem> use_item_list { get; set; }
 
-    public RepeatSetting(int repeat_type, int repeat_count, IEnumerable<int> use_item_list)
+    public RepeatSetting(RepeatSettingType repeat_type, int repeat_count, List<UseItem> use_item_list)
     {
         this.repeat_type = repeat_type;
         this.repeat_count = repeat_count;

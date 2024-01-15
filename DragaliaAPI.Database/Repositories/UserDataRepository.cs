@@ -1,6 +1,5 @@
 ﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Utils;
-using DragaliaAPI.Shared;
 using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -30,12 +29,12 @@ public class UserDataRepository : BaseRepository, IUserDataRepository
 
     public IQueryable<DbPlayerUserData> UserData =>
         this.apiContext.PlayerUserData.Where(
-            x => x.DeviceAccountId == this.playerIdentityService.AccountId
+            x => x.ViewerId == this.playerIdentityService.ViewerId
         );
 
     public async Task<DbPlayerUserData> GetUserDataAsync()
     {
-        return await this.apiContext.PlayerUserData.FindAsync(this.playerIdentityService.AccountId)
+        return await this.apiContext.PlayerUserData.FindAsync(this.playerIdentityService.ViewerId)
             ?? throw new InvalidOperationException("No UserData found");
     }
 
@@ -46,7 +45,8 @@ public class UserDataRepository : BaseRepository, IUserDataRepository
 
     public IQueryable<DbPlayerUserData> GetViewerData(long viewerId)
     {
-        return this.apiContext.PlayerUserData.Where(x => x.ViewerId == viewerId);
+        return this.apiContext.PlayerUserData.Where(x => x.ViewerId == viewerId)
+            .Include(x => x.Owner);
     }
 
     public IQueryable<DbPlayerUserData> GetMultipleViewerData(IEnumerable<long> viewerIds)
@@ -134,7 +134,7 @@ public class UserDataRepository : BaseRepository, IUserDataRepository
 
     public async Task<DbPlayerUserData> LookupUserData()
     {
-        return await apiContext.PlayerUserData.FindAsync(this.playerIdentityService.AccountId)
+        return await apiContext.PlayerUserData.FindAsync(this.playerIdentityService.ViewerId)
             ?? throw new NullReferenceException("Savefile lookup failed");
     }
 

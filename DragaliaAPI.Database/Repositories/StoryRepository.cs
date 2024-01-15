@@ -1,5 +1,4 @@
 ﻿using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Shared;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.EntityFrameworkCore;
@@ -26,7 +25,7 @@ public class StoryRepository : IStoryRepository
 
     public IQueryable<DbPlayerStoryState> Stories =>
         this.apiContext.PlayerStoryState.Where(
-            x => x.DeviceAccountId == this.playerIdentityService.AccountId
+            x => x.ViewerId == this.playerIdentityService.ViewerId
         );
 
     public IQueryable<DbPlayerStoryState> UnitStories =>
@@ -43,7 +42,7 @@ public class StoryRepository : IStoryRepository
     public async Task<DbPlayerStoryState> GetOrCreateStory(StoryTypes storyType, int storyId)
     {
         DbPlayerStoryState? state = await apiContext.PlayerStoryState.FindAsync(
-            this.playerIdentityService.AccountId,
+            this.playerIdentityService.ViewerId,
             storyType,
             storyId
         );
@@ -56,11 +55,11 @@ public class StoryRepository : IStoryRepository
                 storyType
             );
 
-            state = apiContext.PlayerStoryState
-                .Add(
-                    new DbPlayerStoryState()
+            state = apiContext
+                .PlayerStoryState.Add(
+                    new DbPlayerStoryState
                     {
-                        DeviceAccountId = this.playerIdentityService.AccountId,
+                        ViewerId = this.playerIdentityService.ViewerId,
                         StoryId = storyId,
                         StoryType = storyType,
                         State = 0
@@ -74,4 +73,9 @@ public class StoryRepository : IStoryRepository
 
     public async Task<bool> HasReadQuestStory(int storyId) =>
         await this.QuestStories.AnyAsync(x => x.StoryId == storyId && x.State == StoryState.Read);
+
+    public async Task DeleteQuestStories(int[] storyIds) =>
+        this.apiContext.RemoveRange(
+            await this.QuestStories.Where(x => storyIds.Contains(x.StoryId)).ToListAsync()
+        );
 }

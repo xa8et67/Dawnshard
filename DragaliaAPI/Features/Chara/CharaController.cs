@@ -7,7 +7,6 @@ using DragaliaAPI.Features.Missions;
 using DragaliaAPI.Features.Reward;
 using DragaliaAPI.Features.Shop;
 using DragaliaAPI.Helpers;
-using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
 using DragaliaAPI.Services.Exceptions;
@@ -659,29 +658,30 @@ public class CharaController(
 
             if (manaNodeInfo.IsReleaseStory)
             {
-                int[] charaStories = MasterAsset.CharaStories
-                    .Get((int)playerCharData.CharaId)
+                int[] charaStories = MasterAsset
+                    .CharaStories.Get((int)playerCharData.CharaId)
                     .storyIds;
 
-                int nextStoryunlockIndex =
-                    await storyRepository.Stories
-                        .Where(x => charaStories.Contains(x.StoryId))
+                int nextStoryUnlockIndex =
+                    await storyRepository
+                        .Stories.Where(x => charaStories.Contains(x.StoryId))
                         .CountAsync() + unlockedStories.Count;
 
-                if (charaStories.Length - 1 < nextStoryunlockIndex)
+                int nextStoryId = charaStories.ElementAtOrDefault(nextStoryUnlockIndex);
+
+                if (nextStoryId != default)
                 {
-                    throw new DragaliaException(
-                        ResultCode.StoryCountNotEnough,
-                        "Too many story unlocks"
+                    await storyRepository.GetOrCreateStory(StoryTypes.Chara, nextStoryId);
+                    unlockedStories.Add(nextStoryId);
+                }
+                else
+                {
+                    logger.LogWarning(
+                        "Failed to unlock next story for character {char}: index {index} was out of range",
+                        charaData.Id,
+                        nextStoryUnlockIndex
                     );
                 }
-
-                await storyRepository.GetOrCreateStory(
-                    StoryTypes.Chara,
-                    charaStories[nextStoryunlockIndex]
-                );
-
-                unlockedStories.Add(charaStories[nextStoryunlockIndex]);
             }
 
             // they smoked some shit

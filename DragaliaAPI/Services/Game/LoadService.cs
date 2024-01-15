@@ -1,14 +1,13 @@
 ﻿using System.Diagnostics;
 using AutoMapper;
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Missions;
-using DragaliaAPI.Features.PartyPower;
 using DragaliaAPI.Features.Player;
 using DragaliaAPI.Features.Present;
 using DragaliaAPI.Features.Shop;
 using DragaliaAPI.Features.Tickets;
 using DragaliaAPI.Features.Trade;
+using DragaliaAPI.Features.Wall;
 using DragaliaAPI.Helpers;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Models.Options;
@@ -30,6 +29,7 @@ public class LoadService(
     IShopRepository shopRepository,
     IUserService userService,
     ITicketRepository ticketRepository,
+    IWallService wallService,
     IDateTimeProvider dateTimeProvider
 ) : ILoadService
 {
@@ -38,7 +38,7 @@ public class LoadService(
         Stopwatch stopwatch = new();
         stopwatch.Start();
 
-        DbPlayer savefile = await savefileService.Load().SingleAsync();
+        DbPlayer savefile = await savefileService.Load().AsNoTracking().FirstAsync();
 
         logger.LogInformation("{time} ms: Load query complete", stopwatch.ElapsedMilliseconds);
 
@@ -59,23 +59,28 @@ public class LoadService(
                     mapper.Map<DragonReliabilityList>
                 ),
                 ability_crest_list = savefile.AbilityCrestList.Select(mapper.Map<AbilityCrestList>),
-                dragon_gift_list = savefile.DragonGiftList
-                    .Where(x => x.DragonGiftId > DragonGifts.GoldenChalice)
+                dragon_gift_list = savefile
+                    .DragonGiftList.Where(x => x.DragonGiftId > DragonGifts.GoldenChalice)
                     .Select(mapper.Map<DragonGiftList>),
                 talisman_list = savefile.TalismanList.Select(mapper.Map<TalismanList>),
                 weapon_body_list = savefile.WeaponBodyList.Select(mapper.Map<WeaponBodyList>),
                 party_list = savefile.PartyList.Select(mapper.Map<PartyList>),
-                quest_story_list = savefile.StoryStates
-                    .Where(x => x.StoryType == StoryTypes.Quest)
+                quest_story_list = savefile
+                    .StoryStates.Where(x => x.StoryType == StoryTypes.Quest)
                     .Select(mapper.Map<QuestStoryList>),
-                unit_story_list = savefile.StoryStates
-                    .Where(x => x.StoryType == StoryTypes.Chara || x.StoryType == StoryTypes.Dragon)
+                unit_story_list = savefile
+                    .StoryStates.Where(
+                        x => x.StoryType == StoryTypes.Chara || x.StoryType == StoryTypes.Dragon
+                    )
                     .Select(mapper.Map<UnitStoryList>),
-                castle_story_list = savefile.StoryStates
-                    .Where(x => x.StoryType == StoryTypes.Castle)
+                castle_story_list = savefile
+                    .StoryStates.Where(x => x.StoryType == StoryTypes.Castle)
                     .Select(mapper.Map<CastleStoryList>),
                 quest_list = savefile.QuestList.Select(mapper.Map<QuestList>),
                 quest_event_list = savefile.QuestEvents.Select(mapper.Map<QuestEventList>),
+                quest_treasure_list = savefile.QuestTreasureList.Select(
+                    mapper.Map<QuestTreasureList>
+                ),
                 material_list = savefile.MaterialList.Select(mapper.Map<MaterialList>),
                 weapon_skin_list = savefile.WeaponSkinList.Select(mapper.Map<WeaponSkinList>),
                 weapon_passive_ability_list = savefile.WeaponPassiveAbilityList.Select(
@@ -99,8 +104,8 @@ public class LoadService(
                     app_id = string.Empty
                 },
                 mission_notice = await missionService.GetMissionNotice(null),
-                equip_stamp_list = savefile.EquippedStampList
-                    .Select(mapper.Map<DbEquippedStamp, EquipStampList>)
+                equip_stamp_list = savefile
+                    .EquippedStampList.Select(mapper.Map<DbEquippedStamp, EquipStampList>)
                     .OrderBy(x => x.slot),
                 quest_entry_condition_list = await missionService.GetEntryConditions(),
                 user_treasure_trade_list = await tradeService.GetUserTreasureTradeList(),
@@ -110,7 +115,8 @@ public class LoadService(
                     mapper.Map<SummonTicketList>
                 ),
                 quest_bonus_stack_base_time = 1617775200, // 7. April 2017
-                album_dragon_list = Enumerable.Empty<AlbumDragonData>()
+                album_dragon_list = Enumerable.Empty<AlbumDragonData>(),
+                quest_wall_list = await wallService.GetQuestWallList()
             };
 
         logger.LogInformation("{time} ms: Mapping complete", stopwatch.ElapsedMilliseconds);

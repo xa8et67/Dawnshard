@@ -1,8 +1,5 @@
-using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
-using DragaliaAPI.Services.Exceptions;
-using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -70,8 +67,8 @@ public class WeaponBodyController : DragaliaControllerBase
         }
 
         foreach (
-            AtgenBuildupWeaponBodyPieceList buildup in request.buildup_weapon_body_piece_list
-                .OrderBy(x => x.buildup_piece_type)
+            AtgenBuildupWeaponBodyPieceList buildup in request
+                .buildup_weapon_body_piece_list.OrderBy(x => x.buildup_piece_type)
                 .ThenBy(x => x.step)
         )
         {
@@ -79,7 +76,12 @@ public class WeaponBodyController : DragaliaControllerBase
 
             if (buildupResult != ResultCode.Success)
             {
-                this.logger.LogError("buildup_piece request {request} was invalid", request);
+                this.logger.LogError(
+                    "buildup_piece request {@request} was invalid: {result}",
+                    request,
+                    buildupResult
+                );
+
                 return this.Code(buildupResult);
             }
         }

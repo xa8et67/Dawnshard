@@ -1,7 +1,6 @@
 ﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Reward;
-using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
@@ -22,8 +21,8 @@ public class TalismanService(
     {
         List<long> deletedTalismanIds = new();
 
-        List<DbTalisman> dbTalismans = await unitRepository.Talismans
-            .Where(x => talismanIds.Contains(x.TalismanKeyId))
+        List<DbTalisman> dbTalismans = await unitRepository
+            .Talismans.Where(x => talismanIds.Contains(x.TalismanKeyId))
             .ToListAsync();
 
         logger.LogDebug("Selling talismans {@talismanKeyIdList}", talismanIds);

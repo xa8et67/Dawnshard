@@ -1,8 +1,7 @@
-version: '3.4'
+version: "3.4"
 
 volumes:
   pgdata:
-  #logs:
 
 services:
   dragaliaapi:
@@ -28,14 +27,18 @@ services:
     build:
         context: .
         dockerfile: DragaliaAPI.Photon.StateManager/Dockerfile
+    environment:
+      - HTTP_PORTS=80
     ports:
       - "5001:80"
     env_file:
       - .env
+    profiles:
+      - photon
 
   postgres:
     hostname: postgres
-    image: postgres:latest
+    image: postgres:16
     env_file:
       - .env
     ports:
@@ -45,7 +48,7 @@ services:
 
   redis:
     hostname: redis
-    image: redis/redis-stack
+    image: redis/redis-stack:7.2.0-v6
     ports:
       - "6379:6379"
       - "8001:8001"

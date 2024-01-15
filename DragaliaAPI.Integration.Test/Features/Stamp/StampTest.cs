@@ -1,5 +1,4 @@
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Models.Generated;
 
 namespace DragaliaAPI.Integration.Test.Features.Stamp;
 
@@ -70,8 +69,7 @@ public class StampTest : TestFixture
 
         this.ApiContext.ChangeTracker.Clear();
 
-        this.ApiContext.EquippedStamps
-            .Where(x => x.DeviceAccountId == DeviceAccountId)
+        this.ApiContext.EquippedStamps.Where(x => x.ViewerId == ViewerId)
             .Should()
             .BeEquivalentTo(
                 requestList,

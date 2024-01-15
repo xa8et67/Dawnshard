@@ -1,10 +1,10 @@
-﻿using System.Reflection.Emit;
+﻿using System.Collections.Frozen;
 using DragaliaAPI.Photon.Shared.Enums;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models;
-using DragaliaAPI.Shared.MasterAsset.Models.Story;
 using DragaliaAPI.Shared.MasterAsset.Models.ManaCircle;
+using DragaliaAPI.Shared.MasterAsset.Models.Story;
 
 namespace DragaliaAPI.Shared.Test.Unit;
 
@@ -98,7 +98,9 @@ public class MasterAssetTest
                     ExAbility2Data5: 400000740,
                     EditReleaseEntityType1: EntityTypes.Material,
                     EditReleaseEntityId1: 201019011,
-                    EditReleaseEntityQuantity1: 5
+                    EditReleaseEntityQuantity1: 5,
+                    BaseId: 100032,
+                    VariationId: 4
                 )
             );
     }
@@ -208,7 +210,9 @@ public class MasterAssetTest
                     LimitBreakId: DragonLimitBreakTypes.Normal,
                     LimitBreakMaterialId: 0,
                     DefaultReliabilityLevel: 0,
-                    DmodePassiveAbilityId: 0
+                    DmodePassiveAbilityId: 0,
+                    BaseId: 210173,
+                    VariationId: 1
                 )
             );
     }
@@ -283,8 +287,8 @@ public class MasterAssetTest
                 )
             );
 
-        quest.AreaInfo
-            .Should()
+        quest
+            .AreaInfo.Should()
             .BeEquivalentTo(
                 new List<AreaInfo>()
                 {
@@ -403,10 +407,9 @@ public class MasterAssetTest
     [Fact]
     public void WeaponBodyBuildupGroup_Get_ReturnsExpectedProperties()
     {
-        int key = MasterAsset.MasterAsset.WeaponBody[WeaponBodies.Marmyadose].GetBuildupGroupId(
-            BuildupPieceTypes.Refine,
-            2
-        );
+        int key = MasterAsset
+            .MasterAsset.WeaponBody[WeaponBodies.Marmyadose]
+            .GetBuildupGroupId(BuildupPieceTypes.Refine, 2);
 
         WeaponBodyBuildupGroup group = MasterAsset.MasterAsset.WeaponBodyBuildupGroup[key];
 
@@ -444,7 +447,8 @@ public class MasterAssetTest
     {
         int key = MasterAsset.MasterAsset.WeaponBody[WeaponBodies.Camelot].GetBuildupLevelId(40);
 
-        MasterAsset.MasterAsset.WeaponBodyBuildupLevel[key]
+        MasterAsset
+            .MasterAsset.WeaponBodyBuildupLevel[key]
             .Should()
             .BeEquivalentTo(
                 new WeaponBodyBuildupLevel(
@@ -464,11 +468,12 @@ public class MasterAssetTest
     [Fact]
     public void WeaponPassiveAbility_Get_ReturnsExpectedProperties()
     {
-        int key = MasterAsset.MasterAsset.WeaponBody[
-            WeaponBodies.InfernoApogee
-        ].GetPassiveAbilityId(1);
+        int key = MasterAsset
+            .MasterAsset.WeaponBody[WeaponBodies.InfernoApogee]
+            .GetPassiveAbilityId(1);
 
-        MasterAsset.MasterAsset.WeaponPassiveAbility[key]
+        MasterAsset
+            .MasterAsset.WeaponPassiveAbility[key]
             .Should()
             .BeEquivalentTo(
                 new WeaponPassiveAbility(
@@ -490,7 +495,8 @@ public class MasterAssetTest
                     UnlockMaterialId4: Materials.UnearthlyLantern,
                     UnlockMaterialQuantity4: 1,
                     UnlockMaterialId5: Materials.BlazeOrb,
-                    UnlockMaterialQuantity5: 8
+                    UnlockMaterialQuantity5: 8,
+                    AbilityId: 389
                 )
             );
     }
@@ -502,8 +508,9 @@ public class MasterAssetTest
     {
         int key = MasterAsset.MasterAsset.CharaStories[(int)chara].id;
 
-        MasterAsset.MasterAsset.CharaStories[key].storyIds
-            .Should()
+        MasterAsset
+            .MasterAsset.CharaStories[key]
+            .storyIds.Should()
             .ContainInConsecutiveOrder(expectedStoryIds);
     }
 
@@ -514,15 +521,17 @@ public class MasterAssetTest
     {
         int key = MasterAsset.MasterAsset.DragonStories[(int)dragon].id;
 
-        MasterAsset.MasterAsset.DragonStories[key].storyIds
-            .Should()
+        MasterAsset
+            .MasterAsset.DragonStories[key]
+            .storyIds.Should()
             .ContainInConsecutiveOrder(expectedStoryIds);
     }
 
     [Fact]
     public void StoryData_HasExpectedProperties()
     {
-        MasterAsset.MasterAsset.UnitStory[200010011]
+        MasterAsset
+            .MasterAsset.UnitStory[200010011]
             .Should()
             .BeEquivalentTo(
                 new UnitStory(
@@ -589,8 +598,8 @@ public class MasterAssetTest
     [Fact]
     public void AbilityCrestBuildupGroup_MaterialMap_ReturnsExpectedDictionary()
     {
-        Dictionary<Materials, int> map = MasterAsset.MasterAsset.AbilityCrestBuildupGroup
-            .Get(6020603)
+        FrozenDictionary<Materials, int> map = MasterAsset
+            .MasterAsset.AbilityCrestBuildupGroup.Get(6020603)
             .MaterialMap;
 
         map.Should()
@@ -653,8 +662,8 @@ public class MasterAssetTest
     [Fact]
     public void AbilityCrestBuildupLevel_MaterialMap_ReturnsExpectedDictionary()
     {
-        Dictionary<Materials, int> map = MasterAsset.MasterAsset.AbilityCrestBuildupLevel
-            .Get(901010)
+        FrozenDictionary<Materials, int> map = MasterAsset
+            .MasterAsset.AbilityCrestBuildupLevel.Get(901010)
             .MaterialMap;
 
         map.Should()
@@ -730,7 +739,9 @@ public class MasterAssetTest
                     MaxHp: 44,
                     BaseAtk: 5,
                     MaxAtk: 25,
-                    UnionAbilityGroupId: 4
+                    UnionAbilityGroupId: 4,
+                    BaseId: 400192,
+                    IsHideChangeImage: true
                 )
             );
     }
@@ -760,8 +771,8 @@ public class MasterAssetTest
     [Fact]
     public void AbilityCrest_DuplicateMaterialMap_ReturnsExpectedDictionary()
     {
-        Dictionary<Materials, int> map = MasterAsset.MasterAsset.AbilityCrest
-            .Get(AbilityCrests.TheGeniusTacticianBowsBoon)
+        FrozenDictionary<Materials, int> map = MasterAsset
+            .MasterAsset.AbilityCrest.Get(AbilityCrests.TheGeniusTacticianBowsBoon)
             .DuplicateMaterialMap;
 
         map.Should()

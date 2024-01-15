@@ -1,13 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Database.Factories;
+﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Shared.Definitions.Enums;
-using DragaliaAPI.Shared.MasterAsset;
 
 namespace DragaliaAPI.Database.Test.Entities;
 
@@ -16,7 +8,7 @@ public class DbPlayerCharaDataTest
     [Fact]
     public void ManaCirclePieceIdList_Set_SetsExpectedValue()
     {
-        DbPlayerCharaData chara = new("id", Charas.GalaNedrick);
+        DbPlayerCharaData chara = new(1, Charas.GalaNedrick);
 
         SortedSet<int> input = new(Enumerable.Range(1, 50));
 

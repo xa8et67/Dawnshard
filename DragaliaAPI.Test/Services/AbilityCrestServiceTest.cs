@@ -1,20 +1,20 @@
 ﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Missions;
-using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
 using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Services.Game;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models;
 using DragaliaAPI.Test.Utils;
+using Xunit.Abstractions;
 
 namespace DragaliaAPI.Test.Services;
 
 public class AbilityCrestServiceTest
 {
+    private readonly ITestOutputHelper testOutputHelper;
     private readonly Mock<IAbilityCrestRepository> mockAbilityCrestRepository;
     private readonly Mock<IInventoryRepository> mockInventoryRepository;
     private readonly Mock<IUserDataRepository> mockUserDataRepository;
@@ -167,8 +167,9 @@ public class AbilityCrestServiceTest
             new object[] { AbilityCrests.TutelarysDestinyWolfsBoon, Rarity9LevelMap, 4, 30 }
         };
 
-    public AbilityCrestServiceTest()
+    public AbilityCrestServiceTest(ITestOutputHelper testOutputHelper)
     {
+        this.testOutputHelper = testOutputHelper;
         this.mockAbilityCrestRepository = new(MockBehavior.Strict);
         this.mockInventoryRepository = new(MockBehavior.Strict);
         this.mockUserDataRepository = new(MockBehavior.Strict);
@@ -186,11 +187,11 @@ public class AbilityCrestServiceTest
     [Fact]
     public async Task AddOrRefund_AbilityCrestNotFoundAddsAbilityCrest()
     {
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(AbilityCrests.WorthyRivals))
+        this.mockAbilityCrestRepository.Setup(x => x.FindAsync(AbilityCrests.WorthyRivals))
             .ReturnsAsync(() => null);
-        this.mockAbilityCrestRepository
-            .Setup(x => x.Add(AbilityCrests.WorthyRivals, null, null, null))
+        this.mockAbilityCrestRepository.Setup(
+            x => x.Add(AbilityCrests.WorthyRivals, null, null, null)
+        )
             .Returns(Task.CompletedTask);
 
         await this.abilityCrestService.AddOrRefund(AbilityCrests.WorthyRivals);
@@ -201,14 +202,9 @@ public class AbilityCrestServiceTest
     [Fact]
     public async Task AddOrRefund_TwoStarAbilityCrestRefundsCoin()
     {
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(AbilityCrests.ManaFount))
+        this.mockAbilityCrestRepository.Setup(x => x.FindAsync(AbilityCrests.ManaFount))
             .ReturnsAsync(
-                new DbAbilityCrest()
-                {
-                    DeviceAccountId = "id",
-                    AbilityCrestId = AbilityCrests.ManaFount
-                }
+                new DbAbilityCrest() { ViewerId = 1, AbilityCrestId = AbilityCrests.ManaFount }
             );
         this.mockUserDataRepository.Setup(x => x.UpdateCoin(50)).Returns(Task.CompletedTask);
 
@@ -231,13 +227,9 @@ public class AbilityCrestServiceTest
         int dewpoint
     )
     {
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(abilityCrestId))
-            .ReturnsAsync(
-                new DbAbilityCrest() { DeviceAccountId = "id", AbilityCrestId = abilityCrestId }
-            );
-        this.mockUserDataRepository
-            .Setup(x => x.UpdateDewpoint(dewpoint))
+        this.mockAbilityCrestRepository.Setup(x => x.FindAsync(abilityCrestId))
+            .ReturnsAsync(new DbAbilityCrest() { ViewerId = 1, AbilityCrestId = abilityCrestId });
+        this.mockUserDataRepository.Setup(x => x.UpdateDewpoint(dewpoint))
             .Returns(Task.CompletedTask);
 
         await this.abilityCrestService.AddOrRefund(abilityCrestId);
@@ -249,25 +241,22 @@ public class AbilityCrestServiceTest
     [Fact]
     public async Task AddOrRefund_NineStarAbilityCrestRefundsExpectedMaterials()
     {
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(AbilityCrests.TutelarysDestinyWolfsBoon))
+        this.mockAbilityCrestRepository.Setup(
+            x => x.FindAsync(AbilityCrests.TutelarysDestinyWolfsBoon)
+        )
             .ReturnsAsync(
                 new DbAbilityCrest()
                 {
-                    DeviceAccountId = "id",
+                    ViewerId = 1,
                     AbilityCrestId = AbilityCrests.TutelarysDestinyWolfsBoon
                 }
             );
-        this.mockInventoryRepository
-            .Setup(
-                x =>
-                    x.UpdateQuantity(
-                        new Dictionary<Materials, int>()
-                        {
-                            { Materials.TutelarySuccessorsMemory, 6 }
-                        }
-                    )
-            )
+        this.mockInventoryRepository.Setup(
+            x =>
+                x.UpdateQuantity(
+                    new Dictionary<Materials, int>() { { Materials.TutelarySuccessorsMemory, 6 } }
+                )
+        )
             .Returns(Task.CompletedTask);
 
         await this.abilityCrestService.AddOrRefund(AbilityCrests.TutelarysDestinyWolfsBoon);
@@ -341,7 +330,9 @@ public class AbilityCrestServiceTest
                 0,
                 0,
                 0,
-                0
+                0,
+                0,
+                false
             );
         AtgenBuildupAbilityCrestPieceList pieceList =
             new()
@@ -424,8 +415,9 @@ public class AbilityCrestServiceTest
                 step = 1
             };
 
-        this.mockInventoryRepository
-            .Setup(x => x.CheckQuantity(new Dictionary<Materials, int>() { { materialId, 1 } }))
+        this.mockInventoryRepository.Setup(
+            x => x.CheckQuantity(new Dictionary<Materials, int>() { { materialId, 1 } })
+        )
             .ReturnsAsync(false);
 
         (await this.abilityCrestService.TryBuildup(abilityCrest, pieceList))
@@ -449,17 +441,16 @@ public class AbilityCrestServiceTest
                 step = 2
             };
 
-        this.mockInventoryRepository
-            .Setup(
-                x =>
-                    x.CheckQuantity(
-                        new Dictionary<Materials, int>()
-                        {
-                            { Materials.JadeInsignia, 40 },
-                            { Materials.DyrenellAureus, 5 }
-                        }
+        Dictionary<Materials, int> expectedMap =
+            new() { { Materials.JadeInsignia, 40 }, { Materials.DyrenellAureus, 5 } };
+        this.mockInventoryRepository.Setup(
+            x =>
+                x.CheckQuantity(
+                    It.Is<IEnumerable<KeyValuePair<Materials, int>>>(
+                        y => y.IsEquivalent(expectedMap, this.testOutputHelper)
                     )
-            )
+                )
+        )
             .ReturnsAsync(false);
 
         (await this.abilityCrestService.TryBuildup(abilityCrest, pieceList))
@@ -483,18 +474,17 @@ public class AbilityCrestServiceTest
                 step = 3
             };
 
-        this.mockInventoryRepository
-            .Setup(
-                x =>
-                    x.CheckQuantity(
-                        new Dictionary<Materials, int>()
-                        {
-                            { Materials.TwilightShard, 200 },
-                            { Materials.TwilightPrism, 150 },
-                            { Materials.TutelarySuccessorsMemory, 120 }
-                        }
-                    )
-            )
+        this.mockInventoryRepository.Setup(
+            x =>
+                x.CheckQuantity(
+                    new Dictionary<Materials, int>()
+                    {
+                        { Materials.TwilightShard, 200 },
+                        { Materials.TwilightPrism, 150 },
+                        { Materials.TutelarySuccessorsMemory, 120 }
+                    }
+                )
+        )
             .ReturnsAsync(false);
 
         (await this.abilityCrestService.TryBuildup(abilityCrest, pieceList))
@@ -516,8 +506,7 @@ public class AbilityCrestServiceTest
                 step = 1
             };
 
-        this.mockInventoryRepository
-            .Setup(x => x.CheckQuantity(new Dictionary<Materials, int>()))
+        this.mockInventoryRepository.Setup(x => x.CheckQuantity(new Dictionary<Materials, int>()))
             .ReturnsAsync(true);
         this.mockUserDataRepository.Setup(x => x.CheckDewpoint(10)).ReturnsAsync(false);
 
@@ -541,8 +530,7 @@ public class AbilityCrestServiceTest
                 step = 2
             };
 
-        this.mockInventoryRepository
-            .Setup(x => x.CheckQuantity(new Dictionary<Materials, int>()))
+        this.mockInventoryRepository.Setup(x => x.CheckQuantity(new Dictionary<Materials, int>()))
             .ReturnsAsync(true);
         this.mockUserDataRepository.Setup(x => x.CheckDewpoint(1_700)).ReturnsAsync(false);
 
@@ -570,12 +558,10 @@ public class AbilityCrestServiceTest
                 step = 2
             };
 
-        this.mockInventoryRepository
-            .Setup(x => x.CheckQuantity(new Dictionary<Materials, int>()))
+        this.mockInventoryRepository.Setup(x => x.CheckQuantity(new Dictionary<Materials, int>()))
             .ReturnsAsync(true);
         this.mockUserDataRepository.Setup(x => x.CheckDewpoint(10)).ReturnsAsync(true);
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(AbilityCrests.ManaFount))
+        this.mockAbilityCrestRepository.Setup(x => x.FindAsync(AbilityCrests.ManaFount))
             .ReturnsAsync(() => null);
 
         try
@@ -613,16 +599,14 @@ public class AbilityCrestServiceTest
                 step = 3
             };
 
-        this.mockInventoryRepository
-            .Setup(x => x.CheckQuantity(new Dictionary<Materials, int>()))
+        this.mockInventoryRepository.Setup(x => x.CheckQuantity(new Dictionary<Materials, int>()))
             .ReturnsAsync(true);
         this.mockUserDataRepository.Setup(x => x.CheckDewpoint(10)).ReturnsAsync(true);
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(AbilityCrests.ManaFount))
+        this.mockAbilityCrestRepository.Setup(x => x.FindAsync(AbilityCrests.ManaFount))
             .ReturnsAsync(
                 new DbAbilityCrest()
                 {
-                    DeviceAccountId = "id",
+                    ViewerId = 1,
                     AbilityCrestId = AbilityCrests.ManaFount,
                     LimitBreakCount = currLevel
                 }
@@ -656,23 +640,35 @@ public class AbilityCrestServiceTest
                 step = step
             };
 
-        this.mockInventoryRepository.Setup(x => x.CheckQuantity(materialMap)).ReturnsAsync(true);
+        this.mockInventoryRepository.Setup(
+            x =>
+                x.CheckQuantity(
+                    It.Is<IEnumerable<KeyValuePair<Materials, int>>>(
+                        y => y.IsEquivalent(materialMap, this.testOutputHelper)
+                    )
+                )
+        )
+            .ReturnsAsync(true);
         this.mockUserDataRepository.Setup(x => x.CheckDewpoint(dewpoint)).ReturnsAsync(true);
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(abilityCrestId))
+        this.mockAbilityCrestRepository.Setup(x => x.FindAsync(abilityCrestId))
             .ReturnsAsync(
                 new DbAbilityCrest()
                 {
-                    DeviceAccountId = "id",
+                    ViewerId = 1,
                     AbilityCrestId = abilityCrestId,
                     LimitBreakCount = step - 1
                 }
             );
-        this.mockInventoryRepository
-            .Setup(x => x.UpdateQuantity(materialMap.Invert()))
+        this.mockInventoryRepository.Setup(
+            x =>
+                x.UpdateQuantity(
+                    It.Is<IEnumerable<KeyValuePair<Materials, int>>>(
+                        y => y.IsEquivalent(materialMap.Invert(), this.testOutputHelper)
+                    )
+                )
+        )
             .Returns(Task.CompletedTask);
-        this.mockUserDataRepository
-            .Setup(x => x.UpdateDewpoint(-dewpoint))
+        this.mockUserDataRepository.Setup(x => x.UpdateDewpoint(-dewpoint))
             .Returns(Task.CompletedTask);
 
         (await this.abilityCrestService.TryBuildup(abilityCrest, pieceList))
@@ -701,23 +697,35 @@ public class AbilityCrestServiceTest
                 step = 2
             };
 
-        this.mockInventoryRepository.Setup(x => x.CheckQuantity(materialMap)).ReturnsAsync(true);
+        this.mockInventoryRepository.Setup(
+            x =>
+                x.CheckQuantity(
+                    It.Is<IEnumerable<KeyValuePair<Materials, int>>>(
+                        y => y.IsEquivalent(materialMap, this.testOutputHelper)
+                    )
+                )
+        )
+            .ReturnsAsync(true);
         this.mockUserDataRepository.Setup(x => x.CheckDewpoint(dewpoint)).ReturnsAsync(true);
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(abilityCrestId))
+        this.mockAbilityCrestRepository.Setup(x => x.FindAsync(abilityCrestId))
             .ReturnsAsync(
                 new DbAbilityCrest()
                 {
-                    DeviceAccountId = "id",
+                    ViewerId = 1,
                     AbilityCrestId = abilityCrestId,
                     EquipableCount = 1
                 }
             );
-        this.mockInventoryRepository
-            .Setup(x => x.UpdateQuantity(materialMap.Invert()))
+        this.mockInventoryRepository.Setup(
+            x =>
+                x.UpdateQuantity(
+                    It.Is<IEnumerable<KeyValuePair<Materials, int>>>(
+                        y => y.IsEquivalent(materialMap.Invert(), this.testOutputHelper)
+                    )
+                )
+        )
             .Returns(Task.CompletedTask);
-        this.mockUserDataRepository
-            .Setup(x => x.UpdateDewpoint(-dewpoint))
+        this.mockUserDataRepository.Setup(x => x.UpdateDewpoint(-dewpoint))
             .Returns(Task.CompletedTask);
 
         (await this.abilityCrestService.TryBuildup(abilityCrest, pieceList))
@@ -752,7 +760,9 @@ public class AbilityCrestServiceTest
                 0,
                 0,
                 0,
-                0
+                0,
+                0,
+                false
             );
         AtgenBuildupAbilityCrestPieceList pieceList =
             new()
@@ -804,17 +814,16 @@ public class AbilityCrestServiceTest
                 step = 15
             };
 
-        this.mockInventoryRepository
-            .Setup(
-                x =>
-                    x.CheckQuantity(
-                        new Dictionary<Materials, int>
-                        {
-                            { Materials.HolyWater, 7 },
-                            { Materials.ConsecratedWater, 2 }
-                        }
-                    )
-            )
+        this.mockInventoryRepository.Setup(
+            x =>
+                x.CheckQuantity(
+                    new Dictionary<Materials, int>
+                    {
+                        { Materials.HolyWater, 7 },
+                        { Materials.ConsecratedWater, 2 }
+                    }
+                )
+        )
             .ReturnsAsync(false);
 
         (await this.abilityCrestService.TryBuildup(abilityCrest, pieceList))
@@ -836,20 +845,18 @@ public class AbilityCrestServiceTest
                 step = 12
             };
 
-        this.mockInventoryRepository
-            .Setup(
-                x =>
-                    x.CheckQuantity(
-                        new Dictionary<Materials, int>
-                        {
-                            { Materials.HolyWater, 7 },
-                            { Materials.ConsecratedWater, 2 }
-                        }
-                    )
-            )
+        this.mockInventoryRepository.Setup(
+            x =>
+                x.CheckQuantity(
+                    new Dictionary<Materials, int>
+                    {
+                        { Materials.HolyWater, 7 },
+                        { Materials.ConsecratedWater, 2 }
+                    }
+                )
+        )
             .ReturnsAsync(true);
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(AbilityCrests.DragonsNest))
+        this.mockAbilityCrestRepository.Setup(x => x.FindAsync(AbilityCrests.DragonsNest))
             .ReturnsAsync(() => null);
 
         try
@@ -886,17 +893,15 @@ public class AbilityCrestServiceTest
                 step = 5
             };
 
-        this.mockInventoryRepository
-            .Setup(
-                x => x.CheckQuantity(new Dictionary<Materials, int> { { Materials.HolyWater, 7 } })
-            )
+        this.mockInventoryRepository.Setup(
+            x => x.CheckQuantity(new Dictionary<Materials, int> { { Materials.HolyWater, 7 } })
+        )
             .ReturnsAsync(true);
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(AbilityCrests.ManaFount))
+        this.mockAbilityCrestRepository.Setup(x => x.FindAsync(AbilityCrests.ManaFount))
             .ReturnsAsync(
                 new DbAbilityCrest()
                 {
-                    DeviceAccountId = "id",
+                    ViewerId = 1,
                     AbilityCrestId = AbilityCrests.ManaFount,
                     BuildupCount = currLevel
                 }
@@ -929,17 +934,15 @@ public class AbilityCrestServiceTest
                 step = step
             };
 
-        this.mockInventoryRepository
-            .Setup(
-                x => x.CheckQuantity(new Dictionary<Materials, int> { { Materials.HolyWater, 7 } })
-            )
+        this.mockInventoryRepository.Setup(
+            x => x.CheckQuantity(new Dictionary<Materials, int> { { Materials.HolyWater, 7 } })
+        )
             .ReturnsAsync(true);
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(AbilityCrests.ManaFount))
+        this.mockAbilityCrestRepository.Setup(x => x.FindAsync(AbilityCrests.ManaFount))
             .ReturnsAsync(
                 new DbAbilityCrest()
                 {
-                    DeviceAccountId = "id",
+                    ViewerId = 1,
                     AbilityCrestId = AbilityCrests.ManaFount,
                     LimitBreakCount = limitBreak,
                     BuildupCount = step - 1
@@ -973,19 +976,17 @@ public class AbilityCrestServiceTest
             };
 
         this.mockInventoryRepository.Setup(x => x.CheckQuantity(materialMap)).ReturnsAsync(true);
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(abilityCrestId))
+        this.mockAbilityCrestRepository.Setup(x => x.FindAsync(abilityCrestId))
             .ReturnsAsync(
                 new DbAbilityCrest()
                 {
-                    DeviceAccountId = "id",
+                    ViewerId = 1,
                     AbilityCrestId = abilityCrestId,
                     LimitBreakCount = limitBreak,
                     BuildupCount = step - 1
                 }
             );
-        this.mockInventoryRepository
-            .Setup(x => x.UpdateQuantity(materialMap.Invert()))
+        this.mockInventoryRepository.Setup(x => x.UpdateQuantity(materialMap.Invert()))
             .Returns(Task.CompletedTask);
 
         this.mockMissionProgressionService.Setup(
@@ -1043,8 +1044,9 @@ public class AbilityCrestServiceTest
         AtgenPlusCountParamsList augmentParams =
             new() { plus_count = 40, plus_count_type = PlusCountType.Atk };
 
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(AbilityCrests.TutelarysDestinyWolfsBoon))
+        this.mockAbilityCrestRepository.Setup(
+            x => x.FindAsync(AbilityCrests.TutelarysDestinyWolfsBoon)
+        )
             .ReturnsAsync(() => null);
 
         try
@@ -1069,13 +1071,14 @@ public class AbilityCrestServiceTest
         AtgenPlusCountParamsList augmentParams =
             new() { plus_count = 39, plus_count_type = PlusCountType.Hp };
 
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(AbilityCrests.TutelarysDestinyWolfsBoon))
+        this.mockAbilityCrestRepository.Setup(
+            x => x.FindAsync(AbilityCrests.TutelarysDestinyWolfsBoon)
+        )
             .ReturnsAsync(
                 new DbAbilityCrest()
                 {
                     AbilityCrestId = AbilityCrests.TutelarysDestinyWolfsBoon,
-                    DeviceAccountId = "id",
+                    ViewerId = 1,
                     HpPlusCount = 40,
                     AttackPlusCount = 38
                 }
@@ -1097,25 +1100,25 @@ public class AbilityCrestServiceTest
         AtgenPlusCountParamsList augmentParams =
             new() { plus_count = 38, plus_count_type = PlusCountType.Atk };
 
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(AbilityCrests.TutelarysDestinyWolfsBoon))
+        this.mockAbilityCrestRepository.Setup(
+            x => x.FindAsync(AbilityCrests.TutelarysDestinyWolfsBoon)
+        )
             .ReturnsAsync(
                 new DbAbilityCrest()
                 {
                     AbilityCrestId = AbilityCrests.TutelarysDestinyWolfsBoon,
-                    DeviceAccountId = "id",
+                    ViewerId = 1,
                     HpPlusCount = 40,
                     AttackPlusCount = 31
                 }
             );
 
-        this.mockInventoryRepository
-            .Setup(
-                x =>
-                    x.CheckQuantity(
-                        new Dictionary<Materials, int>() { { Materials.AmplifyingGemstone, 7 } }
-                    )
-            )
+        this.mockInventoryRepository.Setup(
+            x =>
+                x.CheckQuantity(
+                    new Dictionary<Materials, int>() { { Materials.AmplifyingGemstone, 7 } }
+                )
+        )
             .ReturnsAsync(false);
 
         (await this.abilityCrestService.TryBuildupAugments(abilityCrest, augmentParams))
@@ -1158,20 +1161,17 @@ public class AbilityCrestServiceTest
                 ? Materials.FortifyingGemstone
                 : Materials.AmplifyingGemstone;
 
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(abilityCrestId))
-            .ReturnsAsync(
-                new DbAbilityCrest() { AbilityCrestId = abilityCrestId, DeviceAccountId = "id" }
-            );
+        this.mockAbilityCrestRepository.Setup(x => x.FindAsync(abilityCrestId))
+            .ReturnsAsync(new DbAbilityCrest() { AbilityCrestId = abilityCrestId, ViewerId = 1 });
 
-        this.mockInventoryRepository
-            .Setup(x => x.CheckQuantity(new Dictionary<Materials, int>() { { material, amount } }))
+        this.mockInventoryRepository.Setup(
+            x => x.CheckQuantity(new Dictionary<Materials, int>() { { material, amount } })
+        )
             .ReturnsAsync(true);
 
-        this.mockInventoryRepository
-            .Setup(
-                x => x.UpdateQuantity(new Dictionary<Materials, int>() { { material, -amount } })
-            )
+        this.mockInventoryRepository.Setup(
+            x => x.UpdateQuantity(new Dictionary<Materials, int>() { { material, -amount } })
+        )
             .Returns(Task.CompletedTask);
 
         (await this.abilityCrestService.TryBuildupAugments(abilityCrest, augmentParams))
@@ -1186,8 +1186,7 @@ public class AbilityCrestServiceTest
     [Fact]
     public async Task TryResetAugments_AbilityCrestNotFoundInDbThrowsError()
     {
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(AbilityCrests.WorthyRivals))
+        this.mockAbilityCrestRepository.Setup(x => x.FindAsync(AbilityCrests.WorthyRivals))
             .ReturnsAsync(() => null);
 
         try
@@ -1209,14 +1208,9 @@ public class AbilityCrestServiceTest
     [Fact]
     public async Task TryResetAugments_InvalidAugmentTypeReturnsInvalidResultCode()
     {
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(AbilityCrests.WorthyRivals))
+        this.mockAbilityCrestRepository.Setup(x => x.FindAsync(AbilityCrests.WorthyRivals))
             .ReturnsAsync(
-                new DbAbilityCrest()
-                {
-                    AbilityCrestId = AbilityCrests.WorthyRivals,
-                    DeviceAccountId = "id"
-                }
+                new DbAbilityCrest() { AbilityCrestId = AbilityCrests.WorthyRivals, ViewerId = 1 }
             );
 
         try
@@ -1235,13 +1229,12 @@ public class AbilityCrestServiceTest
     [Fact]
     public async Task TryResetAugments_NotEnoughCoinReturnsInvalidResultCode()
     {
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(AbilityCrests.WorthyRivals))
+        this.mockAbilityCrestRepository.Setup(x => x.FindAsync(AbilityCrests.WorthyRivals))
             .ReturnsAsync(
                 new DbAbilityCrest()
                 {
                     AbilityCrestId = AbilityCrests.WorthyRivals,
-                    DeviceAccountId = "id",
+                    ViewerId = 1,
                     HpPlusCount = 35,
                     AttackPlusCount = 50
                 }
@@ -1272,29 +1265,26 @@ public class AbilityCrestServiceTest
         int amount
     )
     {
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(abilityCrestId))
+        this.mockAbilityCrestRepository.Setup(x => x.FindAsync(abilityCrestId))
             .ReturnsAsync(
                 new DbAbilityCrest()
                 {
                     AbilityCrestId = abilityCrestId,
-                    DeviceAccountId = "id",
+                    ViewerId = 1,
                     HpPlusCount = amount,
                     AttackPlusCount = 30
                 }
             );
 
         this.mockUserDataRepository.Setup(x => x.CheckCoin(amount * 20_000)).ReturnsAsync(true);
-        this.mockUserDataRepository
-            .Setup(x => x.UpdateCoin(-amount * 20_000))
+        this.mockUserDataRepository.Setup(x => x.UpdateCoin(-amount * 20_000))
             .Returns(Task.CompletedTask);
-        this.mockInventoryRepository
-            .Setup(
-                x =>
-                    x.UpdateQuantity(
-                        new Dictionary<Materials, int> { { Materials.FortifyingGemstone, amount } }
-                    )
-            )
+        this.mockInventoryRepository.Setup(
+            x =>
+                x.UpdateQuantity(
+                    new Dictionary<Materials, int> { { Materials.FortifyingGemstone, amount } }
+                )
+        )
             .Returns(Task.CompletedTask);
 
         (await this.abilityCrestService.TryResetAugments(abilityCrestId, PlusCountType.Hp))
@@ -1315,29 +1305,26 @@ public class AbilityCrestServiceTest
         int amount
     )
     {
-        this.mockAbilityCrestRepository
-            .Setup(x => x.FindAsync(abilityCrestId))
+        this.mockAbilityCrestRepository.Setup(x => x.FindAsync(abilityCrestId))
             .ReturnsAsync(
                 new DbAbilityCrest()
                 {
                     AbilityCrestId = abilityCrestId,
-                    DeviceAccountId = "id",
+                    ViewerId = 1,
                     HpPlusCount = 25,
                     AttackPlusCount = amount
                 }
             );
 
         this.mockUserDataRepository.Setup(x => x.CheckCoin(amount * 20_000)).ReturnsAsync(true);
-        this.mockUserDataRepository
-            .Setup(x => x.UpdateCoin(-amount * 20_000))
+        this.mockUserDataRepository.Setup(x => x.UpdateCoin(-amount * 20_000))
             .Returns(Task.CompletedTask);
-        this.mockInventoryRepository
-            .Setup(
-                x =>
-                    x.UpdateQuantity(
-                        new Dictionary<Materials, int> { { Materials.AmplifyingGemstone, amount } }
-                    )
-            )
+        this.mockInventoryRepository.Setup(
+            x =>
+                x.UpdateQuantity(
+                    new Dictionary<Materials, int> { { Materials.AmplifyingGemstone, amount } }
+                )
+        )
             .Returns(Task.CompletedTask);
 
         (await this.abilityCrestService.TryResetAugments(abilityCrestId, PlusCountType.Atk))

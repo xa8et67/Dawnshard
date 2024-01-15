@@ -1,6 +1,5 @@
-using System.Reflection;
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Shared.MasterAsset.Models;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Database;
@@ -8,78 +7,10 @@ namespace DragaliaAPI.Database;
 /// <summary>
 /// Base database context.
 /// </summary>
-/// <remarks>Do not use this class directly -- make a repository method instead. This rule is enforced to make queries easy to unit test.</remarks>
-public class ApiContext : DbContext
+public class ApiContext : DbContext, IDataProtectionKeyContext
 {
     public ApiContext(DbContextOptions<ApiContext> options)
         : base(options) { }
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        // TODO: put this into IEntityTypeConfiguration classes before this method gets huge
-        modelBuilder
-            .Entity<DbPlayerCharaData>()
-            .HasKey(key => new { key.DeviceAccountId, key.CharaId });
-
-        modelBuilder
-            .Entity<DbPlayerDragonReliability>()
-            .HasKey(key => new { key.DeviceAccountId, key.DragonId });
-
-        modelBuilder
-            .Entity<DbPlayerCurrency>()
-            .HasKey(key => new { key.DeviceAccountId, key.CurrencyType });
-
-        modelBuilder
-            .Entity<DbPlayerDragonGift>()
-            .HasKey(key => new { key.DeviceAccountId, key.DragonGiftId });
-
-        modelBuilder
-            .Entity<DbPlayerMaterial>()
-            .HasKey(key => new { key.DeviceAccountId, key.MaterialId });
-
-        modelBuilder
-            .Entity<DbPlayerStoryState>()
-            .HasKey(
-                key =>
-                    new
-                    {
-                        key.DeviceAccountId,
-                        key.StoryType,
-                        key.StoryId
-                    }
-            );
-
-        modelBuilder.Entity<DbParty>().HasKey(e => new { e.DeviceAccountId, e.PartyNo });
-
-        modelBuilder
-            .Entity<DbSetUnit>()
-            .HasKey(
-                key =>
-                    new
-                    {
-                        key.DeviceAccountId,
-                        key.CharaId,
-                        key.UnitSetNo
-                    }
-            );
-
-        modelBuilder
-            .Entity<DbPlayerBannerData>()
-            .HasKey(key => new { key.DeviceAccountId, key.SummonBannerId });
-
-        modelBuilder.Entity<DbQuest>().HasKey(e => new { e.DeviceAccountId, e.QuestId });
-
-        modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
-
-        if (this.Database.IsSqlite())
-        {
-            // SQLite doesn't support identity columns that aren't primary keys
-            modelBuilder
-                .Entity<DbPlayerUserData>()
-                .Property(x => x.ViewerId)
-                .HasDefaultValueSql("last_insert_rowid()");
-        }
-    }
 
 #pragma warning disable CS0618 // Type or member is obsolete
     public DbSet<DbDeviceAccount> DeviceAccounts { get; set; }
@@ -107,8 +38,6 @@ public class ApiContext : DbContext
 
     public DbSet<DbPartyUnit> PlayerPartyUnits { get; set; }
 
-    public DbSet<DbPlayerCurrency> PlayerWallet { get; set; }
-
     public DbSet<DbPlayerMaterial> PlayerMaterials { get; set; }
 
     public DbSet<DbSetUnit> PlayerSetUnits { get; set; }
@@ -132,6 +61,8 @@ public class ApiContext : DbContext
     public DbSet<DbPlayerDragonGift> PlayerDragonGifts { get; set; }
 
     public DbSet<DbPlayerMission> PlayerMissions { get; set; }
+
+    public DbSet<DbCompletedDailyMission> CompletedDailyMissions { get; set; }
 
     public DbSet<DbPlayerPresent> PlayerPresents { get; set; }
 
@@ -186,4 +117,10 @@ public class ApiContext : DbContext
     public DbSet<DbReceivedRankingTierReward> ReceivedRankingTierRewards { get; set; }
 
     public DbSet<DbNewsItem> NewsItems { get; set; }
+
+    public DbSet<DbQuestTreasureList> QuestTreasureList { get; set; }
+
+    public DbSet<DbPlayerQuestWall> PlayerQuestWalls { get; set; }
+
+    public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
 }

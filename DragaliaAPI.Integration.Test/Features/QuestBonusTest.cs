@@ -1,13 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Models;
-using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Shared.Definitions.Enums;
-using DragaliaAPI.Shared.MasterAsset.Models;
+﻿using DragaliaAPI.Database.Entities;
 
 namespace DragaliaAPI.Integration.Test.Features;
 
@@ -35,8 +26,8 @@ public class QuestBonusTest : TestFixture
 
         DragaliaResponse<DungeonRecordRecordData> response = await this.CompleteQuest(questId);
 
-        response.data.update_data_list.quest_event_list
-            .Should()
+        response
+            .data.update_data_list.quest_event_list.Should()
             .ContainEquivalentOf(
                 new QuestEventList()
                 {
@@ -68,8 +59,8 @@ public class QuestBonusTest : TestFixture
         bonusResponse.data.receive_quest_bonus.receive_bonus_count.Should().Be(1);
         bonusResponse.data.receive_quest_bonus.bonus_factor.Should().Be(1);
 
-        bonusResponse.data.receive_quest_bonus.quest_bonus_entity_list
-            .Should()
+        bonusResponse
+            .data.receive_quest_bonus.quest_bonus_entity_list.Should()
             .BeEquivalentTo(
                 new List<AtgenBuildEventRewardEntityList>()
                 {
@@ -103,8 +94,8 @@ public class QuestBonusTest : TestFixture
             );
 
         bonusResponse.data.update_data_list.material_list.Should().NotBeEmpty();
-        bonusResponse.data.update_data_list.quest_event_list
-            .Should()
+        bonusResponse
+            .data.update_data_list.quest_event_list.Should()
             .ContainEquivalentOf(
                 new QuestEventList()
                 {
@@ -133,7 +124,7 @@ public class QuestBonusTest : TestFixture
         await this.AddToDatabase(
             new DbQuestEvent()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 QuestEventId = questEventId,
                 LastWeeklyResetTime = resetTime,
                 LastDailyResetTime = resetTime,
@@ -145,8 +136,8 @@ public class QuestBonusTest : TestFixture
 
         DragaliaResponse<DungeonRecordRecordData> response = await this.CompleteQuest(questId);
 
-        response.data.update_data_list.quest_event_list
-            .Should()
+        response
+            .data.update_data_list.quest_event_list.Should()
             .ContainEquivalentOf(
                 new QuestEventList()
                 {
@@ -173,7 +164,7 @@ public class QuestBonusTest : TestFixture
         await this.AddToDatabase(
             new DbQuestEvent()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 QuestEventId = questEventId,
                 LastWeeklyResetTime = DateTimeOffset.UtcNow - TimeSpan.FromDays(7),
                 LastDailyResetTime = DateTimeOffset.UtcNow - TimeSpan.FromDays(7),
@@ -184,8 +175,8 @@ public class QuestBonusTest : TestFixture
 
         DragaliaResponse<DungeonRecordRecordData> response = await this.CompleteQuest(questId);
 
-        response.data.update_data_list.quest_event_list
-            .Should()
+        response
+            .data.update_data_list.quest_event_list.Should()
             .ContainEquivalentOf(
                 new QuestEventList()
                 {
@@ -229,8 +220,8 @@ public class QuestBonusTest : TestFixture
 
         DragaliaResponse<DungeonRecordRecordData> response = await this.CompleteQuest(questId);
 
-        response.data.update_data_list.quest_event_list
-            .Should()
+        response
+            .data.update_data_list.quest_event_list.Should()
             .ContainEquivalentOf(
                 new QuestEventList()
                 {
@@ -262,8 +253,68 @@ public class QuestBonusTest : TestFixture
         bonusResponse.data.receive_quest_bonus.receive_bonus_count.Should().Be(0);
 
         bonusResponse.data.update_data_list.material_list.Should().BeNullOrEmpty();
-        bonusResponse.data.update_data_list.quest_event_list
-            .Should()
+        bonusResponse
+            .data.update_data_list.quest_event_list.Should()
+            .ContainEquivalentOf(
+                new QuestEventList()
+                {
+                    quest_event_id = questEventId,
+                    quest_bonus_receive_count = 0,
+                    quest_bonus_reserve_count = 0,
+                    quest_bonus_reserve_time = DateTimeOffset.UnixEpoch,
+                    quest_bonus_stack_count = 0,
+                    quest_bonus_stack_time = DateTimeOffset.UnixEpoch,
+                    last_daily_reset_time = response.data.ingame_result_data.end_time,
+                    last_weekly_reset_time = response.data.ingame_result_data.end_time,
+                    daily_play_count = 1,
+                    weekly_play_count = 1
+                }
+            );
+    }
+
+    [Fact]
+    public async Task QuestBonus_PartiallyClaiming_SetsReserveCountToZero()
+    {
+        int questId = 233010103; // Primal Midgardsormr's Trial: Master
+        int questEventId = 23300;
+
+        DragaliaResponse<DungeonRecordRecordData> response = await this.CompleteQuest(questId);
+
+        response
+            .data.update_data_list.quest_event_list.Should()
+            .ContainEquivalentOf(
+                new QuestEventList()
+                {
+                    quest_event_id = questEventId,
+                    quest_bonus_receive_count = 0,
+                    quest_bonus_reserve_count = 1,
+                    quest_bonus_reserve_time = response.data.ingame_result_data.end_time,
+                    quest_bonus_stack_count = 0,
+                    quest_bonus_stack_time = DateTimeOffset.UnixEpoch,
+                    last_daily_reset_time = response.data.ingame_result_data.end_time,
+                    last_weekly_reset_time = response.data.ingame_result_data.end_time,
+                    daily_play_count = 1,
+                    weekly_play_count = 1
+                }
+            );
+
+        DragaliaResponse<DungeonReceiveQuestBonusData> bonusResponse =
+            await this.Client.PostMsgpack<DungeonReceiveQuestBonusData>(
+                "/dungeon/receive_quest_bonus",
+                new DungeonReceiveQuestBonusRequest()
+                {
+                    quest_event_id = questEventId,
+                    is_receive = false,
+                    receive_bonus_count = 1
+                }
+            );
+
+        bonusResponse.data.receive_quest_bonus.target_quest_id.Should().Be(questId);
+        bonusResponse.data.receive_quest_bonus.receive_bonus_count.Should().Be(0);
+
+        bonusResponse.data.update_data_list.material_list.Should().BeNullOrEmpty();
+        bonusResponse
+            .data.update_data_list.quest_event_list.Should()
             .ContainEquivalentOf(
                 new QuestEventList()
                 {

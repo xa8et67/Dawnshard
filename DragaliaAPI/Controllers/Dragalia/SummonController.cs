@@ -1,17 +1,16 @@
 ﻿using System.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
-using DragaliaAPI.Services;
-using Microsoft.EntityFrameworkCore;
-using DragaliaAPI.Shared.Definitions.Enums;
+using AutoMapper;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
-using AutoMapper;
-using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Models;
 using DragaliaAPI.Features.Shop;
+using DragaliaAPI.Models.Generated;
+using DragaliaAPI.Services;
 using DragaliaAPI.Services.Exceptions;
+using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Controllers.Dragalia;
 
@@ -393,7 +392,7 @@ public class SummonController(
             await summonRepository.AddSummonHistory(
                 new DbPlayerSummonHistory()
                 {
-                    DeviceAccountId = this.DeviceAccountId,
+                    ViewerId = this.ViewerId,
                     SummonId = bannerData.summon_id,
                     SummonExecType = summonRequest.exec_type,
                     ExecDate = summonDate,

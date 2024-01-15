@@ -1,14 +1,13 @@
-﻿using DragaliaAPI.Database.Entities;
+﻿using AutoMapper;
+using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
+using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models;
-using DragaliaAPI.Shared.Definitions.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using DragaliaAPI.Models;
-using AutoMapper;
 
 namespace DragaliaAPI.Controllers.Dragalia;
 
@@ -78,8 +77,8 @@ public class AbilityCrestController : DragaliaControllerBase
         }
 
         foreach (
-            AtgenBuildupAbilityCrestPieceList buildupPiece in request.buildup_ability_crest_piece_list
-                .OrderBy(x => x.buildup_piece_type)
+            AtgenBuildupAbilityCrestPieceList buildupPiece in request
+                .buildup_ability_crest_piece_list.OrderBy(x => x.buildup_piece_type)
                 .ThenBy(x => x.step)
         )
         {
@@ -163,8 +162,8 @@ public class AbilityCrestController : DragaliaControllerBase
         AbilityCrestGetAbilityCrestSetListRequest request
     )
     {
-        List<DbAbilityCrestSet> dbAbilityCrestSets = await abilityCrestRepository.AbilityCrestSets
-            .OrderBy(x => x.AbilityCrestSetNo)
+        List<DbAbilityCrestSet> dbAbilityCrestSets = await abilityCrestRepository
+            .AbilityCrestSets.OrderBy(x => x.AbilityCrestSetNo)
             .ToListAsync();
 
         int index = 0;
@@ -176,7 +175,11 @@ public class AbilityCrestController : DragaliaControllerBase
                     index < dbAbilityCrestSets.Count()
                     && dbAbilityCrestSets[index].AbilityCrestSetNo == x
                         ? dbAbilityCrestSets[index++]
-                        : new DbAbilityCrestSet("", x)
+                        : new DbAbilityCrestSet()
+                        {
+                            ViewerId = this.ViewerId,
+                            AbilityCrestSetNo = x
+                        }
             )
             .Select(mapper.Map<AbilityCrestSetList>)
             .ToArray();
@@ -223,7 +226,6 @@ public class AbilityCrestController : DragaliaControllerBase
             await abilityCrestRepository.AddOrUpdateSet(
                 new DbAbilityCrestSet()
                 {
-                    DeviceAccountId = "",
                     AbilityCrestSetNo = request.ability_crest_set_no,
                     AbilityCrestSetName = request.ability_crest_set_name
                 }

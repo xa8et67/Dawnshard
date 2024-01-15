@@ -1,7 +1,5 @@
-﻿using System.Diagnostics;
-using DragaliaAPI.Database;
+﻿using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,24 +18,24 @@ public class ShopRepository : IShopRepository
 
     public IQueryable<DbPlayerShopInfo> ShopInfos =>
         this.apiContext.PlayerShopInfos.Where(
-            x => x.DeviceAccountId == this.playerIdentityService.AccountId
+            x => x.ViewerId == this.playerIdentityService.ViewerId
         );
 
     public IQueryable<DbPlayerShopPurchase> Purchases =>
         this.apiContext.PlayerPurchases.Where(
-            x => x.DeviceAccountId == this.playerIdentityService.AccountId
+            x => x.ViewerId == this.playerIdentityService.ViewerId
         );
 
     public async Task<DbPlayerShopInfo> GetShopInfoAsync()
     {
-        return await this.apiContext.PlayerShopInfos.FindAsync(this.playerIdentityService.AccountId)
+        return await this.apiContext.PlayerShopInfos.FindAsync(this.playerIdentityService.ViewerId)
             ?? throw new NullReferenceException("No ShopInfo found");
     }
 
     public void InitializeShopInfo()
     {
         this.apiContext.PlayerShopInfos.Add(
-            new DbPlayerShopInfo() { DeviceAccountId = this.playerIdentityService.AccountId, }
+            new DbPlayerShopInfo() { ViewerId = this.playerIdentityService.ViewerId, }
         );
     }
 
@@ -50,8 +48,9 @@ public class ShopRepository : IShopRepository
     {
         DateTimeOffset current = DateTimeOffset.UtcNow;
 
-        await this.Purchases
-            .Where(x => x.EffectEndTime != DateTimeOffset.UnixEpoch && current >= x.EffectEndTime)
+        await this.Purchases.Where(
+            x => x.EffectEndTime != DateTimeOffset.UnixEpoch && current >= x.EffectEndTime
+        )
             .ExecuteDeleteAsync();
     }
 
@@ -74,7 +73,7 @@ public class ShopRepository : IShopRepository
             this.apiContext.PlayerPurchases.Add(
                 new DbPlayerShopPurchase()
                 {
-                    DeviceAccountId = this.playerIdentityService.AccountId,
+                    ViewerId = this.playerIdentityService.ViewerId,
                     ShopType = type.ToPurchaseShopType(),
                     GoodsId = goodsId,
                     BuyCount = quantity,

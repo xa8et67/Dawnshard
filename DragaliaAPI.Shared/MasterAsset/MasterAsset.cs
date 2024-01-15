@@ -2,6 +2,7 @@ using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.Definitions.Enums.EventItemTypes;
 using DragaliaAPI.Shared.MasterAsset.Models;
 using DragaliaAPI.Shared.MasterAsset.Models.Dmode;
+using DragaliaAPI.Shared.MasterAsset.Models.Enemy;
 using DragaliaAPI.Shared.MasterAsset.Models.Event;
 using DragaliaAPI.Shared.MasterAsset.Models.Login;
 using DragaliaAPI.Shared.MasterAsset.Models.ManaCircle;
@@ -13,6 +14,7 @@ using DragaliaAPI.Shared.MasterAsset.Models.Shop;
 using DragaliaAPI.Shared.MasterAsset.Models.Story;
 using DragaliaAPI.Shared.MasterAsset.Models.Trade;
 using DragaliaAPI.Shared.MasterAsset.Models.User;
+using DragaliaAPI.Shared.MasterAsset.Models.Wall;
 
 namespace DragaliaAPI.Shared.MasterAsset;
 
@@ -82,6 +84,12 @@ public static class MasterAsset
         new("WeaponBodyRarity.json", x => x.Id);
 
     /// <summary>
+    /// Contains information about weapons.
+    /// </summary>
+    public static readonly MasterAssetData<int, WeaponSkin> WeaponSkin =
+        new("WeaponSkin.json", x => x.Id);
+
+    /// <summary>
     /// Contains information about the materials required to unbind ability crests.
     /// </summary>
     public static readonly MasterAssetData<int, AbilityCrestBuildupGroup> AbilityCrestBuildupGroup =
@@ -111,6 +119,9 @@ public static class MasterAsset
     public static readonly MasterAssetData<int, QuestEvent> QuestEvent =
         new("QuestEvent.json", x => x.Id);
 
+    public static readonly MasterAssetData<int, QuestTreasureData> QuestTreasureData =
+        new("QuestTreasureData.json", x => x.Id);
+
     public static readonly MasterAssetData<UseItem, UseItemData> UseItem =
         new("UseItem.json", x => x.Id);
 
@@ -125,6 +136,9 @@ public static class MasterAsset
 
     public static readonly MasterAssetData<int, UnionAbility> UnionAbility =
         new("UnionAbility.json", x => x.Id);
+
+    public static readonly MasterAssetData<int, SkillData> SkillData =
+        new("SkillData.json", x => x.Id);
 
     #region Missions
 
@@ -252,45 +266,52 @@ public static class MasterAsset
     /// <summary>
     /// Dragon StoryId Arrays indexed by DragonId
     /// </summary>
-    public static MasterAssetData<int, StoryData> DragonStories =>
+    public static readonly MasterAssetData<int, StoryData> DragonStories =
         new("Story/DragonStories.json", x => x.id);
 
     /// <summary>
     /// Character StoryId Arrays indexed by CharaId
     /// </summary>
-    public static MasterAssetData<int, StoryData> CharaStories =>
+    public static readonly MasterAssetData<int, StoryData> CharaStories =
         new("Story/CharaStories.json", x => x.id);
 
-    public static MasterAssetData<int, UnitStory> UnitStory =>
+    public static readonly MasterAssetData<int, UnitStory> UnitStory =
         new("Story/UnitStory.json", x => x.Id);
 
-    public static MasterAssetData<int, QuestStory> QuestStory =>
+    public static readonly MasterAssetData<int, QuestStory> QuestStory =
         new("Story/QuestStory.json", x => x.Id);
 
-    public static MasterAssetData<int, EventStory> EventStory =>
+    public static readonly MasterAssetData<int, EventStory> EventStory =
         new("Story/EventStory.json", x => x.Id);
 
-    public static MasterAssetData<int, QuestStoryRewardInfo> QuestStoryRewardInfo =>
+    public static readonly MasterAssetData<int, QuestStoryRewardInfo> QuestStoryRewardInfo =
         new("Story/QuestStoryRewardInfo.json", x => x.Id);
 
     #endregion
 
-    #region Quest Drops
+    #region Enemy
 
     /// <summary>
-    /// Contains information about the <see cref="Models.QuestDrops.EnemyParam"/> IDs in particular quest maps.
+    /// Contains information about the <see cref="Models.Enemy.EnemyParam"/> IDs in particular quest maps.
     /// </summary>
-    public static readonly MasterAssetData<string, QuestEnemies> QuestEnemies =
-        new("QuestDrops/QuestEnemies.json", x => x.AreaName);
+    public static MasterAssetData<string, QuestEnemies> QuestEnemies { get; } =
+        new("Enemy/QuestEnemies.json", x => x.AreaName);
 
     /// <summary>
     /// Contains information about instances of enemies within a quest.
     /// </summary>
-    public static readonly MasterAssetData<int, EnemyParam> EnemyParam =
-        new("QuestDrops/EnemyParam.json", x => x.Id);
+    public static MasterAssetData<int, EnemyParam> EnemyParam { get; } =
+        new("Enemy/EnemyParam.json", x => x.Id);
 
-    public static readonly MasterAssetData<int, QuestGroupMultiplier> QuestGroupMultiplier =
-        new("QuestDrops/QuestGroupMultipliers.json", x => x.GroupId);
+    /// <summary>
+    /// Contains information about enemies across all quests.
+    /// </summary>
+    public static MasterAssetData<int, EnemyData> EnemyData { get; } =
+        new("Enemy/EnemyData.json", x => x.Id);
+
+    #endregion
+
+    #region Quest Drops
 
     /// <summary>
     /// Contains information about rewards from quests.
@@ -386,6 +407,9 @@ public static class MasterAsset
     public static readonly MasterAssetData<int, EventPassive> EventPassive =
         new("Event/EventPassive.json", x => x.Id);
 
+    public static MasterAssetData<int, QuestScoringEnemy> QuestScoringEnemy { get; } =
+        new("Event/QuestScoringEnemy.json", x => x.Id);
+
     #endregion
 
     #region Dmode
@@ -467,5 +491,19 @@ public static class MasterAsset
     public static readonly MasterAssetData<int, RankingTierReward> RankingTierReward =
         new("TimeAttack/RankingTierReward.json", x => x.Id);
 
+    #endregion
+
+    #region Wall
+    /// <summary>
+    /// Contains information about Mercurial Gauntlet quests.
+    /// </summary>
+    public static readonly MasterAssetData<int, QuestWallDetail> QuestWallDetail =
+        new("Wall/QuestWallDetail.json", x => x.Id);
+
+    /// <summary>
+    /// Contains information about Mercurial Gauntlet monthly rewards.
+    /// </summary>
+    public static readonly MasterAssetData<int, QuestWallMonthlyReward> QuestWallMonthlyReward =
+        new("Wall/QuestWallMonthlyReward.json", x => x.TotalWallLevel);
     #endregion
 }

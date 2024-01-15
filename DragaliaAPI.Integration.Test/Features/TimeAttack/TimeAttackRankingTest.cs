@@ -1,12 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Models.Generated;
+﻿using DragaliaAPI.Database.Entities;
 using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json.Serialization;
 
 namespace DragaliaAPI.Integration.Test.Features.TimeAttack;
 
@@ -26,24 +19,23 @@ public class TimeAttackRankingTest : TestFixture
                 "/time_attack_ranking/get_data",
                 new TimeAttackRankingGetDataRequest() { }
             )
-        ).data.ranking_tier_reward_list
-            .Should()
+        )
+            .data.ranking_tier_reward_list.Should()
             .NotBeEmpty();
     }
 
     [Fact]
     public async Task ReceiveTierReward_GrantsRewardsOnce()
     {
-        DbPlayerUserData oldUserData = await this.ApiContext.PlayerUserData
-            .AsNoTracking()
-            .FirstAsync(x => x.DeviceAccountId == DeviceAccountId);
+        DbPlayerUserData oldUserData = await this.ApiContext.PlayerUserData.AsNoTracking()
+            .FirstAsync(x => x.ViewerId == ViewerId);
 
         int questId = 227010101; // First Volk TA quest
 
         this.ApiContext.PlayerQuests.Add(
             new DbQuest()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 BestClearTime = 200f,
                 QuestId = questId
             }
@@ -60,8 +52,8 @@ public class TimeAttackRankingTest : TestFixture
 
         rewardResponse.ranking_tier_reward_list.Should().NotBeEmpty();
 
-        rewardResponse.ranking_tier_reward_entity_list
-            .Should()
+        rewardResponse
+            .ranking_tier_reward_entity_list.Should()
             .ContainEquivalentOf(
                 new AtgenBuildEventRewardEntityList()
                 {
@@ -71,14 +63,14 @@ public class TimeAttackRankingTest : TestFixture
                 }
             );
 
-        rewardResponse.entity_result.new_get_entity_list
-            .Should()
+        rewardResponse
+            .entity_result.new_get_entity_list.Should()
             .ContainEquivalentOf(
                 new AtgenDuplicateEntityList() { entity_id = 0, entity_type = EntityTypes.Dew }
             );
 
-        rewardResponse.update_data_list.user_data.dew_point
-            .Should()
+        rewardResponse
+            .update_data_list.user_data.dew_point.Should()
             .Be(oldUserData.DewPoint + 7000);
 
         TimeAttackRankingReceiveTierRewardData secondRewardResponse = (

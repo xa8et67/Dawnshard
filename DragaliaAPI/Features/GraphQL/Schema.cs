@@ -1,5 +1,4 @@
 using DragaliaAPI.Database;
-using DragaliaAPI.Database.Entities;
 using EntityGraphQL.AspNet;
 using EntityGraphQL.Schema;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +12,10 @@ public static class Schema
         {
             options.AutoBuildSchemaFromContext = true;
             options.PreBuildSchemaFromContext = (schema) =>
+            {
                 schema.AddScalarType<TimeSpan>("TimeSpan", "time span");
+                schema.AddScalarType<DateOnly>("DateOnly", "date only");
+            };
             options.ConfigureSchema = (schema) =>
             {
                 schema
@@ -22,8 +24,7 @@ public static class Schema
                         "player",
                         new { viewerId = ArgumentHelper.Required<long>() },
                         (ctx, args) =>
-                            ctx.Players
-                                .Include(x => x.UserData)
+                            ctx.Players.Include(x => x.UserData)
                                 .Include(x => x.AbilityCrestList)
                                 .Include(x => x.TalismanList)
                                 .Include(x => x.StoryStates)

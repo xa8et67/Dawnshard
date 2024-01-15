@@ -1,12 +1,6 @@
-﻿using DragaliaAPI.Database;
-using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Database.Repositories;
+﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Utils;
-using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Test.Utils;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Xunit.Abstractions;
 
 namespace DragaliaAPI.Integration.Test.Dragalia;
 
@@ -33,9 +27,8 @@ public class TutorialTest : TestFixture
             )
         ).data;
 
-        this.ApiContext.PlayerUserData
-            .AsNoTracking()
-            .First(x => x.DeviceAccountId == "logged_in_id")
+        this.ApiContext.PlayerUserData.AsNoTracking()
+            .First(x => x.ViewerId == this.ViewerId)
             .TutorialStatus.Should()
             .Be(step);
     }
@@ -46,7 +39,7 @@ public class TutorialTest : TestFixture
         int step = 20000;
 
         DbPlayerUserData dbUserData = (
-            await this.ApiContext.PlayerUserData.FindAsync(DeviceAccountId)
+            await this.ApiContext.PlayerUserData.FindAsync(this.ViewerId)
         )!;
 
         UserData expUserData = this.Mapper.Map<UserData>(dbUserData);
@@ -77,9 +70,8 @@ public class TutorialTest : TestFixture
 
         TutorialFlagUtil
             .ConvertIntToFlagIntList(
-                this.ApiContext.PlayerUserData
-                    .AsNoTracking()
-                    .First(x => x.DeviceAccountId == "logged_in_id")
+                this.ApiContext.PlayerUserData.AsNoTracking()
+                    .First(x => x.ViewerId == this.ViewerId)
                     .TutorialFlag
             )
             .Should()

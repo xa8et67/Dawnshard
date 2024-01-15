@@ -1,13 +1,7 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Database.Repositories;
-using DragaliaAPI.Models.Generated;
+﻿using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
-using DragaliaAPI.Services.Exceptions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 
 namespace DragaliaAPI.Controllers.Dragalia;
 
@@ -21,6 +15,7 @@ namespace DragaliaAPI.Controllers.Dragalia;
 /// </summary>
 [Route("tool")]
 [AllowAnonymous]
+[BypassResourceVersionCheck]
 public class ToolController : DragaliaControllerBase
 {
     private readonly IAuthService authService;

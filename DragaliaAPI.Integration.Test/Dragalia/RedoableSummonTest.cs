@@ -1,6 +1,4 @@
-﻿using DragaliaAPI.Models.Generated;
-
-namespace DragaliaAPI.Integration.Test.Dragalia;
+﻿namespace DragaliaAPI.Integration.Test.Dragalia;
 
 /// <summary>
 /// Tests <see cref="Controllers.Dragalia.RedoableSummonController"/>
@@ -52,20 +50,22 @@ public class RedoableSummonTest : TestFixture
             )
         ).data;
 
-        IEnumerable<int> newCharaIds = response.update_data_list.chara_list!
-            .Select(x => (int)x.chara_id)
+        IEnumerable<int> newCharaIds = response
+            .update_data_list.chara_list!.Select(x => (int)x.chara_id)
             .OrderBy(x => x);
 
-        IEnumerable<int> newDragonIds = response.update_data_list.dragon_list!
-            .Select(x => (int)x.dragon_id)
+        IEnumerable<int> newDragonIds = response
+            .update_data_list.dragon_list!.Select(x => (int)x.dragon_id)
             .OrderBy(x => x);
 
-        IEnumerable<int> dbCharaIds = this.ApiContext.PlayerCharaData
-            .Where(x => x.DeviceAccountId == DeviceAccountId)
+        IEnumerable<int> dbCharaIds = this.ApiContext.PlayerCharaData.Where(
+            x => x.ViewerId == ViewerId
+        )
             .Select(x => (int)x.CharaId)
             .OrderBy(x => x);
-        IEnumerable<int> dbDragonIds = this.ApiContext.PlayerDragonData
-            .Where(x => x.DeviceAccountId == DeviceAccountId)
+        IEnumerable<int> dbDragonIds = this.ApiContext.PlayerDragonData.Where(
+            x => x.ViewerId == ViewerId
+        )
             .Select(x => (int)x.DragonId)
             .OrderBy(x => x);
 

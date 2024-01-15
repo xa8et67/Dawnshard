@@ -1,13 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
-using System.Text;
-using System.Threading.Tasks;
 using DragaliaAPI.Photon.Shared.Models;
-using DragaliaAPI.Services.Photon;
-using Snapshooter;
 using Snapshooter.Xunit;
 
 namespace DragaliaAPI.Integration.Test.Other;
@@ -20,7 +13,7 @@ public class HeroParamTest : TestFixture
     [Fact]
     public async Task HeroParam_ReturnsData()
     {
-        this.ImportSave();
+        await this.ImportSave();
 
         HttpResponseMessage httpResponse = await this.Client.GetAsync($"heroparam/{ViewerId}/1");
 

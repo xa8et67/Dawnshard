@@ -1,8 +1,4 @@
-﻿using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
-using DragaliaAPI.Services.Game;
-using DragaliaAPI.Shared.Definitions.Enums;
-using Xunit.Abstractions;
+﻿using DragaliaAPI.Services.Game;
 
 namespace DragaliaAPI.Integration.Test.Dragalia;
 
@@ -27,8 +23,8 @@ public class FriendTest : TestFixture
             )
         ).data;
 
-        response.support_user_data_detail.user_support_data
-            .Should()
+        response
+            .support_user_data_detail.user_support_data.Should()
             .BeEquivalentTo(
                 new UserSupportList()
                 {
@@ -178,8 +174,8 @@ public class FriendTest : TestFixture
             )
         ).data;
 
-        response.support_user_data_detail.user_support_data
-            .Should()
+        response
+            .support_user_data_detail.user_support_data.Should()
             .BeEquivalentTo(HelperService.StubData.SupportListData.support_user_list.First());
 
         response.support_user_data_detail.is_friend.Should().BeFalse();

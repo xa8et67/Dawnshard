@@ -5,7 +5,7 @@ using DragaliaAPI.Features.Missions;
 using DragaliaAPI.Features.Player;
 using DragaliaAPI.Features.Reward;
 using DragaliaAPI.Features.Shop;
-using DragaliaAPI.Models;
+using DragaliaAPI.Helpers;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Models.Options;
 using DragaliaAPI.Services.Exceptions;
@@ -29,7 +29,8 @@ public class FortService(
     IPaymentService paymentService,
     IRewardService rewardService,
     IOptionsMonitor<DragonfruitConfig> config,
-    IUserService userService
+    IUserService userService,
+    IDateTimeProvider dateTimeProvider
 ) : IFortService
 {
     public const int MaximumCarpenterNum = 5;
@@ -37,7 +38,9 @@ public class FortService(
 
     public async Task<IEnumerable<BuildList>> GetBuildList()
     {
-        return (await fortRepository.Builds.ToListAsync()).Select(mapper.Map<BuildList>);
+        return (await fortRepository.Builds.AsNoTracking().ToListAsync()).Select(
+            mapper.Map<BuildList>
+        );
     }
 
     public async Task<FortDetail> AddCarpenter(PaymentTypes paymentType)
@@ -84,7 +87,7 @@ public class FortService(
     public async Task<FortGetMultiIncomeData> CollectIncome(IEnumerable<long> idsToCollect)
     {
         Random rdm = Random.Shared;
-        DateTimeOffset current = DateTimeOffset.UtcNow;
+        DateTimeOffset current = dateTimeProvider.UtcNow;
 
         FortGetMultiIncomeData resp = new();
 
@@ -100,8 +103,8 @@ public class FortService(
         coinTotal = normalTotal = ripeTotal = succulentTotal = staminaTotal = 0;
 
         foreach (
-            DbFortBuild build in await fortRepository.Builds
-                .Where(x => idsToCollect.Contains(x.BuildId))
+            DbFortBuild build in await fortRepository
+                .Builds.Where(x => idsToCollect.Contains(x.BuildId))
                 .ToListAsync()
         )
         {
@@ -176,6 +179,7 @@ public class FortService(
         if (coinTotal != 0)
         {
             await rewardService.GrantReward(new Entity(EntityTypes.Rupies, 1, coinTotal));
+            fortMissionProgressionService.OnFortIncomeCollected(EntityTypes.Rupies);
         }
 
         if (normalTotal != 0)
@@ -282,7 +286,7 @@ public class FortService(
 
         int paymentCost = GetUpgradePaymentCost(
             paymentType,
-            build.BuildStartDate,
+            dateTimeProvider.UtcNow,
             build.BuildEndDate
         );
 
@@ -322,7 +326,7 @@ public class FortService(
 
     public async Task EndBuild(long buildId)
     {
-        DateTimeOffset current = DateTimeOffset.UtcNow;
+        DateTimeOffset current = dateTimeProvider.UtcNow;
 
         logger.LogDebug("Build ended for build {buildId}", buildId);
 
@@ -351,7 +355,7 @@ public class FortService(
 
         if (
             build.BuildStatus is not FortBuildStatus.LevelUp
-            || DateTimeOffset.UtcNow < build.BuildEndDate
+            || dateTimeProvider.UtcNow < build.BuildEndDate
         )
             throw new InvalidOperationException($"This building has not completed levelling up.");
 
@@ -380,7 +384,7 @@ public class FortService(
         DbFortBuild build =
             new()
             {
-                DeviceAccountId = playerIdentityService.AccountId,
+                ViewerId = playerIdentityService.ViewerId,
                 PlantId = fortPlantId,
                 Level = 0,
                 PositionX = positionX,
@@ -480,7 +484,7 @@ public class FortService(
         else
         {
             DateTimeOffset fortOpenTime = await userDataRepository.GetFortOpenTimeAsync();
-            DateTimeOffset current = DateTimeOffset.UtcNow;
+            DateTimeOffset current = dateTimeProvider.UtcNow;
 
             build.BuildStartDate = current;
 
@@ -512,7 +516,7 @@ public class FortService(
 
     private static int GetUpgradePaymentCost(
         PaymentTypes paymentType,
-        DateTimeOffset buildStartDate,
+        DateTimeOffset currentTime,
         DateTimeOffset buildEndDate
     )
     {
@@ -523,7 +527,7 @@ public class FortService(
         // where the amount required depends on the time left until construction is complete.
         // This amount scales at 1 per 12 minutes, or 5 per hour.
         // https://dragalialost.wiki/w/Facilities
-        return (int)Math.Ceiling((buildEndDate - buildStartDate).TotalMinutes / 12);
+        return (int)Math.Ceiling((buildEndDate - currentTime).TotalMinutes / 12);
     }
 
     public async Task ClearPlantNewStatuses(IEnumerable<FortPlants> plantIds)
@@ -539,8 +543,8 @@ public class FortService(
     public async Task ClearPlantNewStatuses(IEnumerable<long> buildIds)
     {
         foreach (
-            DbFortBuild build in await fortRepository.Builds
-                .Where(x => buildIds.Contains(x.BuildId))
+            DbFortBuild build in await fortRepository
+                .Builds.Where(x => buildIds.Contains(x.BuildId))
                 .ToListAsync()
         )
         {
@@ -554,8 +558,8 @@ public class FortService(
         int max = 0;
 
         foreach (
-            DbFortBuild build in await fortRepository.Builds
-                .Where(x => x.PlantId == FortPlants.RupieMine)
+            DbFortBuild build in await fortRepository
+                .Builds.Where(x => x.PlantId == FortPlants.RupieMine)
                 .ToListAsync()
         )
         {
@@ -605,8 +609,8 @@ public class FortService(
 
     public async Task<(int HalidomLevel, int SmithyLevel)> GetCoreLevels()
     {
-        IEnumerable<(FortPlants PlantId, int Level)> queryResult = await fortRepository.Builds
-            .Where(x => x.PlantId == FortPlants.TheHalidom || x.PlantId == FortPlants.Smithy)
+        IEnumerable<(FortPlants PlantId, int Level)> queryResult = await fortRepository
+            .Builds.Where(x => x.PlantId == FortPlants.TheHalidom || x.PlantId == FortPlants.Smithy)
             .Select(x => new ValueTuple<FortPlants, int>(x.PlantId, x.Level))
             .ToListAsync();
 

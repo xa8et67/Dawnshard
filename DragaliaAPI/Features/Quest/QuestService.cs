@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Missions;
@@ -18,7 +17,7 @@ namespace DragaliaAPI.Features.Quest;
 public class QuestService(
     ILogger<QuestService> logger,
     IQuestRepository questRepository,
-    IDateTimeProvider dateTimeProvider,
+    TimeProvider timeProvider,
     IResetHelper resetHelper,
     IQuestCacheService questCacheService,
     IRewardService rewardService,
@@ -26,30 +25,32 @@ public class QuestService(
 ) : IQuestService
 {
     public async Task<(
-        DbQuest Quest,
         bool BestClearTime,
         IEnumerable<AtgenFirstClearSet> Bonus
-    )> ProcessQuestCompletion(int questId, float clearTime, int playCount)
+    )> ProcessQuestCompletion(DungeonSession session, PlayRecord playRecord)
     {
+        int questId = session.QuestId;
+        int playCount = session.PlayCount;
+
         DbQuest quest = await questRepository.GetQuestDataAsync(questId);
         quest.State = 3;
 
         bool isBestClearTime = false;
 
-        if (0 > quest.BestClearTime || quest.BestClearTime > clearTime)
+        if (0 > quest.BestClearTime || quest.BestClearTime > playRecord.time)
         {
-            quest.BestClearTime = clearTime;
+            quest.BestClearTime = playRecord.time;
             isBestClearTime = true;
         }
 
-        quest.PlayCount += playCount;
+        quest.PlayCount += session.PlayCount;
 
         if (resetHelper.LastDailyReset > quest.LastDailyResetTime)
         {
             logger.LogTrace("Resetting daily play count for quest {questId}", questId);
 
             quest.DailyPlayCount = 0;
-            quest.LastDailyResetTime = dateTimeProvider.UtcNow;
+            quest.LastDailyResetTime = timeProvider.GetUtcNow();
         }
 
         quest.DailyPlayCount += playCount;
@@ -59,7 +60,7 @@ public class QuestService(
             logger.LogTrace("Resetting weekly play count for quest {questId}", questId);
 
             quest.WeeklyPlayCount = 0;
-            quest.LastWeeklyResetTime = dateTimeProvider.UtcNow;
+            quest.LastWeeklyResetTime = timeProvider.GetUtcNow();
         }
 
         quest.WeeklyPlayCount += playCount;
@@ -87,9 +88,17 @@ public class QuestService(
                 questData,
                 playCount
             );
+
+            this.ProcessEventQuestMissionProgression(questData, session, playRecord);
         }
 
-        return (quest, isBestClearTime, questEventRewards);
+        if (questData is { IsEventRegularBattle: true, EventKindType: EventKindType.Build })
+            await this.RollExBattleUnlock(quest, questData);
+
+        if (questData.IsEventExBattle)
+            quest.IsAppear = false;
+
+        return (isBestClearTime, questEventRewards);
     }
 
     public async Task<int> GetQuestStamina(int questId, StaminaType type)
@@ -137,7 +146,7 @@ public class QuestService(
             }
 
             questEvent.DailyPlayCount = 0;
-            questEvent.LastDailyResetTime = dateTimeProvider.UtcNow;
+            questEvent.LastDailyResetTime = timeProvider.GetUtcNow();
         }
 
         questEvent.DailyPlayCount += playCount;
@@ -150,7 +159,7 @@ public class QuestService(
             }
 
             questEvent.WeeklyPlayCount = 0;
-            questEvent.LastWeeklyResetTime = dateTimeProvider.UtcNow;
+            questEvent.LastWeeklyResetTime = timeProvider.GetUtcNow();
         }
 
         questEvent.WeeklyPlayCount += playCount;
@@ -177,7 +186,7 @@ public class QuestService(
         if (questEventData.QuestBonusReceiveType != QuestBonusReceiveType.AutoReceive)
         {
             questEvent.QuestBonusReserveCount += bonusesToReceive;
-            questEvent.QuestBonusReserveTime = dateTimeProvider.UtcNow;
+            questEvent.QuestBonusReserveTime = timeProvider.GetUtcNow();
 
             return Enumerable.Empty<AtgenFirstClearSet>();
         }
@@ -189,7 +198,7 @@ public class QuestService(
         );
     }
 
-    public async Task<IEnumerable<Entity>> GenerateBonusDrops(int questId, int count)
+    private async Task<IEnumerable<Entity>> GenerateBonusDrops(int questId, int count)
     {
         // TODO: Drop gen
 
@@ -227,21 +236,18 @@ public class QuestService(
     {
         DbQuestEvent questEvent = await questRepository.GetQuestEventAsync(eventGroupId);
 
-        int questId =
-            await questCacheService.GetQuestGroupQuestIdAsync(eventGroupId)
-            ?? throw new DragaliaException(
-                ResultCode.CommonDbError,
-                $"Could not find latest quest clear id for group {eventGroupId} in cache."
-            );
+        int? questId = await questCacheService.GetQuestGroupQuestIdAsync(eventGroupId);
 
-        if (!isReceive)
+        if (!isReceive || questId == null)
         {
+            logger.LogInformation("Cancelling receipt of quest bonus");
+
             questEvent.QuestBonusReserveCount = 0;
             questEvent.QuestBonusReserveTime = DateTimeOffset.UnixEpoch;
 
             await questCacheService.RemoveQuestGroupQuestIdAsync(eventGroupId);
 
-            return new AtgenReceiveQuestBonus() { target_quest_id = questId };
+            return new AtgenReceiveQuestBonus() { target_quest_id = questId ?? 0 };
         }
 
         if (count > questEvent.QuestBonusReserveCount + questEvent.QuestBonusStackCount)
@@ -258,28 +264,25 @@ public class QuestService(
             questEvent.QuestBonusStackTime =
                 questEvent.QuestBonusStackCount == 0
                     ? DateTimeOffset.UnixEpoch
-                    : dateTimeProvider.UtcNow;
+                    : timeProvider.GetUtcNow();
 
             count = questEvent.QuestBonusReserveCount;
         }
 
-        questEvent.QuestBonusReserveCount -= count;
-        questEvent.QuestBonusReserveTime =
-            questEvent.QuestBonusReserveCount == 0
-                ? DateTimeOffset.UnixEpoch
-                : dateTimeProvider.UtcNow;
+        questEvent.QuestBonusReserveCount = 0;
+        questEvent.QuestBonusReserveTime = DateTimeOffset.UnixEpoch;
 
         questEvent.QuestBonusReceiveCount += count;
 
         // TODO: bonus factor?
         IEnumerable<AtgenBuildEventRewardEntityList> bonusRewards = (
-            await GenerateBonusDrops(questId, count)
+            await GenerateBonusDrops(questId.Value, count)
         ).Select(x => x.ToBuildEventRewardEntityList());
 
         // Remove at the end so it doesn't get messed up when erroring
         await questCacheService.RemoveQuestGroupQuestIdAsync(eventGroupId);
 
-        return new AtgenReceiveQuestBonus(questId, count, 1, bonusRewards);
+        return new AtgenReceiveQuestBonus(questId.Value, count, 1, bonusRewards);
     }
 
     private void ResetQuestEventBonus(DbQuestEvent questEvent, QuestEvent questEventData)
@@ -298,11 +301,77 @@ public class QuestService(
                     newStackCount
                 );
 
-                questEvent.QuestBonusStackTime = dateTimeProvider.UtcNow;
+                questEvent.QuestBonusStackTime = timeProvider.GetUtcNow();
             }
 
             questEvent.QuestBonusReserveCount = 0;
-            questEvent.QuestBonusReserveTime = dateTimeProvider.UtcNow;
+            questEvent.QuestBonusReserveTime = timeProvider.GetUtcNow();
         }
+    }
+
+    private void ProcessEventQuestMissionProgression(
+        QuestData questData,
+        DungeonSession session,
+        PlayRecord playRecord
+    )
+    {
+        if (questData.EventKindType is EventKindType.Build or EventKindType.Clb01)
+        {
+            foreach (
+                AbilityCrests crest in session
+                    .Party.SelectMany(x => x.GetAbilityCrestList())
+                    .Distinct()
+            )
+            {
+                missionProgressionService.OnEventQuestClearedWithCrest(questData.Gid, crest);
+            }
+        }
+
+        if (questData.IsEventRegularBattle)
+        {
+            missionProgressionService.OnEventRegularBattleCleared(
+                questData.Gid,
+                questData.VariationType
+            );
+        }
+        else if (questData.IsEventChallengeBattle)
+        {
+            int questScoreMissionId = MasterAsset.QuestRewardData[questData.Id].QuestScoreMissionId;
+            int waveCount = MasterAsset.QuestScoreMissionData[questScoreMissionId].WaveCount;
+
+            missionProgressionService.OnEventChallengeBattleCleared(
+                questData.Gid,
+                questData.VariationType,
+                playRecord.wave >= waveCount,
+                questData.Id
+            );
+        }
+        else if (questData.IsEventTrial)
+        {
+            missionProgressionService.OnEventTrialCleared(questData.Gid, questData.VariationType);
+        }
+    }
+
+    private async Task RollExBattleUnlock(DbQuest quest, QuestData questData)
+    {
+        // EX quest IDs are of the format {eventId}0401, e.g. 208260401 for Trick or Treasure which has ID 20826
+        int exQuestId = (questData.Gid * 10_000) + 401;
+
+        if (!MasterAsset.QuestData.ContainsKey(exQuestId))
+        {
+            logger.LogDebug("EX battle quest ID {ExQuestId} was not a valid quest", exQuestId);
+            return;
+        }
+
+        // Give an EX battle once every 3 clears, or randomly at a 15% chance.
+        bool exBattleUnlocked = quest.PlayCount % 3 == 0 || Random.Shared.NextDouble() < 0.15;
+
+        if (!exBattleUnlocked)
+            return;
+
+        logger.LogInformation("Unlocking EX battle {ExQuestId}", exQuestId);
+
+        DbQuest exQuest = await questRepository.GetQuestDataAsync(exQuestId);
+        exQuest.IsAppear = true;
     }
 }

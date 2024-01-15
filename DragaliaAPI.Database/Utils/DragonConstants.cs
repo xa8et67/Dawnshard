@@ -1,4 +1,5 @@
-﻿using System.Collections.Immutable;
+﻿using System.Collections.Frozen;
+using System.Collections.Immutable;
 using DragaliaAPI.Shared.Definitions.Enums;
 
 namespace DragaliaAPI.Database.Utils;
@@ -29,15 +30,15 @@ public static class DragonConstants
     }
 
     public const byte MinLevel = 1;
-    public static readonly byte[] MinMaxLevel = new byte[] { 20, 30, 40 };
-    public static readonly byte[] MaxLevel = new byte[] { 60, 80, 100 };
+    public static readonly byte[] MinMaxLevel = { 20, 30, 40 };
+    public static readonly byte[] MaxLevel = { 60, 80, 100 };
     public const byte AddMaxLevel = 20;
     public const byte MaxAtkEnhance = 50;
     public const byte MaxHpEnhance = 50;
 
     public const int AugmentResetCost = 20000;
 
-    public static readonly ImmutableArray<int> XpLimits = new int[]
+    public static readonly ImmutableArray<int> XpLimits = new[]
     {
         0,
         240,
@@ -161,9 +162,9 @@ public static class DragonConstants
         3365620
     }.ToImmutableArray();
 
-    public const int maxRelLevel = 30;
+    public const int MaxRelLevel = 30;
 
-    public static readonly ImmutableArray<DragonGifts> rotatingGifts = new DragonGifts[]
+    public static readonly ImmutableArray<DragonGifts> RotatingGifts = new[]
     {
         DragonGifts.GoldenChalice,
         DragonGifts.JuicyMeat,
@@ -174,10 +175,10 @@ public static class DragonConstants
         DragonGifts.GoldenChalice
     }.ToImmutableArray();
 
-    public static readonly ImmutableDictionary<DragonGifts, int> favorVals = new Dictionary<
+    public static readonly ImmutableDictionary<DragonGifts, int> FavorVals = new Dictionary<
         DragonGifts,
         int
-    >()
+    >
     {
         { DragonGifts.FreshBread, 100 },
         { DragonGifts.TastyMilk, 300 },
@@ -195,10 +196,10 @@ public static class DragonConstants
         { DragonGifts.PupGrub, 200 }
     }.ToImmutableDictionary();
 
-    public static readonly ImmutableDictionary<DragonGifts, int> buyGiftPrices = new Dictionary<
+    public static readonly ImmutableDictionary<DragonGifts, int> BuyGiftPrices = new Dictionary<
         DragonGifts,
         int
-    >()
+    >
     {
         { DragonGifts.FreshBread, 0 },
         { DragonGifts.TastyMilk, 1500 },
@@ -212,9 +213,9 @@ public static class DragonConstants
         { DragonGifts.GoldenChalice, 15000 }
     }.ToImmutableDictionary();
 
-    public const float favMulti = 1.5f;
+    public const float FavMulti = 1.5f;
 
-    public static readonly ImmutableArray<int> bondXpLimits = new int[]
+    public static readonly ImmutableArray<int> BondXpLimits = new[]
     {
         0,
         80,
@@ -248,7 +249,7 @@ public static class DragonConstants
         36300
     }.ToImmutableArray();
 
-    public static readonly ImmutableArray<int> bondXpLimitsPuppy = new int[]
+    public static readonly ImmutableArray<int> BondXpLimitsPuppy = new[]
     {
         0,
         100,
@@ -282,7 +283,7 @@ public static class DragonConstants
         2900
     }.ToImmutableArray();
 
-    public static readonly IImmutableSet<Dragons> unsummonableDragons = new HashSet<Dragons>()
+    public static readonly IImmutableSet<Dragons> UnsummonableDragons = new HashSet<Dragons>
     {
         Dragons.BronzeFafnir,
         Dragons.SilverFafnir,

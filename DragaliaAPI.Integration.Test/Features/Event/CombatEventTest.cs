@@ -1,6 +1,4 @@
 ﻿using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Models;
-using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Shared.Definitions.Enums.EventItemTypes;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,15 +7,13 @@ namespace DragaliaAPI.Integration.Test.Features.Event;
 public class CombatEventTest : TestFixture
 {
     public CombatEventTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
-        : base(factory, outputHelper)
-    {
-        _ = Client
-            .PostMsgpack<MemoryEventActivateData>(
-                "memory_event/activate",
-                new MemoryEventActivateRequest(EventId)
-            )
-            .Result;
-    }
+        : base(factory, outputHelper) { }
+
+    protected override async Task Setup() =>
+        await this.Client.PostMsgpack<MemoryEventActivateData>(
+            "memory_event/activate",
+            new MemoryEventActivateRequest(EventId)
+        );
 
     private const int EventId = 22213;
     private const string Prefix = "combat_event";
@@ -40,11 +36,13 @@ public class CombatEventTest : TestFixture
     [Fact]
     public async Task ReceiveEventRewards_ReturnsEventRewards()
     {
-        DbPlayerEventItem pointItem = await ApiContext.PlayerEventItems.SingleAsync(
-            x => x.EventId == EventId && x.Type == (int)CombatEventItemType.EventPoint
-        );
+        DbPlayerEventItem pointItem = await ApiContext
+            .PlayerEventItems.AsTracking()
+            .SingleAsync(
+                x => x.EventId == EventId && x.Type == (int)CombatEventItemType.EventPoint
+            );
 
-        pointItem.Quantity += 500;
+        pointItem.Quantity += 1000;
 
         ApiContext.PlayerEventRewards.RemoveRange(
             ApiContext.PlayerEventRewards.Where(x => x.EventId == EventId)
@@ -68,20 +66,22 @@ public class CombatEventTest : TestFixture
     [Fact]
     public async Task ReceiveEventLocationRewards_ReturnsEventLocationRewards()
     {
-        DbPlayerEventItem pointItem = await ApiContext.PlayerEventItems.SingleAsync(
-            x => x.EventId == EventId && x.Type == (int)Clb01EventItemType.Clb01EventPoint
-        );
+        DbPlayerEventItem pointItem = await ApiContext
+            .PlayerEventItems.AsTracking()
+            .SingleAsync(
+                x => x.EventId == EventId && x.Type == (int)Clb01EventItemType.Clb01EventPoint
+            );
 
         pointItem.Quantity += 500;
 
         ApiContext.PlayerQuests.RemoveRange(
-            ApiContext.PlayerQuests.Where(x => x.DeviceAccountId == DeviceAccountId)
+            ApiContext.PlayerQuests.Where(x => x.ViewerId == ViewerId)
         );
 
         ApiContext.PlayerQuests.Add(
             new DbQuest
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 QuestId = 222130103,
                 State = 3
             }

@@ -1,7 +1,4 @@
-﻿using DragaliaAPI.Models.Generated;
-using Xunit.Abstractions;
-
-namespace DragaliaAPI.Integration.Test.Dragalia;
+﻿namespace DragaliaAPI.Integration.Test.Dragalia;
 
 public class DungeonTest : TestFixture
 {
@@ -54,8 +51,8 @@ public class DungeonTest : TestFixture
             )
         ).data;
 
-        response.fail_quest_detail
-            .Should()
+        response
+            .fail_quest_detail.Should()
             .BeEquivalentTo(
                 new AtgenFailQuestDetail()
                 {

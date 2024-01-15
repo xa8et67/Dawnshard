@@ -1,14 +1,12 @@
 ﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Features.Chara;
-using DragaliaAPI.Features.Event;
 using DragaliaAPI.Features.Player;
 using DragaliaAPI.Features.Quest;
-using DragaliaAPI.Features.TimeAttack;
+using DragaliaAPI.Features.Reward;
 using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
 using DragaliaAPI.Shared.Definitions.Enums;
-using DragaliaAPI.Shared.MasterAsset.Models;
 
 namespace DragaliaAPI.Features.Dungeon.Record;
 
@@ -18,6 +16,7 @@ public class DungeonRecordService(
     IUserService userService,
     ITutorialService tutorialService,
     ICharaService charaService,
+    IRewardService rewardService,
     ILogger<DungeonRecordService> logger
 ) : IDungeonRecordService
 {
@@ -31,7 +30,7 @@ public class DungeonRecordService(
 
         logger.LogDebug(
             "Processing completion of quest {id}. isHost: {isHost}",
-            session.QuestData.Id,
+            session.QuestId,
             session.IsHost
         );
 
@@ -40,7 +39,7 @@ public class DungeonRecordService(
             {
                 dungeon_key = dungeonKey,
                 play_type = QuestPlayType.Default,
-                quest_id = session.QuestData.Id,
+                quest_id = session.QuestId,
                 is_host = session.IsHost,
                 quest_party_setting_list = session.Party,
                 start_time = session.StartTime,
@@ -52,29 +51,19 @@ public class DungeonRecordService(
                 is_clear = true,
             };
 
-        (
-            DbQuest questData,
-            ingameResultData.is_best_clear_time,
-            ingameResultData.reward_record.quest_bonus_list
-        ) = await questService.ProcessQuestCompletion(
-            session.QuestData.Id,
-            playRecord.time,
-            session.PlayCount
-        );
-
         await this.ProcessStaminaConsumption(session);
+
+        (QuestMissionStatus missionStatus, IEnumerable<AtgenFirstClearSet>? firstClearSets) =
+            await dungeonRecordRewardService.ProcessQuestMissionCompletion(playRecord, session);
+
+        (ingameResultData.is_best_clear_time, ingameResultData.reward_record.quest_bonus_list) =
+            await questService.ProcessQuestCompletion(session, playRecord);
+
         await this.ProcessExperience(
             ingameResultData.grow_record,
             ingameResultData.reward_record,
             session
         );
-
-        (QuestMissionStatus missionStatus, IEnumerable<AtgenFirstClearSet>? firstClearSets) =
-            await dungeonRecordRewardService.ProcessQuestMissionCompletion(
-                playRecord,
-                session,
-                questData
-            );
 
         ingameResultData.reward_record.first_clear_set = firstClearSets;
         ingameResultData.reward_record.missions_clear_set = missionStatus.MissionsClearSet;
@@ -89,6 +78,7 @@ public class DungeonRecordService(
 
         (
             IEnumerable<AtgenScoreMissionSuccessList> scoreMissionSuccessList,
+            IEnumerable<AtgenScoringEnemyPointList> enemyScoreMissionList,
             int takeAccumulatePoint,
             int takeBoostAccumulatePoint,
             IEnumerable<AtgenEventPassiveUpList> eventPassiveUpLists,
@@ -97,9 +87,16 @@ public class DungeonRecordService(
 
         ingameResultData.score_mission_success_list = scoreMissionSuccessList;
         ingameResultData.reward_record.take_accumulate_point = takeAccumulatePoint;
+        ingameResultData.scoring_enemy_point_list = enemyScoreMissionList;
         ingameResultData.reward_record.take_boost_accumulate_point = takeBoostAccumulatePoint;
         ingameResultData.event_passive_up_list = eventPassiveUpLists;
         ingameResultData.reward_record.drop_all.AddRange(eventDrops);
+
+        ingameResultData.converted_entity_list = rewardService
+            .GetConvertedEntityList()
+            .Select(x => x.ToConvertedEntityList())
+            .Merge()
+            .ToList();
 
         return ingameResultData;
     }
@@ -107,7 +104,7 @@ public class DungeonRecordService(
     private async Task ProcessStaminaConsumption(DungeonSession session)
     {
         StaminaType type = session.IsMulti ? StaminaType.Multi : StaminaType.Single;
-        int amount = await questService.GetQuestStamina(session.QuestData.Id, type);
+        int amount = await questService.GetQuestStamina(session.QuestId, type);
 
         amount *= session.PlayCount;
 
@@ -121,6 +118,8 @@ public class DungeonRecordService(
         DungeonSession session
     )
     {
+        ArgumentNullException.ThrowIfNull(session.QuestData);
+
         // Constant for quests with no stamina usage, wip?
         int experience =
             session.QuestData.PayStaminaSingle != 0

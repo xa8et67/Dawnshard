@@ -1,8 +1,7 @@
-﻿using System.Net.Http;
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Security.Claims;
-using System.Text;
 using System.Text.Encodings.Web;
+using DragaliaAPI.Database;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.AspNetCore.Authentication;
@@ -17,17 +16,17 @@ public class PhotonAuthenticationHandler : AuthenticationHandler<AuthenticationS
     public const string Role = "Photon";
 
     private readonly IUserDataRepository userDataRepository;
+    private readonly ApiContext apiContext;
 
     public PhotonAuthenticationHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
         UrlEncoder encoder,
-        ISystemClock clock,
-        IUserDataRepository userDataRepository
+        ApiContext apiContext
     )
-        : base(options, logger, encoder, clock)
+        : base(options, logger, encoder)
     {
-        this.userDataRepository = userDataRepository;
+        this.apiContext = apiContext;
     }
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -70,9 +69,9 @@ public class PhotonAuthenticationHandler : AuthenticationHandler<AuthenticationS
             return AuthenticateResult.Fail("Missing or malformed Auth-ViewerId header.");
         }
 
-        string? accountId = (
-            await this.userDataRepository.GetViewerData(viewerId).SingleOrDefaultAsync()
-        )?.DeviceAccountId;
+        string? accountId = await this.apiContext.Players.Where(x => x.ViewerId == viewerId)
+            .Select(x => x.AccountId)
+            .FirstOrDefaultAsync();
 
         if (accountId is null)
         {

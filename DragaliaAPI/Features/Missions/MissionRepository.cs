@@ -1,28 +1,34 @@
-﻿using DragaliaAPI.Database;
+﻿using System.Diagnostics;
+using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Utils;
-using DragaliaAPI.Models;
+using DragaliaAPI.Helpers;
 using DragaliaAPI.Services.Exceptions;
+using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models.Missions;
 using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace DragaliaAPI.Features.Missions;
 
-public class MissionRepository : IMissionRepository
+public class MissionRepository(
+    ApiContext apiContext,
+    IPlayerIdentityService playerIdentityService,
+    IResetHelper resetHelper
+) : IMissionRepository
 {
-    private readonly ApiContext apiContext;
-    private readonly IPlayerIdentityService playerIdentityService;
-
-    public MissionRepository(ApiContext apiContext, IPlayerIdentityService playerIdentityService)
-    {
-        this.apiContext = apiContext;
-        this.playerIdentityService = playerIdentityService;
-    }
+    private readonly ApiContext apiContext = apiContext;
+    private readonly IPlayerIdentityService playerIdentityService = playerIdentityService;
 
     public IQueryable<DbPlayerMission> Missions =>
         this.apiContext.PlayerMissions.Where(
-            x => x.DeviceAccountId == this.playerIdentityService.AccountId
+            x => x.ViewerId == this.playerIdentityService.ViewerId
+        );
+
+    public IQueryable<DbCompletedDailyMission> CompletedDailyMissions =>
+        this.apiContext.CompletedDailyMissions.Where(
+            x => x.ViewerId == this.playerIdentityService.ViewerId
         );
 
     public IQueryable<DbPlayerMission> GetMissionsByType(MissionType type)
@@ -33,18 +39,28 @@ public class MissionRepository : IMissionRepository
     public async Task<DbPlayerMission> GetMissionByIdAsync(MissionType type, int id)
     {
         return await this.apiContext.PlayerMissions.FindAsync(
-                this.playerIdentityService.AccountId,
+                this.playerIdentityService.ViewerId,
                 id,
                 type
             ) ?? throw new DragaliaException(ResultCode.MissionIdNotFound, "Mission not found");
     }
 
-    public async Task<ILookup<MissionType, DbPlayerMission>> GetAllMissionsPerTypeAsync()
+    public async Task<ILookup<MissionType, DbPlayerMission>> GetActiveMissionsPerTypeAsync()
     {
-        return (await Missions.ToListAsync()).ToLookup(x => x.Type);
+        return (
+            await Missions
+                .Where(
+                    x =>
+                        (x.Start == DateTimeOffset.UnixEpoch || x.Start < resetHelper.UtcNow)
+                        && (x.End == DateTimeOffset.UnixEpoch || x.End > resetHelper.UtcNow)
+                )
+                .ToListAsync()
+        )
+            .Where(HasProgressionInfo)
+            .ToLookup(x => x.Type);
     }
 
-    public async Task<DbPlayerMission> AddMissionAsync(
+    public DbPlayerMission AddMission(
         MissionType type,
         int id,
         DateTimeOffset? startTime = null,
@@ -52,28 +68,66 @@ public class MissionRepository : IMissionRepository
         int? groupId = null
     )
     {
-        if (
-            await this.apiContext.PlayerMissions.FindAsync(
-                this.playerIdentityService.AccountId,
-                id,
-                type
-            ) != null
-        )
-            throw new DragaliaException(ResultCode.CommonDbError, "Mission already exists");
+        return this.apiContext.PlayerMissions.Add(
+            new DbPlayerMission
+            {
+                ViewerId = this.playerIdentityService.ViewerId,
+                Id = id,
+                Type = type,
+                Start = startTime ?? DateTimeOffset.UnixEpoch,
+                End = endTime ?? DateTimeOffset.UnixEpoch,
+                State = MissionState.InProgress,
+                GroupId = groupId
+            }
+        ).Entity;
+    }
 
-        return this.apiContext.PlayerMissions
-            .Add(
-                new DbPlayerMission
-                {
-                    DeviceAccountId = this.playerIdentityService.AccountId,
-                    Id = id,
-                    Type = type,
-                    Start = startTime ?? DateTimeOffset.UnixEpoch,
-                    End = endTime ?? DateTimeOffset.UnixEpoch,
-                    State = MissionState.InProgress,
-                    GroupId = groupId
-                }
-            )
-            .Entity;
+    public async Task AddCompletedDailyMission(DbPlayerMission originalMission)
+    {
+        long viewerId = this.playerIdentityService.ViewerId;
+        int id = originalMission.Id;
+        DateOnly date = DateOnly.FromDateTime(resetHelper.LastDailyReset.UtcDateTime);
+
+        if (await this.apiContext.CompletedDailyMissions.FindAsync(viewerId, id, date) != null)
+            return;
+
+        this.apiContext.CompletedDailyMissions.Add(
+            new DbCompletedDailyMission()
+            {
+                ViewerId = viewerId,
+                Id = id,
+                Date = date,
+                StartDate = originalMission.Start,
+                EndDate = originalMission.End,
+                Progress = originalMission.Progress
+            }
+        );
+    }
+
+    public async Task ClearDailyMissions()
+    {
+        await foreach (
+            DbPlayerMission mission in this.GetMissionsByType(MissionType.Daily).AsAsyncEnumerable()
+        )
+        {
+            this.apiContext.Remove(mission);
+        }
+    }
+
+    public void RemoveCompletedDailyMission(DbCompletedDailyMission completedDailyMission) =>
+        this.apiContext.CompletedDailyMissions.Remove(completedDailyMission);
+
+    private static bool HasProgressionInfo(DbPlayerMission mission)
+    {
+        // Fully complete types
+        if (mission.Type is MissionType.Drill or MissionType.MainStory)
+            return true;
+
+        int missionProgressionId = MasterAssetUtils.GetMissionProgressionId(
+            mission.Id,
+            mission.Type
+        );
+
+        return MasterAsset.MissionProgressionInfo.TryGetValue(missionProgressionId, out _);
     }
 }

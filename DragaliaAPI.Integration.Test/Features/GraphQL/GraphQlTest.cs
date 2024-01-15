@@ -1,19 +1,15 @@
 using System.Net;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
+using System.Text.Json.Serialization;
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Features.Present;
-using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.Features.Presents;
 using GraphQL;
-using GraphQL.Client.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Integration.Test.Features.GraphQL;
 
 public class GraphQlTest : GraphQlTestFixture
 {
-    private const string Endpoint = "savefile/graphql";
+    private const string Endpoint = "graphql";
 
     public GraphQlTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
         : base(factory, outputHelper)
@@ -27,8 +23,8 @@ public class GraphQlTest : GraphQlTestFixture
     {
         this.Client.DefaultRequestHeaders.Clear();
 
-        (await this.Client.PostAsync(Endpoint, new StringContent(string.Empty))).StatusCode
-            .Should()
+        (await this.Client.PostAsync(Endpoint, new StringContent(string.Empty)))
+            .StatusCode.Should()
             .Be(HttpStatusCode.Unauthorized);
     }
 
@@ -54,19 +50,16 @@ public class GraphQlTest : GraphQlTestFixture
 
         response.Errors.Should().BeNullOrEmpty();
 
-        response.Data.Player.CharaList.Should().Contain(x => x.CharaId == (int)Charas.ThePrince);
-        response.Data.Player.CharaList.Should().Contain(x => x.CharaId == (int)Charas.SummerMikoto);
+        response.Data.Player.CharaList.Should().Contain(x => x.CharaId == Charas.ThePrince);
+        response.Data.Player.CharaList.Should().Contain(x => x.CharaId == Charas.SummerMikoto);
     }
 
     [Fact]
     public async Task Mutation_ResetCharacter_ResetsCharacter()
     {
         (
-            await this.ApiContext.PlayerCharaData
-                .AsNoTracking()
-                .SingleAsync(
-                    x => x.DeviceAccountId == DeviceAccountId && x.CharaId == Charas.ThePrince
-                )
+            await this.ApiContext.PlayerCharaData.AsNoTracking()
+                .SingleAsync(x => x.ViewerId == ViewerId && x.CharaId == Charas.ThePrince)
         ).Level = 100;
         await this.ApiContext.SaveChangesAsync();
 
@@ -86,13 +79,10 @@ public class GraphQlTest : GraphQlTestFixture
         response.Errors.Should().BeNullOrEmpty();
 
         (
-            await this.ApiContext.PlayerCharaData
-                .AsNoTracking()
-                .SingleAsync(
-                    x => x.DeviceAccountId == DeviceAccountId && x.CharaId == Charas.ThePrince
-                )
-        ).Level
-            .Should()
+            await this.ApiContext.PlayerCharaData.AsNoTracking()
+                .SingleAsync(x => x.ViewerId == ViewerId && x.CharaId == Charas.ThePrince)
+        )
+            .Level.Should()
             .Be(1);
     }
 
@@ -115,8 +105,8 @@ public class GraphQlTest : GraphQlTestFixture
 
         response.Errors.Should().BeNullOrEmpty();
 
-        int presentId = response.Data.RootElement
-            .GetProperty("givePresent")
+        int presentId = response
+            .Data.RootElement.GetProperty("givePresent")
             .GetProperty("presentId")
             .GetInt32();
 
@@ -125,7 +115,7 @@ public class GraphQlTest : GraphQlTestFixture
             .BeEquivalentTo(
                 new DbPlayerPresent()
                 {
-                    DeviceAccountId = DeviceAccountId,
+                    ViewerId = ViewerId,
                     PresentId = presentId,
                     EntityType = EntityTypes.Dragon,
                     EntityId = (int)Dragons.GalaBahamut,
@@ -158,11 +148,10 @@ public class GraphQlTest : GraphQlTestFixture
         response.Errors.Should().BeNullOrEmpty();
 
         (
-            await this.ApiContext.PlayerUserData
-                .AsNoTracking()
-                .FirstAsync(x => x.DeviceAccountId == DeviceAccountId)
-        ).TutorialStatus
-            .Should()
+            await this.ApiContext.PlayerUserData.AsNoTracking()
+                .FirstAsync(x => x.ViewerId == ViewerId)
+        )
+            .TutorialStatus.Should()
             .Be(60999);
     }
 
@@ -195,7 +184,7 @@ public class GraphQlTest : GraphQlTestFixture
     //
     //     DbPlayerUserData newUserData = await this.ApiContext.PlayerUserData
     //         .AsNoTracking()
-    //         .FirstAsync(x => x.DeviceAccountId == DeviceAccountId);
+    //         .FirstAsync(x => x.ViewerId == ViewerId);
     //
     //     (newUserData).TutorialFlagList.Should().Contain(1027);
     // }
@@ -204,5 +193,7 @@ public class GraphQlTest : GraphQlTestFixture
 
     private record Player(Character[] CharaList);
 
-    private record Character(int CharaId);
+    private record Character(
+        [property: JsonConverter(typeof(JsonStringEnumConverter))] Charas CharaId
+    );
 }

@@ -1,9 +1,5 @@
-﻿using System.Collections.Immutable;
-using DragaliaAPI.Database.Entities;
+﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Features.Quest;
-using DragaliaAPI.Models;
-using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Shared.Definitions.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Integration.Test.Dragalia;
@@ -11,7 +7,7 @@ namespace DragaliaAPI.Integration.Test.Dragalia;
 /// <summary>
 /// Tests <see cref="QuestController"/>
 /// </summary>
-public class QuestClearPartyTest : TestFixture, IDisposable
+public class QuestClearPartyTest : TestFixture
 {
     public QuestClearPartyTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
         : base(factory, outputHelper)
@@ -22,7 +18,7 @@ public class QuestClearPartyTest : TestFixture, IDisposable
     [Fact]
     public async Task GetQuestClearParty_ReturnsSetClearParty()
     {
-        this.ImportSave();
+        await this.ImportSave();
 
         await this.AddRangeToDatabase(SoloDbEntities);
 
@@ -39,7 +35,7 @@ public class QuestClearPartyTest : TestFixture, IDisposable
     [Fact]
     public async Task GetQuestClearPartyMulti_ReturnsSetClearParty()
     {
-        this.ImportSave();
+        await this.ImportSave();
 
         await this.AddRangeToDatabase(MultiDbEntities);
 
@@ -49,8 +45,8 @@ public class QuestClearPartyTest : TestFixture, IDisposable
                 new QuestGetQuestClearPartyRequest() { quest_id = 2 }
             );
 
-        response.data.quest_multi_clear_party_setting_list
-            .Should()
+        response
+            .data.quest_multi_clear_party_setting_list.Should()
             .BeEquivalentTo(MultiPartySettingLists);
         response.data.lost_unit_list.Should().BeEmpty();
     }
@@ -81,7 +77,7 @@ public class QuestClearPartyTest : TestFixture, IDisposable
     [Fact]
     public async Task GetQuestClearParty_HandlesMissingEntities()
     {
-        this.ImportSave();
+        await this.ImportSave();
 
         int questId = MissingItemDbEntities[0].QuestId;
 
@@ -93,8 +89,8 @@ public class QuestClearPartyTest : TestFixture, IDisposable
                 new QuestGetQuestClearPartyRequest() { quest_id = questId }
             );
 
-        response.data.lost_unit_list
-            .Should()
+        response
+            .data.lost_unit_list.Should()
             .BeEquivalentTo(
                 new List<AtgenLostUnitList>()
                 {
@@ -152,7 +148,7 @@ public class QuestClearPartyTest : TestFixture, IDisposable
     [Fact]
     public async Task SetQuestClearParty_AddsToDatabase()
     {
-        this.ImportSave();
+        await this.ImportSave();
 
         DragaliaResponse<QuestSetQuestClearPartyData> response =
             await this.Client.PostMsgpack<QuestSetQuestClearPartyData>(
@@ -166,10 +162,9 @@ public class QuestClearPartyTest : TestFixture, IDisposable
 
         response.data.result.Should().Be(1);
 
-        List<DbQuestClearPartyUnit> storedList = await this.ApiContext.QuestClearPartyUnits
-            .Where(
-                x => x.QuestId == 3 && x.DeviceAccountId == DeviceAccountId && x.IsMulti == false
-            )
+        List<DbQuestClearPartyUnit> storedList = await this.ApiContext.QuestClearPartyUnits.Where(
+            x => x.QuestId == 3 && x.ViewerId == ViewerId && x.IsMulti == false
+        )
             .ToListAsync();
 
         storedList.Should().BeEquivalentTo(SoloDbEntities, opts => opts.Excluding(x => x.QuestId));
@@ -179,7 +174,7 @@ public class QuestClearPartyTest : TestFixture, IDisposable
     [Fact]
     public async Task SetQuestClearPartyMulti_AddsToDatabase()
     {
-        this.ImportSave();
+        await this.ImportSave();
 
         DragaliaResponse<QuestSetQuestClearPartyData> response =
             await this.Client.PostMsgpack<QuestSetQuestClearPartyData>(
@@ -193,8 +188,9 @@ public class QuestClearPartyTest : TestFixture, IDisposable
 
         response.data.result.Should().Be(1);
 
-        List<DbQuestClearPartyUnit> storedList = await this.ApiContext.QuestClearPartyUnits
-            .Where(x => x.QuestId == 4 && x.DeviceAccountId == DeviceAccountId && x.IsMulti == true)
+        List<DbQuestClearPartyUnit> storedList = await this.ApiContext.QuestClearPartyUnits.Where(
+            x => x.QuestId == 4 && x.ViewerId == ViewerId && x.IsMulti == true
+        )
             .ToListAsync();
 
         storedList.Should().BeEquivalentTo(MultiDbEntities, opts => opts.Excluding(x => x.QuestId));
@@ -206,7 +202,7 @@ public class QuestClearPartyTest : TestFixture, IDisposable
         {
             new()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 IsMulti = false,
                 QuestId = 1,
                 UnitNo = 1,
@@ -229,7 +225,7 @@ public class QuestClearPartyTest : TestFixture, IDisposable
             },
             new()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 IsMulti = false,
                 QuestId = 1,
                 UnitNo = 2,
@@ -298,7 +294,7 @@ public class QuestClearPartyTest : TestFixture, IDisposable
         {
             new()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 IsMulti = true,
                 QuestId = 2,
                 UnitNo = 1,
@@ -321,7 +317,7 @@ public class QuestClearPartyTest : TestFixture, IDisposable
             },
             new()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 IsMulti = true,
                 QuestId = 2,
                 UnitNo = 2,
@@ -390,7 +386,7 @@ public class QuestClearPartyTest : TestFixture, IDisposable
         {
             new()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 UnitNo = 1,
                 QuestId = 6,
                 IsMulti = false,
@@ -398,7 +394,7 @@ public class QuestClearPartyTest : TestFixture, IDisposable
             },
             new()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 UnitNo = 2,
                 QuestId = 6,
                 IsMulti = false,
@@ -407,7 +403,7 @@ public class QuestClearPartyTest : TestFixture, IDisposable
             },
             new()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 UnitNo = 3,
                 QuestId = 6,
                 IsMulti = false,
@@ -416,7 +412,7 @@ public class QuestClearPartyTest : TestFixture, IDisposable
             },
             new()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 UnitNo = 4,
                 QuestId = 6,
                 IsMulti = false,
@@ -425,7 +421,7 @@ public class QuestClearPartyTest : TestFixture, IDisposable
             },
             new()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 UnitNo = 5,
                 QuestId = 6,
                 IsMulti = false,
@@ -435,7 +431,7 @@ public class QuestClearPartyTest : TestFixture, IDisposable
             },
             new()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 UnitNo = 6,
                 QuestId = 6,
                 IsMulti = false,
@@ -445,7 +441,7 @@ public class QuestClearPartyTest : TestFixture, IDisposable
             },
             new()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 UnitNo = 7,
                 QuestId = 6,
                 IsMulti = false,
@@ -454,9 +450,4 @@ public class QuestClearPartyTest : TestFixture, IDisposable
                 EditSkill2CharaId = Charas.Marty
             }
         };
-
-    public void Dispose()
-    {
-        this.ApiContext.QuestClearPartyUnits.ExecuteDelete();
-    }
 }

@@ -1,5 +1,4 @@
 ﻿using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Shared;
 using DragaliaAPI.Shared.Definitions.Enums;
 
 namespace DragaliaAPI.Database.Repositories;
@@ -22,4 +21,5 @@ public interface IStoryRepository
     Task<DbPlayerStoryState> GetOrCreateStory(StoryTypes storyType, int storyId);
 
     Task<bool> HasReadQuestStory(int storyId);
+    Task DeleteQuestStories(int[] storyIds);
 }

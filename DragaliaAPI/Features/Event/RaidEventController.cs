@@ -36,8 +36,8 @@ public class RaidEventController(
         };
 
         if (
-            MasterAsset.EventTradeGroup.Enumerable
-                .FirstOrDefault(x => x.EventId == request.raid_event_id)
+            MasterAsset
+                .EventTradeGroup.Enumerable.FirstOrDefault(x => x.EventId == request.raid_event_id)
                 ?.Id is
             { } tradeGroupId
         )

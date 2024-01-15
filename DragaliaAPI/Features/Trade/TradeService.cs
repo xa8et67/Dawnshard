@@ -1,7 +1,6 @@
 ﻿using DragaliaAPI.Features.Missions;
 using DragaliaAPI.Features.Reward;
 using DragaliaAPI.Features.Shop;
-using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
@@ -24,8 +23,10 @@ public class TradeService(
     {
         DateTimeOffset current = DateTimeOffset.UtcNow;
 
-        return MasterAsset.TreasureTrade.Enumerable
-            .Where(x => x.CompleteDate == DateTimeOffset.UnixEpoch || x.CompleteDate > current)
+        return MasterAsset
+            .TreasureTrade.Enumerable.Where(
+                x => x.CompleteDate == DateTimeOffset.UnixEpoch || x.CompleteDate > current
+            )
             .Select(
                 trade =>
                     new TreasureTradeList
@@ -59,8 +60,10 @@ public class TradeService(
     {
         DateTimeOffset current = DateTimeOffset.UtcNow;
 
-        return MasterAsset.AbilityCrestTrade.Enumerable
-            .Where(x => x.CompleteDate == DateTimeOffset.UnixEpoch || x.CompleteDate > current)
+        return MasterAsset
+            .AbilityCrestTrade.Enumerable.Where(
+                x => x.CompleteDate == DateTimeOffset.UnixEpoch || x.CompleteDate > current
+            )
             .Select(
                 trade =>
                     new AbilityCrestTradeList
@@ -78,8 +81,8 @@ public class TradeService(
 
     public IEnumerable<EventTradeList> GetEventTradeList(int tradeGroupId)
     {
-        return MasterAsset.EventTreasureTrade.Enumerable
-            .Where(x => x.TradeGroupId == tradeGroupId)
+        return MasterAsset
+            .EventTreasureTrade.Enumerable.Where(x => x.TradeGroupId == tradeGroupId)
             .Select(
                 x =>
                     new EventTradeList
@@ -96,8 +99,7 @@ public class TradeService(
                         destination_entity_type = x.DestinationEntityType,
                         destination_entity_id = x.DestinationEntityId,
                         destination_entity_quantity = x.DestinationEntityQuantity,
-                        need_entity_list = x.NeedEntities
-                            .Where(y => y.Type != EntityTypes.None)
+                        need_entity_list = x.NeedEntities.Where(y => y.Type != EntityTypes.None)
                             .Select(
                                 z => new AtgenBuildEventRewardEntityList(z.Type, z.Id, z.Quantity)
                             ),
@@ -109,16 +111,16 @@ public class TradeService(
 
     public async Task<IEnumerable<AtgenUserEventTradeList>> GetUserEventTradeList()
     {
-        return await tradeRepository.Trades
-            .Where(x => x.Type == TradeType.Event)
+        return await tradeRepository
+            .Trades.Where(x => x.Type == TradeType.Event)
             .Select(x => new AtgenUserEventTradeList(x.Id, x.Count))
             .ToListAsync();
     }
 
     public async Task<IEnumerable<UserAbilityCrestTradeList>> GetUserAbilityCrestTradeList()
     {
-        return await tradeRepository.Trades
-            .Where(x => x.Type == TradeType.AbilityCrest)
+        return await tradeRepository
+            .Trades.Where(x => x.Type == TradeType.AbilityCrest)
             .Select(x => new UserAbilityCrestTradeList(x.Id, x.Count))
             .ToListAsync();
     }
@@ -182,15 +184,17 @@ public class TradeService(
             )
         );
 
+        await tradeRepository.AddTrade(tradeType, tradeId, count, DateTimeOffset.UtcNow);
+
+        int totalCount = (await tradeRepository.FindTrade(tradeId))?.Count ?? 0;
+
         missionProgressionService.OnTreasureTrade(
             tradeId,
             trade.DestinationEntityType,
             trade.DestinationEntityId,
             count,
-            0
+            totalCount
         );
-
-        await tradeRepository.AddTrade(tradeType, tradeId, count, DateTimeOffset.UtcNow);
     }
 
     public async Task DoAbilityCrestTrade(int id, int count)

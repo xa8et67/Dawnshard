@@ -10,45 +10,37 @@ public class DmodeRepository(ApiContext apiContext, IPlayerIdentityService playe
     : IDmodeRepository
 {
     public IQueryable<DbPlayerDmodeInfo> Info =>
-        apiContext.PlayerDmodeInfos.Where(
-            x => x.DeviceAccountId == playerIdentityService.AccountId
-        );
+        apiContext.PlayerDmodeInfos.Where(x => x.ViewerId == playerIdentityService.ViewerId);
 
     public IQueryable<DbPlayerDmodeChara> Charas =>
-        apiContext.PlayerDmodeCharas.Where(
-            x => x.DeviceAccountId == playerIdentityService.AccountId
-        );
+        apiContext.PlayerDmodeCharas.Where(x => x.ViewerId == playerIdentityService.ViewerId);
 
     public IQueryable<DbPlayerDmodeDungeon> Dungeon =>
-        apiContext.PlayerDmodeDungeons.Where(
-            x => x.DeviceAccountId == playerIdentityService.AccountId
-        );
+        apiContext.PlayerDmodeDungeons.Where(x => x.ViewerId == playerIdentityService.ViewerId);
 
     public IQueryable<DbPlayerDmodeServitorPassive> ServitorPassives =>
         apiContext.PlayerDmodeServitorPassives.Where(
-            x => x.DeviceAccountId == playerIdentityService.AccountId
+            x => x.ViewerId == playerIdentityService.ViewerId
         );
 
     public IQueryable<DbPlayerDmodeExpedition> Expedition =>
-        apiContext.PlayerDmodeExpeditions.Where(
-            x => x.DeviceAccountId == playerIdentityService.AccountId
-        );
+        apiContext.PlayerDmodeExpeditions.Where(x => x.ViewerId == playerIdentityService.ViewerId);
 
     public async Task<DbPlayerDmodeInfo> GetInfoAsync()
     {
-        return await apiContext.PlayerDmodeInfos.FindAsync(playerIdentityService.AccountId)
+        return await apiContext.PlayerDmodeInfos.FindAsync(playerIdentityService.ViewerId)
             ?? throw new InvalidOperationException("Failed to get player dmode info");
     }
 
     public async Task<DbPlayerDmodeDungeon> GetDungeonAsync()
     {
-        return await apiContext.PlayerDmodeDungeons.FindAsync(playerIdentityService.AccountId)
+        return await apiContext.PlayerDmodeDungeons.FindAsync(playerIdentityService.ViewerId)
             ?? throw new InvalidOperationException("Failed to get player dmode dungeon");
     }
 
     public async Task<DbPlayerDmodeExpedition> GetExpeditionAsync()
     {
-        return await apiContext.PlayerDmodeExpeditions.FindAsync(playerIdentityService.AccountId)
+        return await apiContext.PlayerDmodeExpeditions.FindAsync(playerIdentityService.ViewerId)
             ?? throw new InvalidOperationException("Failed to get player dmode expedition");
     }
 
@@ -66,22 +58,22 @@ public class DmodeRepository(ApiContext apiContext, IPlayerIdentityService playe
     public void InitializeForPlayer()
     {
         apiContext.PlayerDmodeInfos.Add(
-            new DbPlayerDmodeInfo { DeviceAccountId = playerIdentityService.AccountId }
+            new DbPlayerDmodeInfo { ViewerId = playerIdentityService.ViewerId }
         );
 
         apiContext.PlayerDmodeDungeons.Add(
-            new DbPlayerDmodeDungeon { DeviceAccountId = playerIdentityService.AccountId }
+            new DbPlayerDmodeDungeon { ViewerId = playerIdentityService.ViewerId }
         );
 
         apiContext.PlayerDmodeExpeditions.Add(
-            new DbPlayerDmodeExpedition { DeviceAccountId = playerIdentityService.AccountId }
+            new DbPlayerDmodeExpedition { ViewerId = playerIdentityService.ViewerId }
         );
     }
 
     public DbPlayerDmodeChara AddChara(Charas charaId)
     {
         DbPlayerDmodeChara dmodeChara =
-            new() { DeviceAccountId = playerIdentityService.AccountId, CharaId = charaId, };
+            new() { ViewerId = playerIdentityService.ViewerId, CharaId = charaId, };
 
         return apiContext.PlayerDmodeCharas.Add(dmodeChara).Entity;
     }
@@ -91,11 +83,11 @@ public class DmodeRepository(ApiContext apiContext, IPlayerIdentityService playe
         int level = 1
     )
     {
-        return apiContext.PlayerDmodeServitorPassives
-            .Add(
+        return apiContext
+            .PlayerDmodeServitorPassives.Add(
                 new DbPlayerDmodeServitorPassive
                 {
-                    DeviceAccountId = playerIdentityService.AccountId,
+                    ViewerId = playerIdentityService.ViewerId,
                     PassiveId = passiveId,
                     Level = level
                 }

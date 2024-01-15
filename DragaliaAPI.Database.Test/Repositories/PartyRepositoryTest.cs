@@ -43,7 +43,7 @@ public class PartyRepositoryTest : IClassFixture<DbTestFixture>
         DbParty toAdd =
             new()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 PartyName = "New Name",
                 PartyNo = 3,
                 Units = new List<DbPartyUnit>()
@@ -55,8 +55,9 @@ public class PartyRepositoryTest : IClassFixture<DbTestFixture>
         await this.partyRepository.SetParty(toAdd);
         await this.partyRepository.SaveChangesAsync();
 
-        DbParty dbEntry = await this.fixture.ApiContext.PlayerParties
-            .Where(x => x.DeviceAccountId == DeviceAccountId && x.PartyNo == 3)
+        DbParty dbEntry = await this.fixture.ApiContext.PlayerParties.Where(
+            x => x.ViewerId == ViewerId && x.PartyNo == 3
+        )
             .Include(x => x.Units)
             .SingleAsync();
 
@@ -71,7 +72,7 @@ public class PartyRepositoryTest : IClassFixture<DbTestFixture>
         DbParty toAdd =
             new()
             {
-                DeviceAccountId = DeviceAccountId,
+                ViewerId = ViewerId,
                 PartyName = "New Name",
                 PartyNo = 5,
                 Units = new List<DbPartyUnit>()
@@ -90,13 +91,14 @@ public class PartyRepositoryTest : IClassFixture<DbTestFixture>
         await this.partyRepository.SetParty(toAdd);
         await this.partyRepository.SaveChangesAsync();
 
-        DbParty dbEntry = await this.fixture.ApiContext.PlayerParties
-            .Where(x => x.DeviceAccountId == DeviceAccountId && x.PartyNo == 5)
+        DbParty dbEntry = await this.fixture.ApiContext.PlayerParties.Where(
+            x => x.ViewerId == ViewerId && x.PartyNo == 5
+        )
             .Include(x => x.Units)
             .SingleAsync();
 
-        dbEntry.Units
-            .Select(x => (x.UnitNo, x.CharaId))
+        dbEntry
+            .Units.Select(x => (x.UnitNo, x.CharaId))
             .Should()
             .BeEquivalentTo(
                 new List<(int, Charas)>()

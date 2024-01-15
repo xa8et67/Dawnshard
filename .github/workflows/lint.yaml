@@ -1,15 +1,10 @@
-name: lint
+name: csharpier
 
 on:
   pull_request:
   push:
     branches:
-      - master
-      - develop
-    paths-ignore:
-      - "**/*.yaml"
-      - "**/*.yml"
-      - "**/*.md"
+      - main
 
 env:
   HUSKY: 0
@@ -19,15 +14,17 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dotnet-version: [ '7.0.x' ]
+        dotnet-version: [ '8.0.x' ]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
       - name: Install tool dependencies
         run: dotnet tool restore
       - name: CSharpier check
-        run: dotnet csharpier . --check
+        run: |
+          dotnet csharpier --version
+          dotnet csharpier . --check

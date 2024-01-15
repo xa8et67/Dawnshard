@@ -3,7 +3,7 @@ name: publish-push
 on:
   push:
     branches:
-      - "develop"
+      - main
 
 env:
   HUSKY: 0
@@ -22,7 +22,7 @@ jobs:
           ]
     uses: ./.github/workflows/publish.yaml
     with:
-      ref: develop
+      ref: main
       dockerfile: ${{ matrix.args.dockerfile }}
       image-name: ${{ matrix.args.image }}
       image-tag: latest

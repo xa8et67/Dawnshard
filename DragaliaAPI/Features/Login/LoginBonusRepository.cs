@@ -11,7 +11,7 @@ public class LoginBonusRepository(
 ) : ILoginBonusRepository
 {
     private IQueryable<DbLoginBonus> LoginBonuses { get; } =
-        apiContext.LoginBonuses.Where(x => x.DeviceAccountId == playerIdentityService.AccountId);
+        apiContext.LoginBonuses.Where(x => x.ViewerId == playerIdentityService.ViewerId);
 
     public async Task<DbLoginBonus> Get(int id)
     {
@@ -20,11 +20,11 @@ public class LoginBonusRepository(
 
     private DbLoginBonus Add(int id)
     {
-        return apiContext.LoginBonuses
-            .Add(
+        return apiContext
+            .LoginBonuses.Add(
                 new DbLoginBonus()
                 {
-                    DeviceAccountId = playerIdentityService.AccountId,
+                    ViewerId = playerIdentityService.ViewerId,
                     CurrentDay = 0,
                     Id = id
                 }

@@ -1,6 +1,6 @@
-﻿using DragaliaAPI.Models;
-using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Shared.Definitions.Enums;
+﻿using DragaliaAPI.Shared.MasterAsset;
+using DragaliaAPI.Shared.MasterAsset.Models;
+using DragaliaAPI.Shared.MasterAsset.Models.Enemy;
 using Microsoft.EntityFrameworkCore;
 using Snapshooter;
 using Snapshooter.Xunit;
@@ -13,17 +13,9 @@ namespace DragaliaAPI.Integration.Test.Features.Dungeon;
 public class DungeonStartTest : TestFixture
 {
     public DungeonStartTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
-        : base(factory, outputHelper)
-    {
-        ImportSave();
+        : base(factory, outputHelper) { }
 
-        this.ApiContext.PlayerUserData.ExecuteUpdate(
-            p => p.SetProperty(e => e.StaminaSingle, e => 100)
-        );
-        this.ApiContext.PlayerUserData.ExecuteUpdate(
-            p => p.SetProperty(e => e.StaminaMulti, e => 100)
-        );
-    }
+    protected override async Task Setup() => await this.ImportSave();
 
     [Fact]
     public async Task Start_OneTeam_HasExpectedPartyUnitList()
@@ -42,11 +34,11 @@ public class DungeonStartTest : TestFixture
         Snapshot.Match(response.ingame_data.party_info.party_unit_list, SnapshotOptions);
 
         response.ingame_data.party_info.party_unit_list.Should().HaveCount(4);
-        response.ingame_data.party_info.party_unit_list
-            .Should()
+        response
+            .ingame_data.party_info.party_unit_list.Should()
             .BeInAscendingOrder(x => x.position);
-        response.ingame_data.party_info.party_unit_list
-            .Should()
+        response
+            .ingame_data.party_info.party_unit_list.Should()
             .OnlyHaveUniqueItems(x => x.position);
     }
 
@@ -68,11 +60,11 @@ public class DungeonStartTest : TestFixture
         Snapshot.Match(response.ingame_data.party_info.party_unit_list, SnapshotOptions);
 
         response.ingame_data.party_info.party_unit_list.Should().HaveCount(8);
-        response.ingame_data.party_info.party_unit_list
-            .Should()
+        response
+            .ingame_data.party_info.party_unit_list.Should()
             .BeInAscendingOrder(x => x.position);
-        response.ingame_data.party_info.party_unit_list
-            .Should()
+        response
+            .ingame_data.party_info.party_unit_list.Should()
             .OnlyHaveUniqueItems(x => x.position);
     }
 
@@ -90,8 +82,10 @@ public class DungeonStartTest : TestFixture
             )
         ).data;
 
-        response.ingame_data.party_info.party_unit_list
-            .First(x => x.chara_data!.chara_id == Charas.GalaMascula)
+        response
+            .ingame_data.party_info.party_unit_list.First(
+                x => x.chara_data!.chara_id == Charas.GalaMascula
+            )
             .game_weapon_passive_ability_list.Should()
             .Contain(x => x.weapon_passive_ability_id == 1020211);
     }
@@ -153,8 +147,8 @@ public class DungeonStartTest : TestFixture
         Snapshot.Match(response.ingame_data.party_info.party_unit_list.Take(2), SnapshotOptions);
 
         response.ingame_data.party_info.party_unit_list.Should().HaveCount(4);
-        response.ingame_data.party_info.party_unit_list
-            .Should()
+        response
+            .ingame_data.party_info.party_unit_list.Should()
             .Contain(x => x.chara_data!.chara_id == Charas.GalaLeonidas)
             .And.Contain(x => x.chara_data!.chara_id == Charas.GalaGatov);
     }
@@ -180,17 +174,19 @@ public class DungeonStartTest : TestFixture
         (
             await Client.PostMsgpack<DungeonStartStartData>(
                 $"/dungeon_start/{endpoint}",
-                new DungeonStartStartRequest() { quest_id = 100010104 },
+                new DungeonStartStartRequest() { quest_id = 100010104, party_no_list = [1] },
                 ensureSuccessHeader: false
             )
-        ).data_headers.result_code
-            .Should()
+        )
+            .data_headers.result_code.Should()
             .Be(ResultCode.QuestStaminaSingleShort);
     }
 
     [Fact]
     public async Task Start_ZeroStamina_FirstClearOfMainStory_Allows()
     {
+        await this.ApiContext.PlayerQuests.ExecuteDeleteAsync();
+
         await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(
             p => p.SetProperty(e => e.StaminaSingle, e => 0)
         );
@@ -204,8 +200,6 @@ public class DungeonStartTest : TestFixture
             p => p.SetProperty(e => e.LastStaminaMultiUpdateTime, e => DateTimeOffset.UtcNow)
         );
 
-        await this.ApiContext.PlayerQuests.Where(x => x.QuestId == 100260101).ExecuteDeleteAsync();
-
         (
             await Client.PostMsgpack<DungeonStartStartData>(
                 $"/dungeon_start/start",
@@ -217,6 +211,39 @@ public class DungeonStartTest : TestFixture
                 ensureSuccessHeader: false
             )
         ).data_headers.result_code.Should().Be(ResultCode.Success);
+    }
+
+    [Fact]
+    public async Task Start_ChronosClash_HasRareEnemy()
+    {
+        DragaliaResponse<DungeonStartStartData> response =
+            await this.Client.PostMsgpack<DungeonStartStartData>(
+                $"/dungeon_start/start",
+                new DungeonStartStartRequest() { quest_id = 204270302, party_no_list = [1] }
+            );
+
+        response.data.odds_info.enemy.Should().Contain(x => x.param_id == 204130320 && x.is_rare);
+    }
+
+    [Fact]
+    public async Task Start_EarnEvent_EnemiesDuplicated()
+    {
+        const int earnEventQuestId = 229031201; // Repelling the Frosty Fiends: Standard (Solo)
+
+        DragaliaResponse<DungeonStartStartData> response =
+            await this.Client.PostMsgpack<DungeonStartStartData>(
+                $"/dungeon_start/start",
+                new DungeonStartStartRequest() { quest_id = earnEventQuestId, party_no_list = [1] }
+            );
+
+        response.data.odds_info.enemy.Should().HaveCount(31);
+
+        QuestData questData = MasterAsset.QuestData[earnEventQuestId];
+        IEnumerable<int> enemies = MasterAsset
+            .QuestEnemies[$"{questData.Scene01}/{questData.AreaName01}".ToLowerInvariant()]
+            .Enemies[questData.VariationType];
+
+        response.data.odds_info.enemy.Should().HaveCountGreaterThan(enemies.Count());
     }
 
     private static readonly Func<MatchOptions, MatchOptions> SnapshotOptions = opts =>

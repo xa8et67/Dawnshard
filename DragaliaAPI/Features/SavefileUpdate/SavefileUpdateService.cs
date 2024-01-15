@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Shared.PlayerDetails;
@@ -30,7 +31,7 @@ public class SavefileUpdateService : ISavefileUpdateService
     public async Task UpdateSavefile()
     {
         DbPlayer? player = await this.context.Players.FindAsync(
-            this.playerIdentityService.AccountId
+            this.playerIdentityService.ViewerId
         );
 
         if (player is null)
@@ -43,13 +44,23 @@ public class SavefileUpdateService : ISavefileUpdateService
             return;
         }
 
+        Stopwatch s = new();
+
         foreach (ISavefileUpdate update in this.savefileUpdates.OrderBy(x => x.SavefileVersion))
         {
             if (player.SavefileVersion < update.SavefileVersion)
             {
-                this.logger.LogInformation("Applying savefile update {$update}", update);
+                s.Restart();
                 await update.Apply();
+                s.Stop();
+
                 player.SavefileVersion = update.SavefileVersion;
+
+                this.logger.LogInformation(
+                    "Applied savefile update {$update} (took: {time} ms)",
+                    update,
+                    s.ElapsedMilliseconds
+                );
             }
         }
 

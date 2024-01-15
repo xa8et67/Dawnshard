@@ -3,7 +3,6 @@ using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Fort;
 using DragaliaAPI.Features.Missions;
-using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
@@ -169,7 +168,7 @@ public class WeaponService : IWeaponService
             return ResultCode.WeaponBodyBuildupPieceUnablePiece;
         }
 
-        Dictionary<Materials, int> materialMap = buildupGroup.MaterialMap;
+        Dictionary<Materials, int> materialMap = buildupGroup.MaterialMap.ToDictionary();
         long coin = buildupGroup.BuildupCoin;
 
         if (
@@ -283,7 +282,7 @@ public class WeaponService : IWeaponService
             return ResultCode.WeaponBodyBuildupPieceUnablePiece;
         }
 
-        Dictionary<Materials, int> materialMap = passiveAbility.MaterialMap;
+        Dictionary<Materials, int> materialMap = passiveAbility.MaterialMap.ToDictionary();
         long coin = passiveAbility.UnlockCoin;
 
         if (!await this.ValidateCost(materialMap, coin))
@@ -335,7 +334,7 @@ public class WeaponService : IWeaponService
             return ResultCode.WeaponBodyBuildupPieceUnablePiece;
         }
 
-        Dictionary<Materials, int> materialMap = buildupLevel.MaterialMap;
+        Dictionary<Materials, int> materialMap = buildupLevel.MaterialMap.ToDictionary();
 
         if (!await this.ValidateCost(materialMap))
             return ResultCode.CommonMaterialShort;

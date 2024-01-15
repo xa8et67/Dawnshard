@@ -1,4 +1,3 @@
-using GraphQL.Client.Abstractions.Websocket;
 using GraphQL.Client.Http;
 using GraphQL.Client.Serializer.SystemTextJson;
 
@@ -11,7 +10,7 @@ public class GraphQlTestFixture : TestFixture
     public GraphQlTestFixture(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
         : base(factory, outputHelper)
     {
-        Uri endpoint = new Uri(this.Client.BaseAddress!, "savefile/graphql");
+        Uri endpoint = new Uri(this.Client.BaseAddress!, "graphql");
 
         this.GraphQlHttpClient = new(
             new GraphQLHttpClientOptions { EndPoint = endpoint },

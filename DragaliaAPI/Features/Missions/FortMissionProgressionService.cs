@@ -12,8 +12,8 @@ public class FortMissionProgressionService(
 {
     public async Task<int> GetTotalFortLevel()
     {
-        return await fortRepository.Builds
-                .Where(x => x.PlantId != FortPlants.TheHalidom)
+        return await fortRepository
+                .Builds.Where(x => x.PlantId != FortPlants.TheHalidom)
                 .SumAsync(
                     x => x.BuildEndDate == DateTimeOffset.UnixEpoch ? x.Level : (int?)x.Level - 1
                 ) ?? 0;
@@ -21,8 +21,8 @@ public class FortMissionProgressionService(
 
     public async Task<int> GetMaxFortPlantLevel(FortPlants plant)
     {
-        return await fortRepository.Builds
-                .Where(x => x.PlantId == plant)
+        return await fortRepository
+                .Builds.Where(x => x.PlantId == plant)
                 .Select(x => (int?)x.Level)
                 .MaxAsync() ?? 0;
     }
@@ -83,4 +83,12 @@ public class FortMissionProgressionService(
             parameter: (int)plant
         );
     }
+
+    public void OnFortIncomeCollected(EntityTypes type) =>
+        missionProgressionService.EnqueueEvent(
+            MissionCompleteType.FortIncomeCollected,
+            1,
+            1,
+            parameter: (int)type
+        );
 }
