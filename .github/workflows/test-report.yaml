@@ -1,13 +1,14 @@
-name: "test-report"
+name: Test report
 
 on:
   workflow_run:
-    workflows: ["test"]
+    workflows: ["Test API", "Test PhotonStateManager"]
     types:
       - completed
 
 jobs:
   report:
+    name: Generate test report
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,6 +22,6 @@ jobs:
       - name: Generate report
         uses: dorny/test-reporter@v1
         with:
-          name: test report
+          name: ${{ github.event.workflow_run.name }} report
           path: "*.trx"
           reporter: dotnet-trx

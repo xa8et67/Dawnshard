@@ -7,6 +7,7 @@ on:
   
 env:
   HUSKY: 0
+  CI_BUILD: true
   
 jobs:
   missiondesigner:
@@ -14,11 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup .NET Core SDK 8.0.x
+      - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
       - name: Run MissionDesigner
         run: |
-          dotnet run --project DragaliaAPI.MissionDesigner -- NewProgressionInfo.json
-          cmp NewProgressionInfo.json DragaliaAPI.Shared/Resources/Missions/MissionProgressionInfo.json
+          dotnet run --project DragaliaAPI/DragaliaAPI.MissionDesigner -- NewProgressionInfo.json
+          cmp NewProgressionInfo.json DragaliaAPI/DragaliaAPI.Shared/Resources/Missions/MissionProgressionInfo.json

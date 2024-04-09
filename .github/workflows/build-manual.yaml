@@ -1,0 +1,34 @@
+name: Build (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        required: true
+        type: string
+        description: Ref to checkout
+      dockerfile:
+        required: true
+        type: string
+        description: Path to Dockerfile
+      image-name:
+        required: true
+        type: string
+        description: Docker image name
+      image-tag:
+        required: true
+        type: string
+        description: Docker image tag
+
+env:
+  HUSKY: 0
+
+jobs:
+  publish:
+    uses: ./.github/workflows/build.yaml
+    with:
+      ref: ${{ inputs.ref }}
+      dockerfile: ${{ inputs.dockerfile }}
+      image-name: ${{ inputs.image-name }}
+      image-tag: ${{ inputs.image-tag }}
+    secrets: inherit

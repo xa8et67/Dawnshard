@@ -1,0 +1,22 @@
+name: Test PhotonStateManager
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - PhotonStateManager/**
+      - Shared/**
+      - Directory.Build.props
+      - Directory.Packages.props
+
+jobs:
+  test:
+    name: Test
+    uses: ./.github/workflows/integration-test.yaml
+    with:
+      project: PhotonStateManager/DragaliaAPI.Photon.StateManager.Test
+    secrets: inherit

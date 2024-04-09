@@ -1,70 +1,61 @@
-name: test
+name: Test
 
 on:
-  pull_request:
-  push:
-    branches:
-      - main
-
-env:
-  HUSKY: 0
-  POSTGRES_USER: testing
-  POSTGRES_PASSWORD: verystrongpassword
+  workflow_call:
+    inputs:
+      project:
+        type: string
+        required: true
+        description: "Path to project under test"
+      before-test:
+        type: string
+        description: "Any special commands required for the build that should be invoked before dotnet test"
 
 jobs:
   test:
+    name: Test
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        project:
-          [
-            "DragaliaAPI.Test",
-            "DragaliaAPI.Integration.Test",
-            "DragaliaAPI.Database.Test",
-            "DragaliaAPI.Shared.Test",
-            "DragaliaAPI.Photon.StateManager.Test",
-          ]
-
-    services:
-      postgres:
-        image: postgres:16
-        ports:
-          - "5432:5432"
-        env:
-          POSTGRES_USER: ${{ env.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis/redis-stack:7.2.0-v6
-        ports:
-          - "6379:6379"
-        options: >-
-          --health-cmd "redis-cli PING"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
+    env:
+      AUTOMATED_TESTING: true
     steps:
+      - name: Get project name # Remove folder from project
+        id: get-name
+        run: >
+          echo ${{ inputs.project }} | sed 's/.*\//name=/' >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
-      - name: Setup .NET Core SDK 7
+
+      - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
+
+      - name: Load cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: .nuget-cache
+          key: ${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}-${{ steps.get-name.outputs.name }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+        
       - name: Install dependencies
-        run: dotnet restore ${{ matrix.project }}
+        run: dotnet restore ${{ inputs.project }} --packages .nuget-cache --verbosity normal
+        
+      - name: Run pre-test script
+        if: ${{ inputs.before-test != '' }}
+        run: ${{ inputs.before-test }}
+
       - name: Test
         run: >
-          dotnet test ${{ matrix.project }}
+          dotnet test ${{ inputs.project }}
+          -c Release
           --no-restore 
           --logger "console;verbosity=detailed"
-          --logger "trx;LogFileName=${{ matrix.project }}.trx"
+          --logger "trx;LogFileName=${{ steps.get-name.outputs.name }}.trx"
+
       - name: Upload test report
         uses: actions/upload-artifact@v4
         if: success() || failure() # run this step even if previous step failed
         with:
-          name: test-result-${{ matrix.project }}
-          path: ${{ matrix.project }}/TestResults/${{ matrix.project }}.trx
+          name: test-result-${{ steps.get-name.outputs.name }}
+          path: ${{ inputs.project }}/TestResults/${{ steps.get-name.outputs.name }}.trx

@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net481</TargetFramework>
+        <Nullable>disable</Nullable>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <LangVersion>7.3</LangVersion>
+        <PlatformTarget>x64</PlatformTarget>
+        <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
+        <AssemblyVersion>3.2.4</AssemblyVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="MessagePack" />
+        <PackageReference Include="System.Text.Json" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Reference Include="PhotonHivePlugin">
+            <HintPath>..\..\PhotonServer\src-server\Plugins\lib\net461\PhotonHivePlugin.dll</HintPath>
+        </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\Shared\DragaliaAPI.Photon.Shared\DragaliaAPI.Photon.Shared.csproj" />
+    </ItemGroup>
+
+    <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+        <Exec Command="xcopy /Y /Q &quot;$(TargetDir)*.*&quot; &quot;$(SolutionDir)PhotonServer\deploy\Plugins\GluonPlugin\bin\&quot;" />
+    </Target>
+
+</Project>

@@ -1,0 +1,86 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+        description: ref to checkout
+      dockerfile:
+        required: true
+        type: string
+        description: path to Dockerfile
+      image-name:
+        required: true
+        type: string
+        description: Docker image name
+      image-tag:
+        required: false
+        default: "undefined"
+        type: string
+        description: Docker image tag
+
+env:
+  HUSKY: 0
+  CI_BUILD: true
+
+jobs:
+  build:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Derive image tag
+        id: derive-tag
+        run: |
+          TAG_REGEX="[\w]+?@v(.*)"
+          echo "Ref: ${{ inputs.ref }}"
+          echo "Tag: ${{ inputs.image-tag }}"
+          
+          if [ ${{ inputs.image-tag }} != "undefined" ]
+          then
+            echo "tag=${{ inputs.image-tag }}" >> "$GITHUB_OUTPUT"
+            exit 0;
+          fi
+          
+          if [ ${{ inputs.ref }} = "main" ]
+          then
+             echo "tag=latest" >> "$GITHUB_OUTPUT"
+          elif [[ ${{ inputs.ref }} =~ $TAG_REGEX ]]
+          then
+             echo "tag=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+          else
+            echo "No image-tag provided and failed to derive image tag from ref"
+            exit 1;
+          fi
+          
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+          
+      - name: Log in to registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u $ --password-stdin
+        
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+          
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          file: ${{ inputs.dockerfile }}
+          build-args: |
+            CI=true
+            BASE_DOTNET_IMAGE=mcr.microsoft.com/dotnet/aspnet:8.0-jammy-chiseled
+          tags: ghcr.io/sapiensanatis/${{ inputs.image-name }}:${{ steps.derive-tag.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max    

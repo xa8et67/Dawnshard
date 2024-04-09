@@ -1,0 +1,42 @@
+name: Test API
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    paths:
+      - DragaliaAPI/**
+      - Shared/**
+      - Directory.Build.props
+      - Directory.Packages.props
+
+jobs:
+  integration-test:
+    name: Integration test
+    uses: ./.github/workflows/integration-test.yaml
+    with:
+      project: DragaliaAPI/DragaliaAPI.Integration.Test
+      before-test: |
+        dotnet restore DragaliaAPI/DragaliaAPI.MissionDesigner/DragaliaAPI.MissionDesigner.csproj
+        dotnet restore DragaliaAPI/DragaliaAPI.MasterAssetConverter/DragaliaAPI.MasterAssetConverter.csproj
+    secrets: inherit
+  unit-test:
+    name: Unit test
+    strategy:
+      matrix:
+        project:
+          [
+            "DragaliaAPI/DragaliaAPI.Test",
+            "DragaliaAPI/DragaliaAPI.Database.Test",
+            "DragaliaAPI/DragaliaAPI.Shared.Test",
+            "DragaliaAPI/DragaliaAPI.Shared.SourceGenerator.Test"
+          ]
+    uses: ./.github/workflows/test.yaml
+    with:
+      project: ${{ matrix.project }}
+      before-test: |
+        dotnet restore DragaliaAPI/DragaliaAPI.MissionDesigner/DragaliaAPI.MissionDesigner.csproj
+        dotnet restore DragaliaAPI/DragaliaAPI.MasterAssetConverter/DragaliaAPI.MasterAssetConverter.csproj

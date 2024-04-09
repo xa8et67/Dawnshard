@@ -1,4 +1,4 @@
-name: deploy
+name: Deploy
 
 on:
   workflow_call:
@@ -10,12 +10,13 @@ on:
 
 jobs:
   deploy:
+    name: Deploy
     runs-on: ubuntu-latest
     environment:
       name: ${{ inputs.github-environment }}
       url: https://dawnshard.co.uk
     steps:
-      - name: ssh and restart pods
+      - name: ssh and submit job
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -24,5 +25,8 @@ jobs:
           port: ${{ secrets.SSH_PORT }}
           script_stop: true
           script: |
-            kubectl rollout restart deployment/${{ vars.K8S_DEPLOYMENT }} -n ${{ vars.K8S_NAMESPACE }} --kubeconfig "$HOME/.kube/config"
-            kubectl rollout status deployment/${{ vars.K8S_DEPLOYMENT }} -n ${{ vars.K8S_NAMESPACE }} --kubeconfig "$HOME/.kube/config"
+            export NOMAD_ADDR="https://10.0.0.2:4646"
+            export NOMAD_CACERT="/srv/certs/cluster-agent-ca.pem"
+            export NOMAD_TOKEN="${{ secrets.NOMAD_TOKEN }}"
+            cd "${{ vars.JOB_DIRECTORY }}"
+            nomad job run "${{ vars.JOB_FILE_NAME }}"
