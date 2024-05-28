@@ -88,6 +88,9 @@ public static partial class MasterAsset
     private static global::DragaliaAPI.Shared.MasterAsset.MasterAssetData<global::DragaliaAPI.Shared.Definitions.Enums.UseItem, global::DragaliaAPI.Shared.MasterAsset.Models.Trade.UseItemData>? useItem;
     public static global::DragaliaAPI.Shared.MasterAsset.MasterAssetData<global::DragaliaAPI.Shared.Definitions.Enums.UseItem, global::DragaliaAPI.Shared.MasterAsset.Models.Trade.UseItemData> UseItem => useItem ?? throw new InvalidOperationException(ErrorUninitialized);
 
+    private static global::DragaliaAPI.Shared.MasterAsset.MasterAssetData<global::DragaliaAPI.Shared.Definitions.Enums.Emblems, global::DragaliaAPI.Shared.MasterAsset.Models.EmblemData>? emblemData;
+    public static global::DragaliaAPI.Shared.MasterAsset.MasterAssetData<global::DragaliaAPI.Shared.Definitions.Enums.Emblems, global::DragaliaAPI.Shared.MasterAsset.Models.EmblemData> EmblemData => emblemData ?? throw new InvalidOperationException(ErrorUninitialized);
+
     private static global::DragaliaAPI.Shared.MasterAsset.MasterAssetData<int, global::DragaliaAPI.Shared.MasterAsset.Models.Missions.AlbumMission>? missionAlbumData;
     public static global::DragaliaAPI.Shared.MasterAsset.MasterAssetData<int, global::DragaliaAPI.Shared.MasterAsset.Models.Missions.AlbumMission> MissionAlbumData => missionAlbumData ?? throw new InvalidOperationException(ErrorUninitialized);
 
@@ -330,6 +333,12 @@ public static partial class MasterAsset
 
     private static global::DragaliaAPI.Shared.MasterAsset.MasterAssetData<int, global::DragaliaAPI.Shared.MasterAsset.Models.Wall.QuestWallMonthlyReward>? questWallMonthlyReward;
     public static global::DragaliaAPI.Shared.MasterAsset.MasterAssetData<int, global::DragaliaAPI.Shared.MasterAsset.Models.Wall.QuestWallMonthlyReward> QuestWallMonthlyReward => questWallMonthlyReward ?? throw new InvalidOperationException(ErrorUninitialized);
+
+    private static global::DragaliaAPI.Shared.MasterAsset.MasterAssetData<global::DragaliaAPI.Shared.Definitions.Enums.Summon.SummonTickets, global::DragaliaAPI.Shared.MasterAsset.Models.Summon.SummonTicket>? summonTicket;
+    public static global::DragaliaAPI.Shared.MasterAsset.MasterAssetData<global::DragaliaAPI.Shared.Definitions.Enums.Summon.SummonTickets, global::DragaliaAPI.Shared.MasterAsset.Models.Summon.SummonTicket> SummonTicket => summonTicket ?? throw new InvalidOperationException(ErrorUninitialized);
+
+    private static global::DragaliaAPI.Shared.MasterAsset.MasterAssetData<int, global::DragaliaAPI.Shared.MasterAsset.Models.Summon.SummonData>? summonData;
+    public static global::DragaliaAPI.Shared.MasterAsset.MasterAssetData<int, global::DragaliaAPI.Shared.MasterAsset.Models.Summon.SummonData> SummonData => summonData ?? throw new InvalidOperationException(ErrorUninitialized);
     public static async Task LoadAsync()
     {
         if (loaded)
@@ -464,6 +473,11 @@ public static partial class MasterAsset
         global::System.Threading.Tasks.ValueTask<global::DragaliaAPI.Shared.MasterAsset.MasterAssetData<global::DragaliaAPI.Shared.Definitions.Enums.UseItem, global::DragaliaAPI.Shared.MasterAsset.Models.Trade.UseItemData>> useItemTask =
             global::DragaliaAPI.Shared.MasterAsset.MasterAssetData.LoadAsync<global::DragaliaAPI.Shared.Definitions.Enums.UseItem, global::DragaliaAPI.Shared.MasterAsset.Models.Trade.UseItemData>(
                 "UseItem.msgpack",
+                x => x.Id
+            );
+        global::System.Threading.Tasks.ValueTask<global::DragaliaAPI.Shared.MasterAsset.MasterAssetData<global::DragaliaAPI.Shared.Definitions.Enums.Emblems, global::DragaliaAPI.Shared.MasterAsset.Models.EmblemData>> emblemDataTask =
+            global::DragaliaAPI.Shared.MasterAsset.MasterAssetData.LoadAsync<global::DragaliaAPI.Shared.Definitions.Enums.Emblems, global::DragaliaAPI.Shared.MasterAsset.Models.EmblemData>(
+                "EmblemData.msgpack",
                 x => x.Id
             );
         global::System.Threading.Tasks.ValueTask<global::DragaliaAPI.Shared.MasterAsset.MasterAssetData<int, global::DragaliaAPI.Shared.MasterAsset.Models.Missions.AlbumMission>> missionAlbumDataTask =
@@ -871,6 +885,16 @@ public static partial class MasterAsset
                 "Wall/QuestWallMonthlyReward.msgpack",
                 x => x.Id
             );
+        global::System.Threading.Tasks.ValueTask<global::DragaliaAPI.Shared.MasterAsset.MasterAssetData<global::DragaliaAPI.Shared.Definitions.Enums.Summon.SummonTickets, global::DragaliaAPI.Shared.MasterAsset.Models.Summon.SummonTicket>> summonTicketTask =
+            global::DragaliaAPI.Shared.MasterAsset.MasterAssetData.LoadAsync<global::DragaliaAPI.Shared.Definitions.Enums.Summon.SummonTickets, global::DragaliaAPI.Shared.MasterAsset.Models.Summon.SummonTicket>(
+                "Summon/SummonTicket.msgpack",
+                x => x.Id
+            );
+        global::System.Threading.Tasks.ValueTask<global::DragaliaAPI.Shared.MasterAsset.MasterAssetData<int, global::DragaliaAPI.Shared.MasterAsset.Models.Summon.SummonData>> summonDataTask =
+            global::DragaliaAPI.Shared.MasterAsset.MasterAssetData.LoadAsync<int, global::DragaliaAPI.Shared.MasterAsset.Models.Summon.SummonData>(
+                "Summon/SummonData.msgpack",
+                x => x.Id
+            );
 
         charaData = await charaDataTask;
         dragonData = await dragonDataTask;
@@ -898,6 +922,7 @@ public static partial class MasterAsset
         skillData = await skillDataTask;
         stampData = await stampDataTask;
         useItem = await useItemTask;
+        emblemData = await emblemDataTask;
         missionAlbumData = await missionAlbumDataTask;
         missionBeginnerData = await missionBeginnerDataTask;
         missionDailyData = await missionDailyDataTask;
@@ -979,6 +1004,8 @@ public static partial class MasterAsset
         rankingTierReward = await rankingTierRewardTask;
         questWallDetail = await questWallDetailTask;
         questWallMonthlyReward = await questWallMonthlyRewardTask;
+        summonTicket = await summonTicketTask;
+        summonData = await summonDataTask;
         loaded = true;
     }
 }

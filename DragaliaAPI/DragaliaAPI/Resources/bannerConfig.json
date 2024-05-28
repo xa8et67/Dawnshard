@@ -1,8 +1,9 @@
 {
+    "$schema": "../Resources/bannerConfig.schema.json",
     "SummonBannerOptions": {
         "Banners": [
             {
-                "Id": 1020010,
+                "Id": 1020121,
                 "Start": "2024-02-24T15:22:06Z",
                 "End": "2025-02-24T15:22:06Z",
                 "IsGala": false,

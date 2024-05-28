@@ -9,9 +9,9 @@ public static partial class FeatureExtensions
         this IServiceCollection serviceCollection
     ) =>
         serviceCollection
-            .AddScoped<ISummonService, SummonService>()
-            .AddScoped<SummonListService>()
-            .AddScoped<SummonOddsService>();
+            .AddScoped<SummonService>()
+            .AddScoped<SummonOddsService>()
+            .AddScoped<UnitService>();
 
     public static IServiceCollection AddSummoningOptions(
         this IServiceCollection serviceCollection,
@@ -21,18 +21,12 @@ public static partial class FeatureExtensions
         serviceCollection
             .Configure<SummonBannerOptions>(config.GetRequiredSection(nameof(SummonBannerOptions)))
             .AddOptions<SummonBannerOptions>()
-            .PostConfigure(opts =>
-            {
-                opts.Banners.Add(
-                    new Banner()
-                    {
-                        Id = SummonConstants.RedoableSummonBannerId,
-                        IsGala = true,
-                        Start = DateTimeOffset.MinValue,
-                        End = DateTimeOffset.MaxValue,
-                    }
-                );
-            });
+            .PostConfigure(opts => opts.PostConfigure())
+            .Validate(
+                opts => opts.Banners.DistinctBy(x => x.Id).Count() == opts.Banners.Count,
+                "bannerConfig.json IDs must be unique!"
+            )
+            .ValidateOnStart();
 
         return serviceCollection;
     }

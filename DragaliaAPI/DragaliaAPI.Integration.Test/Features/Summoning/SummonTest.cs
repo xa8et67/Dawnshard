@@ -1,5 +1,7 @@
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Features.Summoning;
+using DragaliaAPI.Shared.Definitions.Enums.Summon;
+using DragaliaAPI.Shared.MasterAsset;
 using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Integration.Test.Features.Summoning;
@@ -9,10 +11,13 @@ namespace DragaliaAPI.Integration.Test.Features.Summoning;
 /// </summary>
 public class SummonTest : TestFixture
 {
-    private const int TestBannerId = 1020010;
+    private const int TestBannerId = 1020121;
 
     public SummonTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
-        : base(factory, outputHelper) { }
+        : base(factory, outputHelper)
+    {
+        CommonAssertionOptions.ApplyTimeOptions(toleranceSec: 2);
+    }
 
     [Fact]
     public async Task SummonExcludeGetList_ReturnsAnyData()
@@ -33,7 +38,7 @@ public class SummonTest : TestFixture
         SummonGetOddsDataResponse response = (
             await this.Client.PostMsgpack<SummonGetOddsDataResponse>(
                 "summon/get_odds_data",
-                new SummonGetOddsDataRequest(1020010)
+                new SummonGetOddsDataRequest(TestBannerId)
             )
         ).Data;
 
@@ -147,6 +152,50 @@ public class SummonTest : TestFixture
     }
 
     [Fact]
+    public async Task SummonGetOddsData_CharaSsrSummon_ReturnsExpectedData()
+    {
+        int bannerId = MasterAsset.SummonTicket[SummonTickets.AdventurerSummon].SummonId;
+
+        SummonGetOddsDataResponse response = (
+            await this.Client.PostMsgpack<SummonGetOddsDataResponse>(
+                "summon/get_odds_data",
+                new SummonGetOddsDataRequest(bannerId)
+            )
+        ).Data;
+
+        response.OddsRateList.Guarantee.Should().BeNull();
+        response
+            .OddsRateList.Normal.Unit.CharaOddsList.Should()
+            .BeEquivalentTo(
+                new List<OddsUnitDetail>()
+                {
+                    new()
+                    {
+                        Rarity = 5,
+                        UnitList = new List<Charas>()
+                        {
+                            Charas.Naveed,
+                            Charas.Mikoto,
+                            Charas.Ezelith,
+                            Charas.Xander,
+                            Charas.Xainfried,
+                            Charas.Lily,
+                            Charas.Hawk,
+                            Charas.Louise,
+                            Charas.Maribelle,
+                            Charas.Julietta,
+                            Charas.Lucretia,
+                            Charas.Hildegarde,
+                            Charas.Nefaria
+                        }.Select(x => new AtgenUnitList() { Id = (int)x, Rate = "7.692%" })
+                    },
+                    new() { Rarity = 4, UnitList = [], },
+                    new() { Rarity = 3, UnitList = [], }
+                }
+            );
+    }
+
+    [Fact]
     public async Task SummonGetSummonHistory_ReturnsAnyData()
     {
         DbPlayerSummonHistory historyEntry =
@@ -179,21 +228,44 @@ public class SummonTest : TestFixture
             )
         ).Data;
 
-        // Too lazy to set up automapper to check exact result and it is covered more or less in SummonRepositoryTests.cs
-        response.SummonHistoryList.Should().NotBeEmpty();
+        response
+            .SummonHistoryList.Should()
+            .ContainSingle()
+            .Which.Should()
+            .BeEquivalentTo(
+                new SummonHistoryList()
+                {
+                    SummonId = 1,
+                    SummonPointId = 1,
+                    SummonExecType = SummonExecTypes.DailyDeal,
+                    ExecDate = DateTimeOffset.UtcNow,
+                    PaymentType = PaymentTypes.Diamantium,
+                    EntityType = EntityTypes.Dragon,
+                    EntityId = (int)Dragons.GalaRebornNidhogg,
+                    EntityQuantity = 1,
+                    EntityLevel = 1,
+                    EntityRarity = 5,
+                    EntityLimitBreakCount = 0,
+                    EntityHpPlusCount = 0,
+                    EntityAttackPlusCount = 0,
+                    SummonPrizeRank = (int)SummonPrizeRanks.None,
+                    SummonPoint = 10,
+                    GetDewPointQuantity = 0,
+                },
+                o => o.Excluding(x => x.KeyId)
+            );
     }
 
     [Fact]
     public async Task SummonGetSummonList_ReturnsDataWithBannerInformation()
     {
-        int bannerId = 1020010;
         int dailyCount = 1;
         int summonCount = 10;
 
         await this.AddToDatabase(
             new DbPlayerBannerData()
             {
-                SummonBannerId = bannerId,
+                SummonBannerId = TestBannerId,
                 DailyLimitedSummonCount = dailyCount,
                 SummonCount = summonCount
             }
@@ -220,15 +292,15 @@ public class SummonTest : TestFixture
             .BeEquivalentTo(
                 new SummonList()
                 {
-                    SummonId = bannerId,
-                    SummonType = 2,
+                    SummonId = TestBannerId,
+                    SummonType = SummonTypes.Normal,
                     SingleCrystal = 120,
                     SingleDiamond = 120,
                     MultiCrystal = 1200,
                     MultiDiamond = 1200,
                     LimitedCrystal = 0,
                     LimitedDiamond = 30,
-                    SummonPointId = bannerId,
+                    SummonPointId = TestBannerId,
                     AddSummonPoint = 1,
                     AddSummonPointStone = 2,
                     ExchangeSummonPoint = 300,
@@ -263,8 +335,79 @@ public class SummonTest : TestFixture
     }
 
     [Fact]
-    public async Task SummonRequest_GetSummonPointData_ReturnsAnyData()
+    public async Task SummonGetSummonList_SpecialTicketsHeld_ReturnsSpecialTicketBanners()
     {
+        // csharpier-ignore
+        await this.AddRangeToDatabase(
+            [
+                new DbSummonTicket()
+                {
+                    SummonTicketId = SummonTickets.AdventurerSummon,
+                    Quantity = 1
+                },
+                new DbSummonTicket()
+                {
+                    SummonTicketId = SummonTickets.DragonSummon,
+                    Quantity = 1
+                },
+                new DbSummonTicket()
+                {
+                    SummonTicketId = SummonTickets.AdventurerSummonPlus,
+                    Quantity = 1
+                },
+                new DbSummonTicket()
+                {
+                    SummonTicketId = SummonTickets.DragonSummonPlus,
+                    Quantity = 1
+                },
+            ]
+        );
+
+        SummonGetSummonListResponse response = (
+            await this.Client.PostMsgpack<SummonGetSummonListResponse>("summon/get_summon_list")
+        ).Data;
+
+        response
+            .CharaSsrSummonList.Should()
+            .Contain(x =>
+                x.SummonId == MasterAsset.SummonTicket[SummonTickets.AdventurerSummon].SummonId
+            );
+        response
+            .DragonSsrSummonList.Should()
+            .Contain(x =>
+                x.SummonId == MasterAsset.SummonTicket[SummonTickets.DragonSummon].SummonId
+            );
+        response
+            .CharaSsrUpdateSummonList.Should()
+            .Contain(x => x.SummonId == SummonConstants.AdventurerSummonPlusBannerId);
+        response
+            .DragonSsrUpdateSummonList.Should()
+            .Contain(x => x.SummonId == SummonConstants.DragonSummonPlusBannerId);
+
+        response
+            .SummonPointList.Should()
+            .HaveCountLessOrEqualTo(1, "special ticket banners don't participate in wyrmsigils");
+
+        await this.ApiContext.PlayerSummonTickets.ExecuteUpdateAsync(e =>
+            e.SetProperty(p => p.Quantity, 0)
+        );
+
+        response = (
+            await this.Client.PostMsgpack<SummonGetSummonListResponse>("summon/get_summon_list")
+        ).Data;
+
+        response.CharaSsrSummonList.Should().BeEmpty();
+        response.DragonSsrSummonList.Should().BeEmpty();
+        response.CharaSsrUpdateSummonList.Should().BeEmpty();
+        response.DragonSsrUpdateSummonList.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SummonGetSummonPointTrade_NoBannerData_CreatesDefaultData()
+    {
+        this.ApiContext.PlayerBannerData.Should()
+            .NotContain(x => x.ViewerId == this.ViewerId && x.SummonBannerId == TestBannerId);
+
         SummonGetSummonPointTradeResponse response = (
             await this.Client.PostMsgpack<SummonGetSummonPointTradeResponse>(
                 "summon/get_summon_point_trade",
@@ -272,10 +415,80 @@ public class SummonTest : TestFixture
             )
         ).Data;
 
-        response.Should().NotBeNull();
+        response
+            .Should()
+            .BeEquivalentTo(
+                new SummonGetSummonPointTradeResponse()
+                {
+                    SummonPointTradeList =
+                    [
+                        new()
+                        {
+                            TradeId = int.Parse($"{TestBannerId}100"),
+                            EntityId = (int)Charas.Mona,
+                            EntityType = EntityTypes.Chara
+                        },
+                        new()
+                        {
+                            TradeId = int.Parse($"{TestBannerId}700"),
+                            EntityId = (int)Dragons.Arsene,
+                            EntityType = EntityTypes.Dragon
+                        }
+                    ],
+                    SummonPointList = [new() { SummonPointId = TestBannerId, SummonPoint = 0, }],
+                    UpdateDataList = new()
+                    {
+                        SummonPointList = [new() { SummonPointId = TestBannerId, SummonPoint = 0, }]
+                    },
+                    EntityResult = new(),
+                },
+                opts => opts.Excluding(x => x.Name.Contains("CsPoint"))
+            );
 
-        response.SummonPointList.Should().NotBeEmpty();
-        response.SummonPointTradeList.Should().NotBeEmpty();
+        this.ApiContext.PlayerBannerData.Should()
+            .Contain(x => x.ViewerId == this.ViewerId && x.SummonBannerId == TestBannerId);
+    }
+
+    [Fact]
+    public async Task SummonGetSummonPointTrade_ExistingBannerData_ReturnsData()
+    {
+        await this.AddToDatabase(
+            new DbPlayerBannerData() { SummonBannerId = TestBannerId, SummonPoints = 400, }
+        );
+
+        SummonGetSummonPointTradeResponse response = (
+            await this.Client.PostMsgpack<SummonGetSummonPointTradeResponse>(
+                "summon/get_summon_point_trade",
+                new SummonGetSummonPointTradeRequest(TestBannerId)
+            )
+        ).Data;
+
+        response
+            .Should()
+            .BeEquivalentTo(
+                new SummonGetSummonPointTradeResponse()
+                {
+                    SummonPointTradeList =
+                    [
+                        new()
+                        {
+                            TradeId = int.Parse($"{TestBannerId}100"),
+                            EntityId = (int)Charas.Mona,
+                            EntityType = EntityTypes.Chara
+                        },
+                        new()
+                        {
+                            TradeId = int.Parse($"{TestBannerId}700"),
+                            EntityId = (int)Dragons.Arsene,
+                            EntityType = EntityTypes.Dragon
+                        }
+                    ],
+                    SummonPointList = [new() { SummonPointId = TestBannerId, SummonPoint = 400, }],
+                    UpdateDataList = new(),
+                    EntityResult = new(),
+                },
+                opts => opts.Excluding(x => x.Name.Contains("CsPoint"))
+            );
     }
 
     [Fact]
@@ -423,6 +636,50 @@ public class SummonTest : TestFixture
         response.DataHeaders.ResultCode.Should().Be(ResultCode.Success);
     }
 
+    [Fact]
+    public async Task SummonRequest_IncrementsWyrmsigilPoints()
+    {
+        DbPlayerUserData userData = await this.ApiContext.PlayerUserData.SingleAsync(x =>
+            x.ViewerId == this.ViewerId
+        );
+
+        SummonRequestResponse response = (
+            await this.Client.PostMsgpack<SummonRequestResponse>(
+                "summon/request",
+                new SummonRequestRequest(
+                    TestBannerId,
+                    SummonExecTypes.Tenfold,
+                    1,
+                    PaymentTypes.Wyrmite,
+                    new PaymentTarget(userData.Crystal, 1200)
+                )
+            )
+        ).Data;
+
+        response.ResultSummonPoint.Should().Be(10);
+        response
+            .UpdateDataList.SummonPointList.Should()
+            .Contain(x => x.SummonPointId == TestBannerId && x.SummonPoint == 10);
+
+        SummonRequestResponse singleResponse = (
+            await this.Client.PostMsgpack<SummonRequestResponse>(
+                "summon/request",
+                new SummonRequestRequest(
+                    TestBannerId,
+                    SummonExecTypes.Single,
+                    3,
+                    PaymentTypes.Wyrmite,
+                    new PaymentTarget(userData.Crystal - 1200, 360)
+                )
+            )
+        ).Data;
+
+        singleResponse.ResultSummonPoint.Should().Be(3);
+        singleResponse
+            .UpdateDataList.SummonPointList.Should()
+            .Contain(x => x.SummonPointId == TestBannerId && x.SummonPoint == 13);
+    }
+
     [Theory]
     [InlineData(SummonExecTypes.Tenfold)]
     [InlineData(SummonExecTypes.Single)]
@@ -448,6 +705,98 @@ public class SummonTest : TestFixture
             );
 
         response.DataHeaders.ResultCode.Should().Be(ResultCode.CommonMaterialShort);
+    }
+
+    [Theory]
+    [InlineData(SummonTickets.AdventurerSummon, 1040001)]
+    [InlineData(SummonTickets.DragonSummon, 1060001)]
+    [InlineData(SummonTickets.AdventurerSummonPlus, SummonConstants.AdventurerSummonPlusBannerId)]
+    [InlineData(SummonTickets.DragonSummonPlus, SummonConstants.DragonSummonPlusBannerId)]
+    public async Task SummonRequest_SpecialTicket_Success(SummonTickets ticket, int bannerId)
+    {
+        await this.AddToDatabase(new DbSummonTicket() { SummonTicketId = ticket, Quantity = 1, });
+
+        SummonRequestResponse response = (
+            await this.Client.PostMsgpack<SummonRequestResponse>(
+                "summon/request",
+                new SummonRequestRequest(
+                    bannerId,
+                    SummonExecTypes.Single,
+                    0,
+                    PaymentTypes.Ticket,
+                    new PaymentTarget(1, 1)
+                )
+            )
+        ).Data;
+
+        response.ResultSummonPoint.Should().Be(0);
+        response.ResultUnitList.Should().ContainSingle().Which.Rarity.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task SummonPointTrade_Chara_Success_ReturnsData()
+    {
+        int monaTradeId = int.Parse($"{TestBannerId}100");
+
+        await this.AddToDatabase(
+            new DbPlayerBannerData() { SummonBannerId = TestBannerId, SummonPoints = 400, }
+        );
+
+        SummonSummonPointTradeResponse response = (
+            await this.Client.PostMsgpack<SummonSummonPointTradeResponse>(
+                "summon/summon_point_trade",
+                new SummonSummonPointTradeRequest(TestBannerId, monaTradeId)
+            )
+        ).Data;
+
+        response
+            .ExchangeEntityList.Should()
+            .ContainEquivalentOf(
+                new AtgenBuildEventRewardEntityList()
+                {
+                    EntityId = (int)Charas.Mona,
+                    EntityType = EntityTypes.Chara,
+                    EntityQuantity = 1,
+                }
+            );
+
+        response.UpdateDataList.CharaList.Should().Contain(x => x.CharaId == Charas.Mona);
+
+        this.ApiContext.PlayerCharaData.Should()
+            .Contain(x => x.ViewerId == this.ViewerId && x.CharaId == Charas.Mona);
+    }
+
+    [Fact]
+    public async Task SummonPointTrade_Dragon_Success_ReturnsData()
+    {
+        int arseneTradeId = int.Parse($"{TestBannerId}700");
+
+        await this.AddToDatabase(
+            new DbPlayerBannerData() { SummonBannerId = TestBannerId, SummonPoints = 400, }
+        );
+
+        SummonSummonPointTradeResponse response = (
+            await this.Client.PostMsgpack<SummonSummonPointTradeResponse>(
+                "summon/summon_point_trade",
+                new SummonSummonPointTradeRequest(TestBannerId, arseneTradeId)
+            )
+        ).Data;
+
+        response
+            .ExchangeEntityList.Should()
+            .ContainEquivalentOf(
+                new AtgenBuildEventRewardEntityList()
+                {
+                    EntityId = (int)Dragons.Arsene,
+                    EntityType = EntityTypes.Dragon,
+                    EntityQuantity = 1,
+                }
+            );
+
+        response.UpdateDataList.DragonList.Should().Contain(x => x.DragonId == Dragons.Arsene);
+
+        this.ApiContext.PlayerDragonData.Should()
+            .Contain(x => x.ViewerId == this.ViewerId && x.DragonId == Dragons.Arsene);
     }
 
     private async Task CheckRewardInDb(AtgenResultUnitList reward)

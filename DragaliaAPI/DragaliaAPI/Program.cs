@@ -1,10 +1,11 @@
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using DragaliaAPI;
+using DragaliaAPI.Authentication;
 using DragaliaAPI.Database;
 using DragaliaAPI.Features.GraphQL;
+using DragaliaAPI.Infrastructure.Hangfire;
 using DragaliaAPI.MessagePack;
 using DragaliaAPI.Middleware;
 using DragaliaAPI.Models;
@@ -13,10 +14,12 @@ using DragaliaAPI.Services.Health;
 using DragaliaAPI.Shared;
 using DragaliaAPI.Shared.MasterAsset;
 using EntityGraphQL.AspNet;
+using Hangfire;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.JSInterop;
 using Serilog;
 
@@ -61,14 +64,14 @@ builder
         option.InputFormatters.Add(new CustomMessagePackInputFormatter(CustomResolver.Options));
     });
 
-PostgresOptions postgresOptions =
-    builder.Configuration.GetSection(nameof(PostgresOptions)).Get<PostgresOptions>()
-    ?? throw new InvalidOperationException("Failed to get PostgreSQL config");
 RedisOptions redisOptions =
     builder.Configuration.GetSection(nameof(RedisOptions)).Get<RedisOptions>()
     ?? throw new InvalidOperationException("Failed to get Redis config");
+HangfireOptions hangfireOptions =
+    builder.Configuration.GetSection(nameof(HangfireOptions)).Get<HangfireOptions>()
+    ?? new() { Enabled = false };
 
-builder.Services.ConfigureDatabaseServices(postgresOptions);
+builder.Services.ConfigureDatabaseServices(builder.Configuration);
 builder.Services.AddStackExchangeRedisCache(options =>
 {
     options.ConfigurationOptions = new()
@@ -78,6 +81,11 @@ builder.Services.AddStackExchangeRedisCache(options =>
     };
     options.InstanceName = "RedisInstance";
 });
+
+if (hangfireOptions.Enabled)
+{
+    builder.Services.ConfigureHangfire();
+}
 
 builder.Services.AddDataProtection().PersistKeysToDbContext<ApiContext>();
 
@@ -106,6 +114,10 @@ watch.Stop();
 
 app.Logger.LogInformation("Loaded MasterAsset in {Time} ms.", watch.ElapsedMilliseconds);
 
+PostgresOptions postgresOptions = app
+    .Services.GetRequiredService<IOptions<PostgresOptions>>()
+    .Value;
+
 app.Logger.LogDebug(
     "Using PostgreSQL connection {Host}:{Port}",
     postgresOptions.Hostname,
@@ -128,12 +140,12 @@ app.UseResponseCompression();
 #pragma warning disable CA1861 // Avoid constant arrays as arguments. Only created once as top-level statement.
 FrozenSet<string> apiRoutePrefixes = new[]
 {
-    "/api",
     "/2.19.0_20220714193707",
     "/2.19.0_20220719103923"
 }.ToFrozenSet();
 #pragma warning restore CA1861
 
+// Game endpoints
 app.MapWhen(
     ctx => apiRoutePrefixes.Any(prefix => ctx.Request.Path.StartsWithSegments(prefix)),
     applicationBuilder =>
@@ -160,11 +172,20 @@ app.MapWhen(
     }
 );
 
+// Svelte website API
 app.MapWhen(
-    ctx => !apiRoutePrefixes.Any(prefix => ctx.Request.Path.StartsWithSegments(prefix)),
+    static ctx => ctx.Request.Path.StartsWithSegments("/api"),
     applicationBuilder =>
     {
+        // todo unfuck cors
+        applicationBuilder.UseCors(cors =>
+            cors.WithOrigins("http://localhost:3001")
+                .AllowCredentials()
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+        );
         applicationBuilder.UseRouting();
+        applicationBuilder.UseSerilogRequestLogging();
 #pragma warning disable ASP0001
         applicationBuilder.UseAuthorization();
 #pragma warning restore ASP0001
@@ -172,11 +193,45 @@ app.MapWhen(
         applicationBuilder.UseMiddleware<PlayerIdentityLoggingMiddleware>();
         applicationBuilder.UseEndpoints(endpoints =>
         {
-            endpoints.MapRazorPages();
-            endpoints.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+            endpoints.MapDragaliaAPIEndpoints();
         });
     }
 );
+
+// Blazor website
+app.MapWhen(
+    static ctx => !ctx.Request.Path.StartsWithSegments("/api"),
+    applicationBuilder =>
+    {
+        {
+            applicationBuilder.UseRouting();
+#pragma warning disable ASP0001
+            applicationBuilder.UseAuthorization();
+#pragma warning restore ASP0001
+            applicationBuilder.UseAntiforgery();
+            applicationBuilder.UseMiddleware<PlayerIdentityLoggingMiddleware>();
+            applicationBuilder.UseEndpoints(endpoints =>
+            {
+                endpoints.MapRazorPages();
+                endpoints.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+            });
+        }
+    }
+);
+
+if (hangfireOptions.Enabled)
+{
+    app.AddHangfireJobs();
+    app.UseHangfireDashboard();
+    app.MapHangfireDashboard()
+        .RequireAuthorization(policy =>
+        {
+            policy
+                .RequireAuthenticatedUser()
+                .RequireRole(Constants.Roles.Developer)
+                .AddAuthenticationSchemes(SchemeName.Developer);
+        });
+}
 
 app.MapHealthChecks(
     "/health",

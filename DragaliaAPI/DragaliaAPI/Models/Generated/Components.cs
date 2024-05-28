@@ -5,6 +5,7 @@ using DragaliaAPI.MessagePack;
 using DragaliaAPI.Photon.Shared.Enums;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.Definitions.Enums.Dungeon;
+using DragaliaAPI.Shared.Definitions.Enums.Summon;
 using DragaliaAPI.Shared.Features.Presents;
 using MessagePack;
 #pragma warning disable CS0612 // Type or member is obsolete
@@ -10209,7 +10210,7 @@ public partial class PresentHistoryList
     public int EntityStatusPlusCount { get; set; }
 
     [Key("message_id")]
-    public int MessageId { get; set; }
+    public PresentMessage MessageId { get; set; }
 
     [Key("message_param_value_1")]
     public int MessageParamValue1 { get; set; }
@@ -10234,7 +10235,7 @@ public partial class PresentHistoryList
         int entityLevel,
         int entityLimitBreakCount,
         int entityStatusPlusCount,
-        int messageId,
+        PresentMessage messageId,
         int messageParamValue1,
         int messageParamValue2,
         int messageParamValue3,
@@ -11440,7 +11441,7 @@ public partial class SummonList
     public int SummonId { get; set; }
 
     [Key("summon_type")]
-    public int SummonType { get; set; }
+    public SummonTypes SummonType { get; set; }
 
     [Key("summon_group_id")]
     public int SummonGroupId { get; set; }
@@ -11514,7 +11515,7 @@ public partial class SummonList
 
     public SummonList(
         int summonId,
-        int summonType,
+        SummonTypes summonType,
         int summonGroupId,
         int singleCrystal,
         int singleDiamond,

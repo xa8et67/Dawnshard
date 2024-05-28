@@ -3,9 +3,10 @@ using System.Runtime.CompilerServices;
 using DragaliaAPI.Database.Repositories;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Npgsql;
+using Microsoft.Extensions.Options;
 
 [assembly: InternalsVisibleTo("DragaliaAPI.Database.Test")]
 [assembly: InternalsVisibleTo("DragaliaAPI.Test")]
@@ -19,14 +20,22 @@ public static class DatabaseConfiguration
 
     public static IServiceCollection ConfigureDatabaseServices(
         this IServiceCollection services,
-        PostgresOptions postgresOptions
+        IConfiguration config
     )
     {
-        string connectionString = GetConnectionString(postgresOptions);
+        services.Configure<PostgresOptions>(config.GetRequiredSection(nameof(PostgresOptions)));
 
-        services = services
-            .AddDbContext<ApiContext>(options =>
-                options.UseNpgsql(connectionString).EnableDetailedErrors()
+        services
+            .AddDbContext<ApiContext>(
+                (serviceProvider, options) =>
+                {
+                    PostgresOptions postgresOptions = serviceProvider
+                        .GetRequiredService<IOptions<PostgresOptions>>()
+                        .Value;
+                    options
+                        .UseNpgsql(postgresOptions.GetConnectionString("ApiContext"))
+                        .EnableDetailedErrors();
+                }
             )
 #pragma warning disable CS0618 // Type or member is obsolete
             .AddScoped<IDeviceAccountRepository, DeviceAccountRepository>()
@@ -34,31 +43,13 @@ public static class DatabaseConfiguration
             .AddScoped<IUserDataRepository, UserDataRepository>()
             .AddScoped<IUnitRepository, UnitRepository>()
             .AddScoped<IInventoryRepository, InventoryRepository>()
-            .AddScoped<ISummonRepository, SummonRepository>()
             .AddScoped<IPartyRepository, PartyRepository>()
             .AddScoped<IQuestRepository, QuestRepository>()
             .AddScoped<IInventoryRepository, InventoryRepository>()
             .AddScoped<IWeaponRepository, WeaponRepository>()
-            .AddScoped<IStoryRepository, StoryRepository>()
             .AddScoped<IAbilityCrestRepository, AbilityCrestRepository>();
 
         return services;
-    }
-
-    private static string GetConnectionString(PostgresOptions options)
-    {
-        NpgsqlConnectionStringBuilder connectionStringBuilder =
-            new()
-            {
-                Host = options.Hostname,
-                Port = options.Port,
-                Username = options.Username,
-                Password = options.Password,
-                Database = options.Database,
-                IncludeErrorDetail = true,
-            };
-
-        return connectionStringBuilder.ConnectionString;
     }
 
     [ExcludeFromCodeCoverage]

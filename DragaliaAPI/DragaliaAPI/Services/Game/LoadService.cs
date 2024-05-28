@@ -1,14 +1,11 @@
 ﻿using System.Diagnostics;
-using AutoMapper;
 using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Features.Missions;
 using DragaliaAPI.Features.Player;
 using DragaliaAPI.Features.Present;
-using DragaliaAPI.Features.Shop;
+using DragaliaAPI.Features.Summoning;
 using DragaliaAPI.Features.Trade;
-using DragaliaAPI.Features.Wall;
-using DragaliaAPI.Mapping.Mapperly;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Models.Options;
 using DragaliaAPI.Shared.Definitions.Enums;
@@ -29,6 +26,7 @@ public class LoadService(
     IUserService userService,
     TimeProvider timeProvider,
     IPlayerIdentityService playerIdentityService,
+    SummonService summonService,
     ILogger<LoadService> logger
 ) : ILoadService
 {
@@ -37,8 +35,7 @@ public class LoadService(
 
     public async Task<LoadIndexResponse> BuildIndexData()
     {
-        Stopwatch stopwatch = new();
-        stopwatch.Start();
+        Stopwatch stopwatch = Stopwatch.StartNew();
 
         Savefile savefile = await apiContext
             .Players.Where(x => x.ViewerId == playerIdentityService.ViewerId)
@@ -87,9 +84,12 @@ public class LoadService(
                 UserTreasureTradeList = savefile
                     .Trades.Where(x => x.Type == TradeType.Treasure)
                     .Select(x => x.MapToUserTreasureTradeList()),
+                UserSummonList = savefile
+                    .BannerData
+                    .Select(x => x.MapToUserSummonList()),
 
                 FriendNotice = new(0, 0),
-                ShopNotice = new ShopNotice(savefile.ShopInfo?.DailySummonCount != 0),
+                ShopNotice = new ShopNotice(savefile.ShopInfo?.DailySummonCount == 0),
                 GuildNotice = new(0, false, false, false, false),
                 StaminaMultiSystemMax = userService.StaminaMultiMax,
                 StaminaMultiUserMax = 12,
@@ -107,6 +107,7 @@ public class LoadService(
                 MissionNotice = await missionService.GetMissionNotice(null),
                 FortBonusList = await bonusService.GetBonusList(),
                 PresentNotice = await presentService.GetPresentNotice(),
+                SummonPointList = await summonService.GetSummonPointList(),
                 FunctionalMaintenanceList = [],
             };
         // csharpier-ignore-end
@@ -163,6 +164,8 @@ public class Savefile
     public IEnumerable<GenericTrade> Trades { get; set; } = [];
 
     public DbPlayerShopInfo? ShopInfo { get; set; }
+
+    public IEnumerable<BannerData> BannerData { get; set; } = [];
 }
 
 public class GenericStory
@@ -183,6 +186,21 @@ public class GenericTrade
     public int Count { get; set; }
 
     public DateTimeOffset LastTradeTime { get; set; } = DateTimeOffset.UnixEpoch;
+}
+
+public class BannerData
+{
+    public int SummonBannerId { get; set; }
+
+    public int SummonCount { get; set; }
+
+    public int SummonPoints { get; set; }
+
+    public int ConsecutionSummonPoints { get; set; }
+
+    public DateTimeOffset ConsecutionSummonPointsMinDate { get; set; }
+
+    public DateTimeOffset ConsecutionSummonPointsMaxDate { get; set; }
 }
 
 [Mapper(
@@ -209,6 +227,9 @@ public static partial class LoadMapper
             TradeCount = trade.Count,
             LastResetTime = trade.LastTradeTime
         };
+
+    public static UserSummonList MapToUserSummonList(this BannerData bannerData) =>
+        new() { SummonId = bannerData.SummonBannerId, SummonCount = bannerData.SummonCount, };
 
     [MapProperty(nameof(DbPlayerDragonData.Level), nameof(DragonReliabilityList.ReliabilityLevel))]
     [MapProperty(nameof(DbPlayerDragonData.Exp), nameof(DragonReliabilityList.ReliabilityTotalExp))]

@@ -1,19 +1,25 @@
+using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
+using DragaliaAPI.Database.Test;
 using DragaliaAPI.Features.Fort;
 using DragaliaAPI.Features.Missions;
+using DragaliaAPI.Features.Player;
+using DragaliaAPI.Features.Present;
 using DragaliaAPI.Features.Reward;
 using DragaliaAPI.Features.Shop;
+using DragaliaAPI.Features.Story;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
 using DragaliaAPI.Services.Game;
 using DragaliaAPI.Shared.Definitions.Enums;
+using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.Extensions.Logging;
 using MockQueryable.Moq;
 
 namespace DragaliaAPI.Test.Services;
 
-public class StoryServiceTest
+public class StoryServiceTest : IClassFixture<DbTestFixture>
 {
     private readonly Mock<IStoryRepository> mockStoryRepository;
     private readonly Mock<IUserDataRepository> mockUserDataRepository;
@@ -24,31 +30,42 @@ public class StoryServiceTest
     private readonly Mock<IMissionProgressionService> mockMissionProgressionService;
     private readonly Mock<IRewardService> mockRewardService;
     private readonly Mock<IPaymentService> mockPaymentService;
+    private readonly Mock<IPresentService> mockPresentService;
+    private readonly Mock<IUserService> mockUserService;
+    private readonly Mock<IPlayerIdentityService> mockPlayerIdentityService;
 
     private readonly IStoryService storyService;
 
-    public StoryServiceTest()
+    public StoryServiceTest(DbTestFixture fixture)
     {
         this.mockStoryRepository = new(MockBehavior.Strict);
         this.mockUserDataRepository = new(MockBehavior.Strict);
         this.mockInventoryRepository = new(MockBehavior.Strict);
         this.mockLogger = new();
         this.mockTutorialService = new(MockBehavior.Strict);
+        this.mockPresentService = new(MockBehavior.Strict);
         this.mockFortRepository = new(MockBehavior.Strict);
         this.mockMissionProgressionService = new(MockBehavior.Strict);
         this.mockRewardService = new(MockBehavior.Strict);
         this.mockPaymentService = new(MockBehavior.Strict);
+        this.mockPresentService = new(MockBehavior.Strict);
+        this.mockPlayerIdentityService = new(MockBehavior.Strict);
+        this.mockUserService = new(MockBehavior.Strict);
 
         this.storyService = new StoryService(
             mockStoryRepository.Object,
             mockLogger.Object,
             mockUserDataRepository.Object,
             mockInventoryRepository.Object,
+            mockPresentService.Object,
             mockTutorialService.Object,
             mockFortRepository.Object,
             mockMissionProgressionService.Object,
             mockRewardService.Object,
-            mockPaymentService.Object
+            mockPaymentService.Object,
+            mockUserService.Object,
+            fixture.ApiContext,
+            mockPlayerIdentityService.Object
         );
     }
 
@@ -180,8 +197,8 @@ public class StoryServiceTest
             .ReturnsAsync(new DbPlayerStoryState() { ViewerId = 1, State = StoryState.Unlocked });
 
         this.mockRewardService.Setup(x =>
-            x.GrantReward(new Entity(EntityTypes.Title, expectedEmblemId, 1, null, null, null))
-        )
+                x.GrantReward(new Entity(EntityTypes.Title, expectedEmblemId, 1, null, null, null))
+            )
             .ReturnsAsync(RewardGrantResult.Added);
 
         this.mockUserDataRepository.Setup(x => x.GiveWyrmite(10)).Returns(Task.CompletedTask);
@@ -229,10 +246,10 @@ public class StoryServiceTest
         this.mockMissionProgressionService.Setup(x => x.OnQuestStoryCleared(1000311));
 
         this.mockRewardService.Setup(x =>
-            x.GrantReward(
-                new Entity(EntityTypes.Dragon, (int)Dragons.Brunhilda, 1, null, null, null)
+                x.GrantReward(
+                    new Entity(EntityTypes.Dragon, (int)Dragons.Brunhilda, 1, null, null, null)
+                )
             )
-        )
             .ReturnsAsync(RewardGrantResult.Added);
 
         (await this.storyService.ReadStory(StoryTypes.Quest, 1000311))
@@ -368,10 +385,10 @@ public class StoryServiceTest
             .Returns(Task.CompletedTask);
 
         this.mockRewardService.Setup(x =>
-            x.GrantReward(
-                It.Is<Entity>(y => y.Type == EntityTypes.Chara && y.Id == (int)Charas.Audric)
+                x.GrantReward(
+                    It.Is<Entity>(y => y.Type == EntityTypes.Chara && y.Id == (int)Charas.Audric)
+                )
             )
-        )
             .ReturnsAsync(RewardGrantResult.Added);
 
         (await this.storyService.ReadStory(StoryTypes.Quest, storyId))
