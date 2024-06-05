@@ -47,14 +47,27 @@ public class SummonController(
         SummonGetOddsDataRequest request
     )
     {
-        OddsRate baseOddsRate = await summonOddsService.GetNormalOddsRate(request.SummonId);
-        OddsRate? guaranteeOddsRate = await summonOddsService.GetGuaranteeOddsRate(
+        int summonCountSinceLastFiveStar = await summonOddsService.GetSummonCountSinceLastFiveStar(
             request.SummonId
         );
 
+        OddsRate baseOddsRate = summonOddsService.GetNormalOddsRate(
+            request.SummonId,
+            summonCountSinceLastFiveStar
+        );
+
+        OddsRate? guaranteeOddsRate = summonOddsService.GetGuaranteeOddsRate(
+            request.SummonId,
+            summonCountSinceLastFiveStar
+        );
+
+        int requiredCountToNext = SummonOddsLogic.GetSummonCountToPityIncrease(
+            summonCountSinceLastFiveStar
+        );
+
         return new SummonGetOddsDataResponse(
-            new OddsRateList(int.MaxValue, baseOddsRate, guaranteeOddsRate),
-            new(null, null)
+            new OddsRateList(requiredCountToNext, baseOddsRate, guaranteeOddsRate),
+            new SummonPrizeOddsRateList(null, null)
         );
     }
 
@@ -167,7 +180,8 @@ public class SummonController(
 
         UserSummonList userSummonList = await summonService.UpdateUserSummonInformation(
             summonList,
-            summonCount
+            summonCount,
+            metaInfo
         );
 
         SummonEffect effect = SummonEffectHelper.CalculateEffect(metaInfo);
