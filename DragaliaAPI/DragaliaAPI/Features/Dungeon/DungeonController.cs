@@ -5,6 +5,7 @@ using DragaliaAPI.Features.Reward;
 using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Services;
+using DragaliaAPI.Services.Game;
 using DragaliaAPI.Services.Photon;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,13 +19,20 @@ public class DungeonController(
     IUpdateDataService updateDataService,
     IRewardService rewardService,
     IMatchingService matchingService,
-    IDungeonRecordHelperService dungeonRecordHelperService
+    IDungeonRecordHelperService dungeonRecordHelperService,
+    ILogger<DungeonController> logger
 ) : DragaliaControllerBase
 {
     [HttpPost("get_area_odds")]
-    public async Task<DragaliaResult> GetAreaOdds(DungeonGetAreaOddsRequest request)
+    public async Task<DragaliaResult> GetAreaOdds(
+        DungeonGetAreaOddsRequest request,
+        CancellationToken cancellationToken
+    )
     {
-        DungeonSession session = await dungeonService.GetDungeon(request.DungeonKey);
+        DungeonSession session = await dungeonService.GetSession(
+            request.DungeonKey,
+            cancellationToken
+        );
 
         ArgumentNullException.ThrowIfNull(session.QuestData);
 
@@ -32,23 +40,32 @@ public class DungeonController(
 
         await dungeonService.ModifySession(
             request.DungeonKey,
-            s => s.EnemyList[request.AreaIdx] = oddsInfo.Enemy
+            s => s.EnemyList[request.AreaIdx] = oddsInfo.Enemy,
+            cancellationToken
         );
+
+        await dungeonService.SaveSession(cancellationToken);
 
         return Ok(new DungeonGetAreaOddsResponse() { OddsInfo = oddsInfo });
     }
 
     [HttpPost("fail")]
-    public async Task<DragaliaResult> Fail(DungeonFailRequest request)
+    public async Task<DragaliaResult> Fail(
+        DungeonFailRequest request,
+        CancellationToken cancellationToken
+    )
     {
-        DungeonSession session = await dungeonService.FinishDungeon(request.DungeonKey);
+        DungeonSession session = await dungeonService.GetSession(
+            request.DungeonKey,
+            cancellationToken
+        );
+
+        logger.LogDebug("Processing fail request for quest {QuestId}", session.QuestId);
 
         DungeonFailResponse response =
             new()
             {
                 Result = 1,
-                FailHelperList = new List<UserSupportList>(),
-                FailHelperDetailList = new List<AtgenHelperDetailList>(),
                 FailQuestDetail = new()
                 {
                     QuestId = session.QuestId,
@@ -57,6 +74,8 @@ public class DungeonController(
                     IsHost = true,
                 }
             };
+
+        logger.LogDebug("Session is multiplayer: {IsMulti}", session.IsMulti);
 
         if (session.IsMulti)
         {
@@ -69,6 +88,10 @@ public class DungeonController(
             (response.FailHelperList, response.FailHelperDetailList) =
                 await dungeonRecordHelperService.ProcessHelperDataSolo(session.SupportViewerId);
         }
+
+        logger.LogDebug("Final response: {@Response}", response);
+
+        await dungeonService.RemoveSession(request.DungeonKey, cancellationToken);
 
         return this.Ok(response);
     }
