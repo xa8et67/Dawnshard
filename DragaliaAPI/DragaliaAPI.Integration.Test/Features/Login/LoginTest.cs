@@ -1,7 +1,7 @@
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Features.Login;
 using DragaliaAPI.Features.Login.Actions;
 using DragaliaAPI.Features.Wall;
+using DragaliaAPI.Infrastructure.Results;
 using DragaliaAPI.Shared.MasterAsset.Models.Missions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,7 +17,7 @@ public class LoginTest : TestFixture
     public void IDailyResetAction_HasExpectedCount()
     {
         // Update this test when adding a new reset action
-        this.Services.GetServices<IDailyResetAction>().Should().HaveCount(5);
+        this.Services.GetServices<IDailyResetAction>().Should().HaveCount(6);
     }
 
     [Fact]
@@ -27,11 +27,18 @@ public class LoginTest : TestFixture
 
         await this
             .ApiContext.PlayerShopInfos.Where(x => x.ViewerId == ViewerId)
-            .ExecuteUpdateAsync(entity => entity.SetProperty(x => x.DailySummonCount, 5));
+            .ExecuteUpdateAsync(
+                entity => entity.SetProperty(x => x.DailySummonCount, 5),
+                cancellationToken: TestContext.Current.CancellationToken
+            );
 
         (await this.GetSummonCount()).Should().Be(5);
 
-        await this.Client.PostMsgpack<LoginIndexResponse>("/login/index", new LoginIndexRequest());
+        await this.Client.PostMsgpack<LoginIndexResponse>(
+            "/login/index",
+            new LoginIndexRequest(),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         (await this.GetSummonCount()).Should().Be(0);
     }
@@ -43,25 +50,38 @@ public class LoginTest : TestFixture
 
         await this
             .ApiContext.PlayerDragonGifts.Where(x => x.ViewerId == ViewerId)
-            .ExecuteUpdateAsync(entity => entity.SetProperty(x => x.Quantity, 0));
+            .ExecuteUpdateAsync(
+                entity => entity.SetProperty(x => x.Quantity, 0),
+                cancellationToken: TestContext.Current.CancellationToken
+            );
 
         await this
             .ApiContext.PlayerDragonGifts.Where(x =>
                 x.ViewerId == this.ViewerId && x.DragonGiftId == DragonGifts.GoldenChalice
             )
-            .ExecuteUpdateAsync(e => e.SetProperty(p => p.Quantity, 1));
+            .ExecuteUpdateAsync(
+                e => e.SetProperty(p => p.Quantity, 1),
+                cancellationToken: TestContext.Current.CancellationToken
+            );
 
         await this
             .ApiContext.PlayerDragonGifts.Where(x =>
                 x.ViewerId == this.ViewerId && x.DragonGiftId == DragonGifts.FourLeafClover
             )
-            .ExecuteUpdateAsync(e => e.SetProperty(p => p.Quantity, 100));
+            .ExecuteUpdateAsync(
+                e => e.SetProperty(p => p.Quantity, 100),
+                cancellationToken: TestContext.Current.CancellationToken
+            );
 
         this.MockTimeProvider.SetUtcNow(
             new DateTimeOffset(2049, 03, 16, 02, 13, 59, TimeSpan.Zero)
         ); // Into Tuesday, but last reset was Monday
 
-        await this.Client.PostMsgpack<LoginIndexResponse>("/login/index", new LoginIndexRequest());
+        await this.Client.PostMsgpack<LoginIndexResponse>(
+            "/login/index",
+            new LoginIndexRequest(),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         List<DbPlayerDragonGift> dbPlayerDragonGifts = await this.GetDragonGifts();
 
@@ -99,13 +119,17 @@ public class LoginTest : TestFixture
 
         await this
             .ApiContext.PlayerDragonGifts.Where(x => x.ViewerId == ViewerId)
-            .ExecuteDeleteAsync();
+            .ExecuteDeleteAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         this.MockTimeProvider.SetUtcNow(
             new DateTimeOffset(2049, 03, 15, 23, 13, 59, TimeSpan.Zero)
         ); // Monday
 
-        await this.Client.PostMsgpack<LoginIndexResponse>("/login/index", new LoginIndexRequest());
+        await this.Client.PostMsgpack<LoginIndexResponse>(
+            "/login/index",
+            new LoginIndexRequest(),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         List<DbPlayerDragonGift> dbPlayerDragonGifts = await this.GetDragonGifts();
 
@@ -129,13 +153,17 @@ public class LoginTest : TestFixture
     {
         await this
             .ApiContext.PlayerDragonGifts.Where(x => x.ViewerId == ViewerId)
-            .ExecuteDeleteAsync();
+            .ExecuteDeleteAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         this.MockTimeProvider.SetUtcNow(
             new DateTimeOffset(2049, 03, 14, 23, 13, 59, TimeSpan.Zero)
         ); // Sunday
 
-        await this.Client.PostMsgpack<LoginIndexResponse>("/login/index", new LoginIndexRequest());
+        await this.Client.PostMsgpack<LoginIndexResponse>(
+            "/login/index",
+            new LoginIndexRequest(),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         List<DbPlayerDragonGift> dbPlayerDragonGifts = await this.GetDragonGifts();
 
@@ -164,14 +192,17 @@ public class LoginTest : TestFixture
             {
                 ViewerId = ViewerId,
                 CurrentDay = 4,
-                Id = 17 // Standard daily login bonus
+                Id =
+                    17 // Standard daily login bonus
+                ,
             }
         );
 
         DragaliaResponse<LoginIndexResponse> response =
             await this.Client.PostMsgpack<LoginIndexResponse>(
                 "/login/index",
-                new LoginIndexRequest()
+                new LoginIndexRequest(),
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response
@@ -202,14 +233,17 @@ public class LoginTest : TestFixture
             {
                 ViewerId = ViewerId,
                 CurrentDay = 10,
-                Id = 17 // Standard daily login bonus
+                Id =
+                    17 // Standard daily login bonus
+                ,
             }
         );
 
         DragaliaResponse<LoginIndexResponse> response =
             await this.Client.PostMsgpack<LoginIndexResponse>(
                 "/login/index",
-                new LoginIndexRequest()
+                new LoginIndexRequest(),
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response
@@ -238,14 +272,17 @@ public class LoginTest : TestFixture
             {
                 ViewerId = ViewerId,
                 CurrentDay = 6,
-                Id = 2 // Launch Celebration Daily Bonus
+                Id =
+                    2 // Launch Celebration Daily Bonus
+                ,
             }
         );
 
         DragaliaResponse<LoginIndexResponse> response =
             await this.Client.PostMsgpack<LoginIndexResponse>(
                 "/login/index",
-                new LoginIndexRequest()
+                new LoginIndexRequest(),
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response
@@ -265,7 +302,10 @@ public class LoginTest : TestFixture
         (
             await this
                 .ApiContext.LoginBonuses.AsNoTracking()
-                .FirstAsync(x => x.ViewerId == ViewerId && x.Id == 2)
+                .FirstAsync(
+                    x => x.ViewerId == ViewerId && x.Id == 2,
+                    cancellationToken: TestContext.Current.CancellationToken
+                )
         )
             .IsComplete.Should()
             .BeTrue();
@@ -273,7 +313,8 @@ public class LoginTest : TestFixture
         DragaliaResponse<LoginIndexResponse> secondResponse =
             await this.Client.PostMsgpack<LoginIndexResponse>(
                 "/login/index",
-                new LoginIndexRequest()
+                new LoginIndexRequest(),
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         secondResponse.Data.LoginBonusList.Should().NotContain(x => x.LoginBonusId == 2);
@@ -297,12 +338,13 @@ public class LoginTest : TestFixture
             .ApiContext.PlayerDragonGifts.AsNoTracking()
             .Where(x => x.DragonGiftId == DragonGifts.FourLeafClover && x.ViewerId == ViewerId)
             .Select(x => x.Quantity)
-            .FirstAsync();
+            .FirstAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         LoginIndexResponse response = (
             await this.Client.PostMsgpack<LoginIndexResponse>(
                 "login/index",
-                new LoginIndexRequest() { JwsResult = string.Empty }
+                new LoginIndexRequest() { JwsResult = string.Empty },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -318,7 +360,7 @@ public class LoginTest : TestFixture
                     EntityLimitBreakCount = 0,
                     LoginBonusId = 17,
                     RewardDay = 8,
-                    TotalLoginDay = 8
+                    TotalLoginDay = 8,
                 }
             );
 
@@ -342,7 +384,7 @@ public class LoginTest : TestFixture
             {
                 ViewerId = this.ViewerId,
                 Id = oldMissionId,
-                Type = MissionType.Daily
+                Type = MissionType.Daily,
             }
         );
         await this.AddToDatabase(
@@ -351,7 +393,8 @@ public class LoginTest : TestFixture
 
         await this.Client.PostMsgpack(
             "login/index",
-            new LoginIndexRequest() { JwsResult = string.Empty }
+            new LoginIndexRequest() { JwsResult = string.Empty },
+            cancellationToken: TestContext.Current.CancellationToken
         );
 
         this.ApiContext.PlayerMissions.AsNoTracking()
@@ -359,6 +402,7 @@ public class LoginTest : TestFixture
             .NotContain(x => x.Id == oldMissionId);
 
         this.ApiContext.PlayerMissions.AsNoTracking()
+            .Where(x => x.ViewerId == this.ViewerId)
             .Where(x => x.GroupId == 0)
             .Should()
             .BeEquivalentTo(
@@ -375,6 +419,7 @@ public class LoginTest : TestFixture
             );
 
         this.ApiContext.PlayerMissions.AsNoTracking()
+            .Where(x => x.ViewerId == this.ViewerId)
             .Where(x => x.GroupId == starryDragonyuleEventId)
             .Should()
             .BeEquivalentTo(
@@ -393,6 +438,7 @@ public class LoginTest : TestFixture
             );
 
         this.ApiContext.PlayerMissions.AsNoTracking()
+            .Where(x => x.ViewerId == this.ViewerId)
             .ToList()
             .Should()
             .AllSatisfy(x =>
@@ -416,20 +462,23 @@ public class LoginTest : TestFixture
             {
                 ViewerId = this.ViewerId,
                 Id = oldMissionId,
-                Type = MissionType.Daily
+                Type = MissionType.Daily,
             }
         );
 
         await this.Client.PostMsgpack(
             "login/index",
-            new LoginIndexRequest() { JwsResult = string.Empty }
+            new LoginIndexRequest() { JwsResult = string.Empty },
+            cancellationToken: TestContext.Current.CancellationToken
         );
 
         this.ApiContext.PlayerMissions.AsNoTracking()
+            .Where(x => x.ViewerId == this.ViewerId)
             .Should()
             .NotContain(x => x.Id == oldMissionId);
 
         this.ApiContext.PlayerMissions.AsNoTracking()
+            .Where(x => x.ViewerId == this.ViewerId)
             .Where(x => x.GroupId == 0)
             .Should()
             .BeEquivalentTo(
@@ -446,6 +495,7 @@ public class LoginTest : TestFixture
             );
 
         this.ApiContext.PlayerMissions.AsNoTracking()
+            .Where(x => x.ViewerId == this.ViewerId)
             .Should()
             .NotContain(x => x.GroupId == starryDragonyuleEventId);
     }
@@ -456,7 +506,8 @@ public class LoginTest : TestFixture
         LoginIndexResponse response = (
             await this.Client.PostMsgpack<LoginIndexResponse>(
                 "login/index",
-                new LoginIndexRequest() { JwsResult = string.Empty }
+                new LoginIndexRequest() { JwsResult = string.Empty },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -468,15 +519,16 @@ public class LoginTest : TestFixture
     {
         await this.AddRangeToDatabase(
             [
-                new DbPlayerQuestWall() { WallId = WallService.FlameWallId, WallLevel = 10, },
-                new DbWallRewardDate() { LastClaimDate = DateTimeOffset.UnixEpoch }
+                new DbPlayerQuestWall() { WallId = WallService.FlameWallId, WallLevel = 10 },
+                new DbWallRewardDate() { LastClaimDate = DateTimeOffset.UnixEpoch },
             ]
         );
 
         LoginIndexResponse response = (
             await this.Client.PostMsgpack<LoginIndexResponse>(
                 "login/index",
-                new LoginIndexRequest() { JwsResult = string.Empty }
+                new LoginIndexRequest() { JwsResult = string.Empty },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -498,15 +550,16 @@ public class LoginTest : TestFixture
     {
         await this.AddRangeToDatabase(
             [
-                new DbPlayerQuestWall() { WallId = WallService.FlameWallId, WallLevel = 10, },
-                new DbWallRewardDate() { LastClaimDate = DateTimeOffset.UtcNow }
+                new DbPlayerQuestWall() { WallId = WallService.FlameWallId, WallLevel = 10 },
+                new DbWallRewardDate() { LastClaimDate = DateTimeOffset.UtcNow },
             ]
         );
 
         LoginIndexResponse response = (
             await this.Client.PostMsgpack<LoginIndexResponse>(
                 "login/index",
-                new LoginIndexRequest() { JwsResult = string.Empty }
+                new LoginIndexRequest() { JwsResult = string.Empty },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -524,6 +577,30 @@ public class LoginTest : TestFixture
     }
 
     [Fact]
+    public async Task LoginIndex_ResetsDailySummonCount()
+    {
+        await this.AddToDatabase(
+            new DbPlayerBannerData()
+            {
+                ViewerId = this.ViewerId,
+                SummonBannerId = 1020121,
+                DailyLimitedSummonCount = 1,
+            }
+        );
+
+        await this.Client.PostMsgpack<LoginIndexResponse>(
+            "login/index",
+            new LoginIndexRequest() { JwsResult = string.Empty },
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        this.ApiContext.PlayerBannerData.AsNoTracking()
+            .First(x => x.SummonBannerId == 1020121)
+            .DailyLimitedSummonCount.Should()
+            .Be(0);
+    }
+
+    [Fact]
     public async Task LoginVerifyJws_ReturnsOK()
     {
         this.MockTimeProvider.SetUtcNow(DateTimeOffset.UtcNow);
@@ -531,7 +608,8 @@ public class LoginTest : TestFixture
         ResultCodeResponse response = (
             await this.Client.PostMsgpack<ResultCodeResponse>(
                 "/login/verify_jws",
-                new LoginVerifyJwsRequest()
+                new LoginVerifyJwsRequest(),
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 

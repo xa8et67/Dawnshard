@@ -2,6 +2,7 @@
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Utils;
 using DragaliaAPI.Extensions;
+using DragaliaAPI.Infrastructure.Results;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models.Missions;
 
@@ -22,7 +23,8 @@ public class MissionTest : TestFixture
         DragaliaResponse<MissionUnlockDrillMissionGroupResponse> resp =
             await this.Client.PostMsgpack<MissionUnlockDrillMissionGroupResponse>(
                 "mission/unlock_drill_mission_group",
-                new MissionUnlockDrillMissionGroupRequest(1)
+                new MissionUnlockDrillMissionGroupRequest(1),
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         resp.DataHeaders.ResultCode.Should().Be(ResultCode.Success);
@@ -45,7 +47,8 @@ public class MissionTest : TestFixture
         DragaliaResponse<MissionUnlockMainStoryGroupResponse> resp =
             await this.Client.PostMsgpack<MissionUnlockMainStoryGroupResponse>(
                 "mission/unlock_main_story_group",
-                new MissionUnlockMainStoryGroupRequest(1)
+                new MissionUnlockMainStoryGroupRequest(1),
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         resp.DataHeaders.ResultCode.Should().Be(ResultCode.Success);
@@ -58,13 +61,15 @@ public class MissionTest : TestFixture
     {
         await this.Client.PostMsgpack<MissionUnlockDrillMissionGroupResponse>(
             "mission/unlock_drill_mission_group",
-            new MissionUnlockDrillMissionGroupRequest(1)
+            new MissionUnlockDrillMissionGroupRequest(1),
+            cancellationToken: TestContext.Current.CancellationToken
         );
 
         DragaliaResponse<QuestReadStoryResponse> resp =
             await this.Client.PostMsgpack<QuestReadStoryResponse>(
                 "/quest/read_story",
-                new QuestReadStoryRequest() { QuestStoryId = 1000106 }
+                new QuestReadStoryRequest() { QuestStoryId = 1000106 },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         resp.DataHeaders.ResultCode.Should().Be(ResultCode.Success);
@@ -77,7 +82,8 @@ public class MissionTest : TestFixture
         DragaliaResponse<MissionReceiveDrillRewardResponse> rewardResp =
             await this.Client.PostMsgpack<MissionReceiveDrillRewardResponse>(
                 "/mission/receive_drill_reward",
-                new MissionReceiveDrillRewardRequest(new[] { 100200 }, Enumerable.Empty<int>())
+                new MissionReceiveDrillRewardRequest(new[] { 100200 }, Enumerable.Empty<int>()),
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         rewardResp.DataHeaders.ResultCode.Should().Be(ResultCode.Success);
@@ -90,13 +96,15 @@ public class MissionTest : TestFixture
     {
         await this.Client.PostMsgpack<MissionUnlockDrillMissionGroupResponse>(
             "mission/unlock_drill_mission_group",
-            new MissionUnlockDrillMissionGroupRequest(3)
+            new MissionUnlockDrillMissionGroupRequest(3),
+            cancellationToken: TestContext.Current.CancellationToken
         );
 
         DragaliaResponse<TreasureTradeTradeResponse> resp =
             await this.Client.PostMsgpack<TreasureTradeTradeResponse>(
                 "/treasure_trade/trade",
-                new TreasureTradeTradeRequest() { TreasureTradeId = 10020101, TradeCount = 1 }
+                new TreasureTradeTradeRequest() { TreasureTradeId = 10020101, TradeCount = 1 },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         resp.DataHeaders.ResultCode.Should().Be(ResultCode.Success);
@@ -114,14 +122,15 @@ public class MissionTest : TestFixture
             new DbAbilityCrest()
             {
                 ViewerId = ViewerId,
-                AbilityCrestId = AbilityCrests.Aromatherapy,
+                AbilityCrestId = AbilityCrestId.Aromatherapy,
                 LimitBreakCount = 4,
             }
         );
 
         await this.Client.PostMsgpack<MissionUnlockDrillMissionGroupResponse>(
             "mission/unlock_drill_mission_group",
-            new MissionUnlockDrillMissionGroupRequest(3)
+            new MissionUnlockDrillMissionGroupRequest(3),
+            cancellationToken: TestContext.Current.CancellationToken
         );
 
         DragaliaResponse<AbilityCrestBuildupPieceResponse> resp =
@@ -129,15 +138,16 @@ public class MissionTest : TestFixture
                 "/ability_crest/buildup_piece",
                 new AbilityCrestBuildupPieceRequest()
                 {
-                    AbilityCrestId = AbilityCrests.Aromatherapy,
+                    AbilityCrestId = AbilityCrestId.Aromatherapy,
                     BuildupAbilityCrestPieceList = Enumerable
                         .Range(2, 15)
                         .Select(x => new AtgenBuildupAbilityCrestPieceList()
                         {
                             BuildupPieceType = BuildupPieceTypes.Stats,
-                            Step = x
-                        })
-                }
+                            Step = x,
+                        }),
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         resp.DataHeaders.ResultCode.Should().Be(ResultCode.Success);
@@ -146,6 +156,154 @@ public class MissionTest : TestFixture
             .BeGreaterThan(1);
         resp.Data.UpdateDataList.MissionNotice.DrillMissionNotice.NewCompleteMissionIdList.Should()
             .Contain(301700);
+    }
+
+    [Fact]
+    public async Task DrillMission_DragonExactLeveling_CompletesMission()
+    {
+        await this.AddToDatabase(
+            new DbPlayerDragonData() { ViewerId = ViewerId, DragonId = DragonId.Midgardsormr }
+        );
+
+        await this.Client.PostMsgpack<MissionUnlockDrillMissionGroupResponse>(
+            "mission/unlock_drill_mission_group",
+            new MissionUnlockDrillMissionGroupRequest(1),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        DragaliaResponse<DragonBuildupResponse> resp =
+            await this.Client.PostMsgpack<DragonBuildupResponse>(
+                "dragon/buildup",
+                new DragonBuildupRequest()
+                {
+                    BaseDragonKeyId = (ulong)this.GetDragonKeyId(DragonId.Midgardsormr),
+                    GrowMaterialList = new List<GrowMaterialList>()
+                    {
+                        new GrowMaterialList()
+                        {
+                            Type = EntityTypes.Material,
+                            Id = (int)Materials.Dragonfruit,
+                            Quantity = 10,
+                        },
+                    },
+                },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+        resp.DataHeaders.ResultCode.Should().Be(ResultCode.Success);
+        resp.Data.UpdateDataList.MissionNotice.Should().NotBeNull();
+        resp.Data.UpdateDataList.MissionNotice.DrillMissionNotice.IsUpdate.Should().BeTrue();
+        resp.Data.UpdateDataList.MissionNotice.DrillMissionNotice.CompletedMissionCount.Should()
+            .BeGreaterThan(1);
+        resp.Data.UpdateDataList.MissionNotice.DrillMissionNotice.NewCompleteMissionIdList.Should()
+            .Contain(102000);
+    }
+
+    [Fact]
+    public async Task DrillMission_DragonOverleveling_CompletesMission()
+    {
+        await this.AddToDatabase(
+            new DbPlayerDragonData() { ViewerId = ViewerId, DragonId = DragonId.Midgardsormr }
+        );
+
+        await this.Client.PostMsgpack<MissionUnlockDrillMissionGroupResponse>(
+            "mission/unlock_drill_mission_group",
+            new MissionUnlockDrillMissionGroupRequest(1),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        DragaliaResponse<DragonBuildupResponse> resp =
+            await this.Client.PostMsgpack<DragonBuildupResponse>(
+                "dragon/buildup",
+                new DragonBuildupRequest()
+                {
+                    BaseDragonKeyId = (ulong)this.GetDragonKeyId(DragonId.Midgardsormr),
+                    GrowMaterialList = new List<GrowMaterialList>()
+                    {
+                        new GrowMaterialList()
+                        {
+                            Type = EntityTypes.Material,
+                            Id = (int)Materials.SucculentDragonfruit,
+                            Quantity = 1,
+                        },
+                    },
+                },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+        resp.DataHeaders.ResultCode.Should().Be(ResultCode.Success);
+        resp.Data.UpdateDataList.MissionNotice.Should().NotBeNull();
+        resp.Data.UpdateDataList.MissionNotice.DrillMissionNotice.IsUpdate.Should().BeTrue();
+        resp.Data.UpdateDataList.MissionNotice.DrillMissionNotice.CompletedMissionCount.Should()
+            .BeGreaterThan(1);
+        resp.Data.UpdateDataList.MissionNotice.DrillMissionNotice.NewCompleteMissionIdList.Should()
+            .Contain(102000);
+    }
+
+    [Fact]
+    public async Task DrillMission_CharacterExactLeveling_CompletesMission()
+    {
+        this.AddCharacter(Charas.Karina);
+
+        await this.Client.PostMsgpack<MissionUnlockDrillMissionGroupResponse>(
+            "mission/unlock_drill_mission_group",
+            new MissionUnlockDrillMissionGroupRequest(1),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        DragaliaResponse<CharaBuildupResponse> resp =
+            await this.Client.PostMsgpack<CharaBuildupResponse>(
+                "chara/buildup",
+                new CharaBuildupRequest(
+                    Charas.Karina,
+                    new List<AtgenEnemyPiece>()
+                    {
+                        new AtgenEnemyPiece() { Id = Materials.GoldCrystal, Quantity = 10 },
+                    }
+                ),
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+        resp.DataHeaders.ResultCode.Should().Be(ResultCode.Success);
+        resp.Data.UpdateDataList.MissionNotice.Should().NotBeNull();
+        resp.Data.UpdateDataList.MissionNotice.DrillMissionNotice.IsUpdate.Should().BeTrue();
+        resp.Data.UpdateDataList.MissionNotice.DrillMissionNotice.CompletedMissionCount.Should()
+            .BeGreaterThan(1);
+        resp.Data.UpdateDataList.MissionNotice.DrillMissionNotice.NewCompleteMissionIdList.Should()
+            .Contain(102500);
+    }
+
+    [Fact]
+    public async Task DrillMission_CharacterOverleveling_CompletesMission()
+    {
+        this.AddCharacter(Charas.Karina);
+
+        await this.Client.PostMsgpack<MissionUnlockDrillMissionGroupResponse>(
+            "mission/unlock_drill_mission_group",
+            new MissionUnlockDrillMissionGroupRequest(1),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        DragaliaResponse<CharaBuildupResponse> resp =
+            await this.Client.PostMsgpack<CharaBuildupResponse>(
+                "chara/buildup",
+                new CharaBuildupRequest(
+                    Charas.Karina,
+                    new List<AtgenEnemyPiece>()
+                    {
+                        new AtgenEnemyPiece() { Id = Materials.GoldCrystal, Quantity = 15 },
+                    }
+                ),
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+        resp.DataHeaders.ResultCode.Should().Be(ResultCode.Success);
+        resp.Data.UpdateDataList.MissionNotice.Should().NotBeNull();
+        resp.Data.UpdateDataList.MissionNotice.DrillMissionNotice.IsUpdate.Should().BeTrue();
+        resp.Data.UpdateDataList.MissionNotice.DrillMissionNotice.CompletedMissionCount.Should()
+            .BeGreaterThan(1);
+        resp.Data.UpdateDataList.MissionNotice.DrillMissionNotice.NewCompleteMissionIdList.Should()
+            .Contain(102500);
     }
 
     [Fact]
@@ -168,14 +326,15 @@ public class MissionTest : TestFixture
                 new MissionReceiveMemoryEventRewardRequest()
                 {
                     MemoryEventMissionIdList = new[] { 10220101 }, // Participate in the Event (Toll of the Deep)
-                }
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
         response
             .UpdateDataList.AbilityCrestList.Should()
             .Contain(x =>
-                x.AbilityCrestId == AbilityCrests.HavingaSummerBall && x.EquipableCount == 1
+                x.AbilityCrestId == AbilityCrestId.HavingaSummerBall && x.EquipableCount == 1
             );
     }
 
@@ -215,7 +374,7 @@ public class MissionTest : TestFixture
                     ViewerId = this.ViewerId,
                     Id = missionId2,
                     Date = yesterday,
-                }
+                },
             ]
         );
 
@@ -228,7 +387,7 @@ public class MissionTest : TestFixture
                     Type = MissionType.Daily,
                     State = MissionState.Completed,
                     Start = timeProvider.GetLastDailyReset(),
-                    End = timeProvider.GetLastDailyReset().AddDays(1)
+                    End = timeProvider.GetLastDailyReset().AddDays(1),
                 },
                 new DbPlayerMission()
                 {
@@ -237,8 +396,8 @@ public class MissionTest : TestFixture
                     Type = MissionType.Daily,
                     State = MissionState.Completed,
                     Start = timeProvider.GetLastDailyReset(),
-                    End = timeProvider.GetLastDailyReset().AddDays(1)
-                }
+                    End = timeProvider.GetLastDailyReset().AddDays(1),
+                },
             ]
         );
 
@@ -249,11 +408,12 @@ public class MissionTest : TestFixture
                 {
                     MissionParamsList =
                     [
-                        new() { DailyMissionId = missionId1, DayNo = today, },
-                        new() { DailyMissionId = missionId2, DayNo = today, },
-                        new() { DailyMissionId = missionId1, DayNo = yesterday, },
-                    ]
-                }
+                        new() { DailyMissionId = missionId1, DayNo = today },
+                        new() { DailyMissionId = missionId2, DayNo = today },
+                        new() { DailyMissionId = missionId1, DayNo = yesterday },
+                    ],
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response
@@ -302,7 +462,7 @@ public class MissionTest : TestFixture
                 Id = missionId,
                 Type = MissionType.MemoryEvent,
                 State = MissionState.Completed,
-                Progress = 5
+                Progress = 5,
             }
         );
 
@@ -312,7 +472,8 @@ public class MissionTest : TestFixture
                 new MissionReceiveMemoryEventRewardRequest()
                 {
                     MemoryEventMissionIdList = [missionId],
-                }
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -355,7 +516,8 @@ public class MissionTest : TestFixture
 
         DragaliaResponse<MissionGetMissionListResponse> response =
             await this.Client.PostMsgpack<MissionGetMissionListResponse>(
-                "mission/get_mission_list"
+                "mission/get_mission_list",
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response
@@ -366,14 +528,14 @@ public class MissionTest : TestFixture
                     {
                         DailyMissionId = missionId,
                         DayNo = today,
-                        State = MissionState.Completed
+                        State = MissionState.Completed,
                     },
                     new DailyMissionList()
                     {
                         DailyMissionId = missionId,
                         DayNo = yesterday,
-                        State = MissionState.Completed
-                    }
+                        State = MissionState.Completed,
+                    },
                 ],
                 opts =>
                     opts.Including(x => x.DailyMissionId)
@@ -413,7 +575,8 @@ public class MissionTest : TestFixture
             await this.Client.PostMsgpack<ShopItemSummonExecResponse>(
                 "shop/item_summon_exec",
                 new ShopItemSummonExecRequest() { PaymentType = PaymentTypes.Wyrmite },
-                ensureSuccessHeader: false
+                ensureSuccessHeader: false,
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response.DataHeaders.ResultCode.Should().Be(ResultCode.Success);
@@ -429,13 +592,14 @@ public class MissionTest : TestFixture
                 ViewerId = this.ViewerId,
                 Id = mission.Id,
                 State = MissionState.Claimed,
-                Type = MissionType.Drill
+                Type = MissionType.Drill,
             };
         }
 
         MissionGetDrillMissionListResponse response = (
             await this.Client.PostMsgpack<MissionGetDrillMissionListResponse>(
-                "mission/get_drill_mission_list"
+                "mission/get_drill_mission_list",
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -449,7 +613,8 @@ public class MissionTest : TestFixture
 
         response = (
             await this.Client.PostMsgpack<MissionGetDrillMissionListResponse>(
-                "mission/get_drill_mission_list"
+                "mission/get_drill_mission_list",
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -463,7 +628,8 @@ public class MissionTest : TestFixture
 
         response = (
             await this.Client.PostMsgpack<MissionGetDrillMissionListResponse>(
-                "mission/get_drill_mission_list"
+                "mission/get_drill_mission_list",
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -479,7 +645,8 @@ public class MissionTest : TestFixture
 
         response = (
             await this.Client.PostMsgpack<MissionGetDrillMissionListResponse>(
-                "mission/get_drill_mission_list"
+                "mission/get_drill_mission_list",
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -489,7 +656,7 @@ public class MissionTest : TestFixture
                 [
                     new DrillMissionGroupList(1),
                     new DrillMissionGroupList(2),
-                    new DrillMissionGroupList(3)
+                    new DrillMissionGroupList(3),
                 ]
             );
     }
@@ -505,12 +672,15 @@ public class MissionTest : TestFixture
                     ViewerId = this.ViewerId,
                     Id = x.Id,
                     State = MissionState.Claimed,
-                    Type = MissionType.Drill
+                    Type = MissionType.Drill,
                 })
         );
 
         MissionGetMissionListResponse response = (
-            await this.Client.PostMsgpack<MissionGetMissionListResponse>("mission/get_mission_list")
+            await this.Client.PostMsgpack<MissionGetMissionListResponse>(
+                "mission/get_mission_list",
+                cancellationToken: TestContext.Current.CancellationToken
+            )
         ).Data;
 
         response
@@ -521,49 +691,48 @@ public class MissionTest : TestFixture
     [Fact]
     public async Task GetMissionList_DoesNotReturnOutOfDateMissions()
     {
-        DbPlayerMission expiredMission =
-            new()
-            {
-                Id = 11650101,
-                Type = MissionType.Period,
-                State = MissionState.InProgress,
-                Start = DateTimeOffset.UtcNow.AddDays(-2),
-                End = DateTimeOffset.UtcNow.AddDays(-1),
-            };
-        DbPlayerMission notStartedMission =
-            new()
-            {
-                Id = 11650201,
-                Type = MissionType.Period,
-                State = MissionState.InProgress,
-                Start = DateTimeOffset.UtcNow.AddDays(+1),
-                End = DateTimeOffset.UtcNow.AddDays(+2),
-            };
-        DbPlayerMission expectedMission =
-            new()
-            {
-                Id = 11650301,
-                Type = MissionType.Period,
-                State = MissionState.InProgress,
-                Start = DateTimeOffset.UtcNow.AddDays(-1),
-                End = DateTimeOffset.UtcNow.AddDays(+1),
-            };
-        DbPlayerMission otherExpectedMission =
-            new()
-            {
-                Id = 11650302,
-                Type = MissionType.Period,
-                State = MissionState.InProgress,
-                Start = DateTimeOffset.UnixEpoch,
-                End = DateTimeOffset.UnixEpoch,
-            };
+        DbPlayerMission expiredMission = new()
+        {
+            Id = 11650101,
+            Type = MissionType.Period,
+            State = MissionState.InProgress,
+            Start = DateTimeOffset.UtcNow.AddDays(-2),
+            End = DateTimeOffset.UtcNow.AddDays(-1),
+        };
+        DbPlayerMission notStartedMission = new()
+        {
+            Id = 11650201,
+            Type = MissionType.Period,
+            State = MissionState.InProgress,
+            Start = DateTimeOffset.UtcNow.AddDays(+1),
+            End = DateTimeOffset.UtcNow.AddDays(+2),
+        };
+        DbPlayerMission expectedMission = new()
+        {
+            Id = 11650301,
+            Type = MissionType.Period,
+            State = MissionState.InProgress,
+            Start = DateTimeOffset.UtcNow.AddDays(-1),
+            End = DateTimeOffset.UtcNow.AddDays(+1),
+        };
+        DbPlayerMission otherExpectedMission = new()
+        {
+            Id = 11650302,
+            Type = MissionType.Period,
+            State = MissionState.InProgress,
+            Start = DateTimeOffset.UnixEpoch,
+            End = DateTimeOffset.UnixEpoch,
+        };
 
         await this.AddRangeToDatabase(
             [expiredMission, notStartedMission, expectedMission, otherExpectedMission]
         );
 
         MissionGetMissionListResponse response = (
-            await this.Client.PostMsgpack<MissionGetMissionListResponse>("mission/get_mission_list")
+            await this.Client.PostMsgpack<MissionGetMissionListResponse>(
+                "mission/get_mission_list",
+                cancellationToken: TestContext.Current.CancellationToken
+            )
         ).Data;
 
         response
@@ -584,14 +753,15 @@ public class MissionTest : TestFixture
                 GroupId = 1,
                 ViewerId = this.ViewerId,
                 Type = MissionType.MainStory,
-                State = MissionState.Claimed
+                State = MissionState.Claimed,
             });
 
         await this.AddRangeToDatabase(completedMissions);
 
         DragaliaResponse<MissionGetMissionListResponse> response =
             await this.Client.PostMsgpack<MissionGetMissionListResponse>(
-                "mission/get_mission_list"
+                "mission/get_mission_list",
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response
@@ -617,7 +787,8 @@ public class MissionTest : TestFixture
 
         DragaliaResponse<MissionGetMissionListResponse> response =
             await this.Client.PostMsgpack<MissionGetMissionListResponse>(
-                "mission/get_mission_list"
+                "mission/get_mission_list",
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response
@@ -632,7 +803,7 @@ public class MissionTest : TestFixture
                         {
                             MainStoryMissionId = x.Id,
                             State = (int)MissionState.InProgress,
-                        })
+                        }),
                 }
             );
     }

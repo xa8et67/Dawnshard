@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Services;
+using DragaliaAPI.Features.Login.Auth;
 using DragaliaAPI.Shared.PlayerDetails;
 using EntityGraphQL.Schema;
 using Microsoft.EntityFrameworkCore;
@@ -33,7 +33,8 @@ public class ImpersionationMutations : MutationBase
         using IDisposable userImpersonation = this.StartUserImpersonation(viewerId);
 
         string targetAccountId = this
-            .apiContext.Players.Include(x => x.UserData)
+            .apiContext.Players.IgnoreQueryFilters()
+            .Include(x => x.UserData)
             .Where(x => x.UserData!.ViewerId == targetViewerId)
             .Select(x => x.AccountId)
             .First();

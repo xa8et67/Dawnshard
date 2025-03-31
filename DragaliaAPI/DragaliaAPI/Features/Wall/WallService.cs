@@ -1,7 +1,7 @@
 ﻿using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Features.Missions;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared.Reward;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
@@ -57,7 +57,7 @@ public partial class WallService(
 
     public async Task<int> GetTotalWallLevel()
     {
-        int levelTotal = await apiContext.PlayerQuestWalls.Take(5).SumAsync(x => x.WallLevel);
+        int levelTotal = await apiContext.PlayerQuestWalls.SumAsync(x => x.WallLevel);
 
         if (levelTotal > MaximumQuestWallTotalLevel)
         {
@@ -79,33 +79,36 @@ public partial class WallService(
 
     public async Task InitializeWall()
     {
-        if (await this.CheckWallInitialized())
-            return;
-
-        logger.LogInformation("Initializing wall.");
-
-        for (int element = 0; element < 5; element++)
+        if (!await this.CheckWallLevelsInitialized())
         {
-            apiContext.PlayerQuestWalls.Add(
-                new DbPlayerQuestWall()
+            logger.LogInformation("Initializing wall levels.");
+
+            for (int element = 0; element < 5; element++)
+            {
+                apiContext.PlayerQuestWalls.Add(
+                    new DbPlayerQuestWall()
+                    {
+                        ViewerId = playerIdentityService.ViewerId,
+                        WallId = FlameWallId + element,
+                        WallLevel = 0, // Indicates you have not completed level 1. Goes up to 80 upon completing level 80
+                        IsStartNextLevel = false,
+                    }
+                );
+            }
+
+            await this.InitializeWallMissions();
+        }
+
+        if (!await apiContext.WallRewardDates.AnyAsync())
+        {
+            apiContext.WallRewardDates.Add(
+                new DbWallRewardDate()
                 {
                     ViewerId = playerIdentityService.ViewerId,
-                    WallId = FlameWallId + element,
-                    WallLevel = 0, // Indicates you have not completed level 1. Goes up to 80 upon completing level 80
-                    IsStartNextLevel = false,
+                    LastClaimDate = DateTimeOffset.UtcNow, // Make them wait until next month to claim
                 }
             );
         }
-
-        apiContext.WallRewardDates.Add(
-            new DbWallRewardDate()
-            {
-                ViewerId = playerIdentityService.ViewerId,
-                LastClaimDate = DateTimeOffset.UtcNow, // Make them wait until next month to claim
-            }
-        );
-
-        await this.InitializeWallMissions();
     }
 
     public async Task GrantMonthlyRewardEntityList(IList<AtgenBuildEventRewardEntityList> rewards)
@@ -187,7 +190,7 @@ public partial class WallService(
                 {
                     EntityType = reward.RewardEntityType,
                     EntityId = reward.RewardEntityId,
-                    EntityQuantity = reward.RewardEntityQuantity
+                    EntityQuantity = reward.RewardEntityQuantity,
                 }
             );
         }
@@ -254,7 +257,7 @@ public partial class WallService(
         return wallRewardDate;
     }
 
-    public async Task<bool> CheckWallInitialized()
+    public async Task<bool> CheckWallLevelsInitialized()
     {
         bool initialized = await apiContext.PlayerQuestWalls.AnyAsync();
 
@@ -283,7 +286,7 @@ public partial class WallService(
 
     private static partial class Log
     {
-        [LoggerMessage(LogLevel.Information, "Wall initialization check: {WallInitialized}.")]
+        [LoggerMessage(LogLevel.Information, "Wall level initialization check: {WallInitialized}.")]
         public static partial void WallInitializedStatus(ILogger logger, bool wallInitialized);
 
         [LoggerMessage(

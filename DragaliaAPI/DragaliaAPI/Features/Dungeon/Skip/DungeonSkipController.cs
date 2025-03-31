@@ -1,13 +1,11 @@
 ﻿using AutoMapper;
-using DragaliaAPI.Controllers;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Dungeon.Record;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared;
+using DragaliaAPI.Features.Shared.Reward;
 using DragaliaAPI.Features.Shop;
-using DragaliaAPI.Models;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
-using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models;
@@ -60,7 +58,7 @@ public class DungeonSkipController(
             {
                 IngameResultData = ingameData,
                 UpdateDataList = updateDataList,
-                EntityResult = entityResult
+                EntityResult = entityResult,
             }
         );
     }
@@ -90,7 +88,7 @@ public class DungeonSkipController(
             {
                 IngameResultData = ingameData,
                 UpdateDataList = updateDataList,
-                EntityResult = entityResult
+                EntityResult = entityResult,
             }
         );
     }
@@ -201,34 +199,48 @@ public class DungeonSkipController(
             );
         }
 
-        DungeonSession session =
-            new()
-            {
-                Party = party.Where(x => x.CharaId != 0),
-                QuestData = questData,
-                SupportViewerId = supportViewerId,
-                IsHost = true,
-                IsMulti = false,
-                PlayCount = playCount,
-            };
+        DungeonSession session = new()
+        {
+            Party = party.Where(x => x.CharaId != 0),
+            QuestData = questData,
+            SupportViewerId = supportViewerId,
+            IsHost = true,
+            IsMulti = false,
+            PlayCount = playCount,
+        };
 
-        session.EnemyList = questData
-            .AreaInfo.Select((_, index) => oddsInfoService.GetOddsInfo(questData.Id, index))
-            .ToDictionary(x => x.AreaIndex, x => x.Enemy.Repeat(playCount));
+        Dictionary<int, IList<AtgenEnemy>> enemyList = new(questData.AreaInfo.Count);
 
-        PlayRecord playRecord =
-            new()
+        for (int areaIndex = 0; areaIndex < questData.AreaInfo.Count; areaIndex++)
+        {
+            List<AtgenEnemy> enemies = [];
+
+            for (int i = 0; i < playCount; i++)
             {
-                IsClear = true,
-                Time = -1,
-                TreasureRecord = session.EnemyList.Select(x => new AtgenTreasureRecord()
-                {
-                    AreaIdx = x.Key,
-                    Enemy = x.Value.Select(_ => 1),
-                    DropObj = new List<int>(), // TODO
-                    EnemySmash = new List<AtgenEnemySmash>() // TODO
-                })
-            };
+                // TODO: chests and drop_obj
+                OddsInfo oddsInfo = oddsInfoService.GetOddsInfo(questId, areaIndex);
+                enemies.AddRange(oddsInfo.Enemy);
+            }
+
+            enemyList[areaIndex] = enemies;
+        }
+
+        session.EnemyList = enemyList;
+
+        PlayRecord playRecord = new()
+        {
+            IsClear = true,
+            Time = -1,
+            TreasureRecord = session.EnemyList.Select(x => new AtgenTreasureRecord()
+            {
+                AreaIdx = x.Key,
+                Enemy = x.Value.Select(_ => 1),
+                DropObj = new List<int>(), // TODO
+                EnemySmash =
+                    new List<AtgenEnemySmash>() // TODO
+                ,
+            }),
+        };
 
         IngameResultData ingameResultData = await dungeonRecordService.GenerateIngameResultData(
             string.Empty,

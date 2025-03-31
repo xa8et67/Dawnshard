@@ -1,12 +1,14 @@
 ﻿using AutoMapper;
 using DragaliaAPI.Database;
 using DragaliaAPI.Database.Repositories;
-using DragaliaAPI.Services.Game;
+using DragaliaAPI.Features.Login.Savefile;
+using DragaliaAPI.Infrastructure.Metrics;
 using DragaliaAPI.Test.Utils;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
+using NSubstitute;
 
 namespace DragaliaAPI.Test;
 
@@ -37,17 +39,15 @@ public class RepositoryTestFixture : IDisposable
         // Used but we probably don't want it to actually add characters?
         Mock<IUnitRepository> mockUnitRepository = new(MockBehavior.Loose);
 
-        SavefileService savefileService =
-            new(
-                this.ApiContext,
-                mockCache.Object,
-                new MapperConfiguration(opts =>
-                    opts.AddMaps(typeof(Program).Assembly)
-                ).CreateMapper(),
-                mockLogger.Object,
-                IdentityTestUtils.MockPlayerDetailsService.Object,
-                []
-            );
+        SavefileService savefileService = new(
+            this.ApiContext,
+            mockCache.Object,
+            new MapperConfiguration(opts => opts.AddMaps(typeof(Program).Assembly)).CreateMapper(),
+            mockLogger.Object,
+            IdentityTestUtils.MockPlayerDetailsService.Object,
+            [],
+            Substitute.For<IDragaliaApiMetrics>()
+        );
         savefileService.Create().Wait();
 
         this.Mapper = UnitTestUtils.CreateMapper();

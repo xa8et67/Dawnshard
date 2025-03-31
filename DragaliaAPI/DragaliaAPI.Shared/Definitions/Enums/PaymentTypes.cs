@@ -23,7 +23,7 @@ public enum PaymentTypes
     ItemSummonCampaign,
     TutorialTicketSummon,
     SummonCampaignOneHundred,
-    Other = 99
+    Other = 99,
 }
 
 public static class PaymentTypesExtensions
@@ -38,7 +38,8 @@ public static class PaymentTypesExtensions
             PaymentTypes.DewPoint => EntityTypes.Dew,
             PaymentTypes.Ticket => EntityTypes.SummonTicket,
             PaymentTypes.HalidomHustleHammer => EntityTypes.HustleHammer,
-            _ => EntityTypes.None
+            PaymentTypes.Diamantium => EntityTypes.FreeDiamantium,
+            _ => EntityTypes.None,
         };
     }
 }

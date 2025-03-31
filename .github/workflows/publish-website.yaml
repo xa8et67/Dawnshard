@@ -1,0 +1,30 @@
+name: Publish website
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - Website/**
+      - .github/workflows/publish-website.yaml
+      - .github/workflows/deploy.yaml
+      - .github/workflows/build.yaml
+
+jobs:
+  build:
+    name: Build
+    uses: ./.github/workflows/build.yaml
+    with:
+      ref: main
+      dockerfile: "Website/Dockerfile"
+      image-name: "dawnshard-website"
+    secrets: inherit
+
+  deploy:
+    name: Deploy
+    needs: build
+    uses: ./.github/workflows/deploy.yaml
+    with:
+      github-environment: "Website"
+      version: ${{ needs.build.outputs.tag }}
+    secrets: inherit

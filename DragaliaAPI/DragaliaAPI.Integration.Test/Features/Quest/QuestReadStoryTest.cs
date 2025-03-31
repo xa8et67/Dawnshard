@@ -14,7 +14,8 @@ public class QuestReadStoryTest : TestFixture
         QuestReadStoryResponse response = (
             await this.Client.PostMsgpack<QuestReadStoryResponse>(
                 "/quest/read_story",
-                new QuestReadStoryRequest() { QuestStoryId = 1000106 }
+                new QuestReadStoryRequest() { QuestStoryId = 1000106 },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -44,7 +45,8 @@ public class QuestReadStoryTest : TestFixture
         QuestReadStoryResponse response = (
             await this.Client.PostMsgpack<QuestReadStoryResponse>(
                 "/quest/read_story",
-                new QuestReadStoryRequest() { QuestStoryId = midgardStoryId }
+                new QuestReadStoryRequest() { QuestStoryId = midgardStoryId },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -55,7 +57,7 @@ public class QuestReadStoryTest : TestFixture
             .UpdateDataList.DragonReliabilityList.Should()
             .ContainSingle()
             .Which.DragonId.Should()
-            .Be(Dragons.Midgardsormr);
+            .Be(DragonId.Midgardsormr);
 
         response
             .EntityResult.OverPresentEntityList.Should()
@@ -65,7 +67,7 @@ public class QuestReadStoryTest : TestFixture
                 new AtgenBuildEventRewardEntityList()
                 {
                     EntityType = EntityTypes.Dragon,
-                    EntityId = (int)Dragons.Midgardsormr,
+                    EntityId = (int)DragonId.Midgardsormr,
                     EntityQuantity = 1,
                 }
             );
@@ -86,13 +88,14 @@ public class QuestReadStoryTest : TestFixture
         );
 
         await this.AddToDatabase(
-            new DbPlayerDragonReliability() { DragonId = Dragons.Midgardsormr }
+            new DbPlayerDragonReliability() { DragonId = DragonId.Midgardsormr }
         );
 
         QuestReadStoryResponse response = (
             await this.Client.PostMsgpack<QuestReadStoryResponse>(
                 "/quest/read_story",
-                new QuestReadStoryRequest() { QuestStoryId = midgardStoryId }
+                new QuestReadStoryRequest() { QuestStoryId = midgardStoryId },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -108,7 +111,7 @@ public class QuestReadStoryTest : TestFixture
                 new AtgenBuildEventRewardEntityList()
                 {
                     EntityType = EntityTypes.Dragon,
-                    EntityId = (int)Dragons.Midgardsormr,
+                    EntityId = (int)DragonId.Midgardsormr,
                     EntityQuantity = 1,
                 }
             );
@@ -126,7 +129,8 @@ public class QuestReadStoryTest : TestFixture
         QuestReadStoryResponse response = (
             await this.Client.PostMsgpack<QuestReadStoryResponse>(
                 "/quest/read_story",
-                new QuestReadStoryRequest() { QuestStoryId = 1001410 }
+                new QuestReadStoryRequest() { QuestStoryId = 1001410 },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -138,7 +142,7 @@ public class QuestReadStoryTest : TestFixture
 
         List<DbPlayerStoryState> storyStates = await this
             .ApiContext.PlayerStoryState.Where(x => x.ViewerId == this.ViewerId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         storyStates.Should().Contain(x => x.StoryId == 1001410 && x.State == StoryState.Read);
         this.ApiContext.PlayerCharaData.Any(x => x.CharaId == Charas.Zena).Should().BeTrue();
@@ -154,7 +158,8 @@ public class QuestReadStoryTest : TestFixture
         QuestReadStoryResponse response = (
             await this.Client.PostMsgpack<QuestReadStoryResponse>(
                 "/quest/read_story",
-                new QuestReadStoryRequest() { QuestStoryId = theLonePaladynStoryId }
+                new QuestReadStoryRequest() { QuestStoryId = theLonePaladynStoryId },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -164,7 +169,7 @@ public class QuestReadStoryTest : TestFixture
                 new QuestStoryList()
                 {
                     QuestStoryId = theLonePaladynStoryId,
-                    State = StoryState.Read
+                    State = StoryState.Read,
                 }
             );
 
@@ -174,16 +179,16 @@ public class QuestReadStoryTest : TestFixture
     [Fact]
     public async Task ReadStory_Chapter10Completion_GrantsRewards()
     {
-        await this
-            .ApiContext.PlayerUserData.Where(x => x.ViewerId == this.ViewerId)
-            .ExecuteUpdateAsync(u =>
-                u.SetProperty(e => e.Level, 30).SetProperty(e => e.Exp, 18990)
-            );
+        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(
+            u => u.SetProperty(e => e.Level, 30).SetProperty(e => e.Exp, 18990),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         StoryReadResponse data = (
             await this.Client.PostMsgpack<StoryReadResponse>(
                 "/quest/read_story",
-                new QuestReadStoryRequest() { QuestStoryId = 1001009 }
+                new QuestReadStoryRequest() { QuestStoryId = 1001009 },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -192,7 +197,7 @@ public class QuestReadStoryTest : TestFixture
             .BeEquivalentTo(
                 new List<QuestStoryList>()
                 {
-                    new() { QuestStoryId = 1001009, State = StoryState.Read }
+                    new() { QuestStoryId = 1001009, State = StoryState.Read },
                 }
             );
         data.UpdateDataList.UserData.Exp.Should().BeGreaterThanOrEqualTo(88980);
@@ -214,10 +219,27 @@ public class QuestReadStoryTest : TestFixture
         QuestReadStoryResponse response = (
             await this.Client.PostMsgpack<QuestReadStoryResponse>(
                 "/quest/read_story",
-                new QuestReadStoryRequest() { QuestStoryId = storyId }
+                new QuestReadStoryRequest() { QuestStoryId = storyId },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
         response.UpdateDataList.CharaList.Should().Contain(x => x.CharaId == expectedChara);
+    }
+
+    [Fact]
+    public async Task ReadStory_Chapter16Completion_AddsTutorialFlags()
+    {
+        QuestReadStoryResponse response = (
+            await this.Client.PostMsgpack<QuestReadStoryResponse>(
+                "/quest/read_story",
+                new QuestReadStoryRequest() { QuestStoryId = 1001610 },
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+        ).Data;
+
+        response
+            .UpdateDataList.UserData?.TutorialFlagList.Should()
+            .BeEquivalentTo([1028, 1006, 1030]);
     }
 }

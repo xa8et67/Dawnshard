@@ -1,6 +1,5 @@
-using DragaliaAPI.Controllers;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DragaliaAPI.Features.Dungeon.AutoRepeat;
@@ -26,21 +25,20 @@ public class RepeatController(
             );
         }
 
-        RepeatEndResponse response =
-            new()
+        RepeatEndResponse response = new()
+        {
+            IngameResultData = info.IngameResultData,
+            UpdateDataList = info.UpdateDataList,
+            EntityResult = new()
             {
-                IngameResultData = info.IngameResultData,
-                UpdateDataList = info.UpdateDataList,
-                EntityResult = new()
-                {
-                    ConvertedEntityList = [],
-                    NewGetEntityList = [],
-                    OverDiscardEntityList = [],
-                    OverPresentLimitEntityList = [],
-                    OverPresentEntityList = []
-                },
-                RepeatData = null,
-            };
+                ConvertedEntityList = [],
+                NewGetEntityList = [],
+                OverDiscardEntityList = [],
+                OverPresentLimitEntityList = [],
+                OverPresentEntityList = [],
+            },
+            RepeatData = null,
+        };
 
         return response;
     }

@@ -1,29 +1,31 @@
 <script lang="ts">
-  import * as Card from '$shadcn/components/ui/card/index';
-  import GitHub from './icons/github.svelte';
-  import Discord from './icons/discord.svelte';
-  import Patreon from './icons/patreon.svelte';
-  import BuyMeACoffee from './icons/buyMeACoffee.svelte';
-  import LinkButton from './linkButton.svelte';
-  import Acknowledgement from './acknowledgement.svelte';
-  import Typography from '$lib/components/typography.svelte';
-
-  import LukeFZ from '$lib/assets/acknowledgement/lukefz.webp';
   import Ceris from '$lib/assets/acknowledgement/ceris.webp';
+  import FatesTimelines1337 from '$lib/assets/acknowledgement/fatestimelines1337.webp';
+  import Lati from '$lib/assets/acknowledgement/lati.webp';
+  import LukeFZ from '$lib/assets/acknowledgement/lukefz.webp';
   import Nano from '$lib/assets/acknowledgement/nano.webp';
   import Nightmerp from '$lib/assets/acknowledgement/nightmerp.webp';
   import Skazord from '$lib/assets/acknowledgement/skazord.webp';
-  import Lati from '$lib/assets/acknowledgement/lati.webp';
   import Sockperson from '$lib/assets/acknowledgement/sockperson.webp';
-  import FatesTimelines1337 from '$lib/assets/acknowledgement/fatestimelines1337.webp';
+  import bannerDarkNarrow from '$lib/assets/bannerDark-narrow.webp';
+  import bannerDarkWide from '$lib/assets/bannerDark-wide.webp';
+  import bannerLightNarrow from '$lib/assets/bannerLight-narrow.webp';
+  import bannerLightWide from '$lib/assets/bannerLight-wide.webp';
+  import Typography from '$lib/components/typography.svelte';
+  import * as Card from '$shadcn/components/ui/card/index';
+
+  import Acknowledgement from './acknowledgement.svelte';
+  import BuyMeACoffee from './icons/buyMeACoffee.svelte';
+  import Discord from './icons/discord.svelte';
+  import GitHub from './icons/github.svelte';
+  import Patreon from './icons/patreon.svelte';
+  import LinkButton from './linkButton.svelte';
 </script>
 
-<div
-  id="banner"
-  class="background-image dark:testClass grid grid-cols-12 gap-4 bg-[url('/src/lib/assets/story.webp')] dark:bg-[url('/src/lib/assets/storyDark.webp')]">
-  <Card.Root class="col-span-12 lg:col-span-7">
+<div id="banner">
+  <Card.Root class="w-full max-w-[55rem]">
     <Card.Header>
-      <Card.Title tag="h2" class="text-3xl">Welcome to Dawnshard</Card.Title>
+      <Card.Title level={2} class="text-3xl">Welcome to Dawnshard</Card.Title>
     </Card.Header>
     <Card.Content>
       <p class="text-lg font-semibold" style:margin-bottom="0.5rem">
@@ -40,8 +42,9 @@
       </LinkButton>
       <LinkButton href="https://discord.gg/j9zSttjjWj" icon={Discord}>Discord</LinkButton>
       <LinkButton href="https://patreon.com/dawnshard" icon={Patreon}>Patreon</LinkButton>
-      <LinkButton href="https://buymeacoffee.com/dawnshard" icon={BuyMeACoffee}
-        >Buy me a coffee</LinkButton>
+      <LinkButton href="https://buymeacoffee.com/dawnshard" icon={BuyMeACoffee}>
+        Buy me a coffee
+      </LinkButton>
     </Card.Footer>
   </Card.Root>
 </div>
@@ -62,7 +65,7 @@
       <p>
         Setting up access to the server involves configuring a modified version of the original
         Dragalia Lost app to connect to this server at{' '}
-        <a class="link" href="https://dawnshard.co.uk">https://dawnshard.co.uk</a>. It is possible
+        <a class="link" href="https://dawnshard.co.uk/">https://dawnshard.co.uk/</a>. It is possible
         to do so on both Android and iOS without jail-breaking or rooting your device. It is also
         possible to do this on an Android emulator, even though the original game could not be
         played on emulators. If you encounter any issues during the set-up process, consider joining
@@ -102,11 +105,13 @@
       <enhanced:img
         src="$lib/assets/dragalipatch.png"
         class="block w-full max-w-80 align-middle dark:hidden"
-        alt="Example inputs of Dawnshard server address in Dragalipatch interface" />
+        alt="Example inputs of Dawnshard server address in Dragalipatch interface"
+        loading="lazy" />
       <enhanced:img
         src="$lib/assets/dragalipatchDark.png"
         class="hidden w-full max-w-80 align-middle dark:block"
-        alt="Example inputs of Dawnshard server address in Dragalipatch interface" />
+        alt="Example inputs of Dawnshard server address in Dragalipatch interface"
+        loading="lazy" />
       <p class="mt-1 italic">Example Dragalipatch inputs</p>
     </aside>
     <div class="col-span-12">
@@ -125,8 +130,9 @@
   <div class="flex flex-col gap-3">
     <Typography typography="h2">Frequently asked questions</Typography>
     <div>
-      <Typography typography="h3"
-        >Can I link an account to save my progress across devices?</Typography>
+      <Typography typography="h3">
+        Can I link an account to save my progress across devices?
+      </Typography>
       <p>
         Yes, if you follow the prompts to link an account in-game, you will be taken to the <a
           class="link"
@@ -178,7 +184,7 @@
       Special thanks to the following people, who have contributed to the server source code or its
       development in other ways:
     </p>
-    <ul class="ml-3 mt-1">
+    <ul class="mt-1 ml-3">
       <Acknowledgement name="LukeFZ" avatarSrc={LukeFZ}>
         for developing the BaaS account system, DragaliPatch, and implementing features including
         the event compendium, endeavours, and more.
@@ -209,15 +215,60 @@
   </div>
 </div>
 
+<svelte:head>
+  <link
+    rel="preload"
+    as="image"
+    href={bannerDarkWide}
+    media="(min-width: 1080px) and (prefers-color-scheme: dark)" />
+  <link
+    rel="preload"
+    as="image"
+    href={bannerLightWide}
+    media="(min-width: 1080px) and (prefers-color-scheme: light)" />
+
+  <link
+    rel="preload"
+    as="image"
+    href={bannerDarkNarrow}
+    media="(max-width: 1080px) and (prefers-color-scheme: dark)" />
+  <link
+    rel="preload"
+    as="image"
+    href={bannerLightNarrow}
+    media="(max-width: 1080px) and (prefers-color-scheme: light)" />
+</svelte:head>
+
 <style>
   #banner {
     padding: 3rem;
     object-position: 100% 50%;
     background-size: cover;
-    background-position: 10% 10%;
     background-repeat: no-repeat;
     border-bottom: 1px solid;
     border-color: var(--divider);
+  }
+
+  @media (min-width: 1080px) {
+    #banner {
+      background-position: 10% 20%;
+      background-image: url('/src/lib/assets/bannerLight-wide.webp');
+    }
+
+    :global(.dark #banner) {
+      background-image: url('/src/lib/assets/bannerDark-wide.webp');
+    }
+  }
+
+  @media (max-width: 1080px) {
+    #banner {
+      background-position: 10% 10%;
+      background-image: url('/src/lib/assets/bannerLight-narrow.webp');
+    }
+
+    :global(.dark #banner) {
+      background-image: url('/src/lib/assets/bannerDark-narrow.webp');
+    }
   }
 
   li {

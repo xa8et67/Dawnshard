@@ -5,10 +5,10 @@ using DragaliaAPI.Features.Fort;
 using DragaliaAPI.Features.Missions;
 using DragaliaAPI.Features.Player;
 using DragaliaAPI.Features.Present;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared.Reward;
 using DragaliaAPI.Features.Shop;
+using DragaliaAPI.Features.Tutorial;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.Features.Presents;
 using DragaliaAPI.Shared.MasterAsset;
@@ -61,7 +61,7 @@ public class StoryService(
             StoryTypes.Castle => await this.CheckCastleStoryEligibility(storyId),
             StoryTypes.Quest => true,
             StoryTypes.Event => true,
-            _ => throw new NotImplementedException($"Stories of type {type} are not implemented")
+            _ => throw new NotImplementedException($"Stories of type {type} are not implemented"),
         };
     }
 
@@ -135,7 +135,7 @@ public class StoryService(
             StoryTypes.Quest => await this.ReadQuestStory(storyId),
             StoryTypes.Event => await this.ReadEventStory(storyId),
             StoryTypes.DungeonMode => await this.ReadDmodeStory(storyId),
-            _ => throw new NotImplementedException($"Stories of type {type} are not implemented")
+            _ => throw new NotImplementedException($"Stories of type {type} are not implemented"),
         };
 
         logger.LogDebug("Player earned story rewards: {@rewards}", rewards);
@@ -180,16 +180,15 @@ public class StoryService(
         await inventoryRepository.UpdateQuantity(Materials.LookingGlass, -1);
         await userDataRepository.GiveWyrmite(CastleStoryWyrmite);
 
-        List<AtgenBuildEventRewardEntityList> rewardList =
+        List<AtgenBuildEventRewardEntityList> rewardList = new()
+        {
             new()
             {
-                new()
-                {
-                    EntityType = EntityTypes.Wyrmite,
-                    EntityId = 0,
-                    EntityQuantity = CastleStoryWyrmite
-                }
-            };
+                EntityType = EntityTypes.Wyrmite,
+                EntityId = 0,
+                EntityQuantity = CastleStoryWyrmite,
+            },
+        };
 
         return rewardList;
     }
@@ -208,11 +207,10 @@ public class StoryService(
         missionProgressionService.OnQuestStoryCleared(storyId);
 
         await userDataRepository.GiveWyrmite(QuestStoryWyrmite);
-        List<AtgenBuildEventRewardEntityList> rewardList =
-            new()
-            {
-                new() { EntityType = EntityTypes.Wyrmite, EntityQuantity = QuestStoryWyrmite }
-            };
+        List<AtgenBuildEventRewardEntityList> rewardList = new()
+        {
+            new() { EntityType = EntityTypes.Wyrmite, EntityQuantity = QuestStoryWyrmite },
+        };
 
         if (
             MasterAsset.QuestStoryRewardInfo.TryGetValue(
@@ -269,9 +267,9 @@ public class StoryService(
                     );
 
                     if (
-                        reward is { Type: EntityTypes.Dragon, Id: (int)Dragons.Midgardsormr }
+                        reward is { Type: EntityTypes.Dragon, Id: (int)DragonId.Midgardsormr }
                         && !await apiContext.PlayerDragonReliability.AnyAsync(x =>
-                            x.DragonId == Dragons.Midgardsormr
+                            x.DragonId == DragonId.Midgardsormr
                         )
                     )
                     {
@@ -280,7 +278,7 @@ public class StoryService(
                         // if he's in the gift box. Add the reliability manually as a hack to ensure he's always
                         // available in the dragon's roost.
                         apiContext.PlayerDragonReliability.Add(
-                            new(playerIdentityService.ViewerId, Dragons.Midgardsormr)
+                            new(playerIdentityService.ViewerId, DragonId.Midgardsormr)
                         );
                     }
                 }
@@ -290,7 +288,7 @@ public class StoryService(
         if (
             MasterAsset.EventData.TryGetValue(story.GroupId, out EventData? eventData)
             && eventData.IsMemoryEvent // Real events need to set is_temporary and do friendship points
-            && eventData.GetActualGuestJoinStoryId() == storyId
+            && eventData.GuestJoinStoryId == storyId
         )
         {
             logger.LogDebug("Granting memory event character {chara}", eventData.EventCharaId);
@@ -303,7 +301,7 @@ public class StoryService(
                 {
                     EntityId = (int)eventData.EventCharaId,
                     EntityQuantity = 1,
-                    EntityType = EntityTypes.Chara
+                    EntityType = EntityTypes.Chara,
                 }
             );
         }
@@ -328,11 +326,10 @@ public class StoryService(
         }
 
         await userDataRepository.GiveWyrmite(QuestStoryWyrmite);
-        List<AtgenBuildEventRewardEntityList> rewardList =
-            new()
-            {
-                new() { EntityType = EntityTypes.Wyrmite, EntityQuantity = QuestStoryWyrmite }
-            };
+        List<AtgenBuildEventRewardEntityList> rewardList = new()
+        {
+            new() { EntityType = EntityTypes.Wyrmite, EntityQuantity = QuestStoryWyrmite },
+        };
 
         // TODO(Events): ??? This is not used for compendium (maybe for collect events)
 
@@ -344,25 +341,30 @@ public class StoryService(
         await userDataRepository.GiveWyrmite(DmodeStoryWyrmite);
 
         // Temporary measure to make fafnir upgrades more obtainable until endeavours are added
-        Entity dmodePoint1Entity =
-            new(EntityTypes.DmodePoint, Id: (int)DmodePoint.Point1, Quantity: 5_000);
-        Entity dmodePoint2Entity =
-            new(EntityTypes.DmodePoint, Id: (int)DmodePoint.Point2, Quantity: 1_000);
+        Entity dmodePoint1Entity = new(
+            EntityTypes.DmodePoint,
+            Id: (int)DmodePoint.Point1,
+            Quantity: 5_000
+        );
+        Entity dmodePoint2Entity = new(
+            EntityTypes.DmodePoint,
+            Id: (int)DmodePoint.Point2,
+            Quantity: 1_000
+        );
         await rewardService.GrantReward(dmodePoint1Entity);
         await rewardService.GrantReward(dmodePoint2Entity);
 
-        List<AtgenBuildEventRewardEntityList> rewardList =
+        List<AtgenBuildEventRewardEntityList> rewardList = new()
+        {
             new()
             {
-                new()
-                {
-                    EntityType = EntityTypes.Wyrmite,
-                    EntityId = 0,
-                    EntityQuantity = DmodeStoryWyrmite
-                },
-                dmodePoint1Entity.ToBuildEventRewardEntityList(),
-                dmodePoint2Entity.ToBuildEventRewardEntityList()
-            };
+                EntityType = EntityTypes.Wyrmite,
+                EntityId = 0,
+                EntityQuantity = DmodeStoryWyrmite,
+            },
+            dmodePoint1Entity.ToBuildEventRewardEntityList(),
+            dmodePoint2Entity.ToBuildEventRewardEntityList(),
+        };
 
         return rewardList;
     }
@@ -374,13 +376,12 @@ public class StoryService(
         AtgenBuildEventRewardEntityList reward
     )
     {
-        AtgenQuestStoryRewardList questReward =
-            new()
-            {
-                EntityId = reward.EntityId,
-                EntityType = reward.EntityType,
-                EntityQuantity = reward.EntityQuantity
-            };
+        AtgenQuestStoryRewardList questReward = new()
+        {
+            EntityId = reward.EntityId,
+            EntityType = reward.EntityType,
+            EntityQuantity = reward.EntityQuantity,
+        };
 
         if (reward.EntityType is EntityTypes.Chara or EntityTypes.Dragon)
             questReward.EntityLevel = 1;

@@ -3,10 +3,10 @@ using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Database.Utils;
 using DragaliaAPI.Features.Missions.InitialProgress;
-using DragaliaAPI.Features.Reward;
 using DragaliaAPI.Features.Shared.Options;
+using DragaliaAPI.Features.Shared.Reward;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models.Missions;
 using Microsoft.EntityFrameworkCore;
@@ -455,7 +455,7 @@ public class MissionService(
                 {
                     MainStoryMissionId = x.Id,
                     State = (int)x.State,
-                })
+                }),
         };
     }
 
@@ -540,7 +540,7 @@ public class MissionService(
             ReceivableRewardCount = receivableRewardCount,
             NewCompleteMissionIdList = newCompletedMissionList,
             PickupMissionCount = type == MissionType.Daily ? allMissions.Count(x => x.Pickup) : 0,
-            CurrentMissionId = currentMissionId
+            CurrentMissionId = currentMissionId,
         };
     }
 
@@ -570,67 +570,48 @@ public class MissionService(
             .userDataRepository.UserData.Select(x => x.ActiveMemoryEventId)
             .FirstAsync();
 
-        TResponse response =
-            new()
-            {
-                AlbumMissionList = allMissions[MissionType.Album]
-                    .Select(x => new AlbumMissionList(
-                        x.Id,
-                        x.Progress,
-                        (int)x.State,
-                        x.End,
-                        x.Start
-                    )),
-                BeginnerMissionList = allMissions[MissionType.Beginner]
-                    .Select(x => new BeginnerMissionList(
-                        x.Id,
-                        x.Progress,
-                        (int)x.State,
-                        x.End,
-                        x.Start
-                    )),
-                MainStoryMissionList = allMissions[MissionType.MainStory]
-                    .Select(x => new MainStoryMissionList(
-                        x.Id,
-                        x.Progress,
-                        (int)x.State,
-                        x.End,
-                        x.Start
-                    )),
-                NormalMissionList = allMissions[MissionType.Normal]
-                    .Select(x => new NormalMissionList(
-                        x.Id,
-                        x.Progress,
-                        (int)x.State,
-                        x.End,
-                        x.Start
-                    )),
-                PeriodMissionList = allMissions[MissionType.Period]
-                    .Select(x => new PeriodMissionList(
-                        x.Id,
-                        x.Progress,
-                        (int)x.State,
-                        x.End,
-                        x.Start
-                    )),
-                SpecialMissionList = allMissions[MissionType.Special]
-                    .Select(x => new SpecialMissionList(
-                        x.Id,
-                        x.Progress,
-                        (int)x.State,
-                        x.End,
-                        x.Start
-                    )),
-                MemoryEventMissionList = allMissions[MissionType.MemoryEvent]
-                    .Where(x => x.GroupId == activeEventId)
-                    .Select(x => new MemoryEventMissionList(
-                        x.Id,
-                        x.Progress,
-                        (int)x.State,
-                        x.End,
-                        x.Start
-                    )),
-            };
+        TResponse response = new()
+        {
+            AlbumMissionList = allMissions[MissionType.Album]
+                .Select(x => new AlbumMissionList(x.Id, x.Progress, (int)x.State, x.End, x.Start)),
+            BeginnerMissionList = allMissions[MissionType.Beginner]
+                .Select(x => new BeginnerMissionList(
+                    x.Id,
+                    x.Progress,
+                    (int)x.State,
+                    x.End,
+                    x.Start
+                )),
+            MainStoryMissionList = allMissions[MissionType.MainStory]
+                .Select(x => new MainStoryMissionList(
+                    x.Id,
+                    x.Progress,
+                    (int)x.State,
+                    x.End,
+                    x.Start
+                )),
+            NormalMissionList = allMissions[MissionType.Normal]
+                .Select(x => new NormalMissionList(x.Id, x.Progress, (int)x.State, x.End, x.Start)),
+            PeriodMissionList = allMissions[MissionType.Period]
+                .Select(x => new PeriodMissionList(x.Id, x.Progress, (int)x.State, x.End, x.Start)),
+            SpecialMissionList = allMissions[MissionType.Special]
+                .Select(x => new SpecialMissionList(
+                    x.Id,
+                    x.Progress,
+                    (int)x.State,
+                    x.End,
+                    x.Start
+                )),
+            MemoryEventMissionList = allMissions[MissionType.MemoryEvent]
+                .Where(x => x.GroupId == activeEventId)
+                .Select(x => new MemoryEventMissionList(
+                    x.Id,
+                    x.Progress,
+                    (int)x.State,
+                    x.End,
+                    x.Start
+                )),
+        };
 
         List<DailyMissionList> historicalDailyMissions = await this.GetHistoricalDailyMissions();
         IEnumerable<DailyMissionList> currentDailyMissions = allMissions[MissionType.Daily]
@@ -641,7 +622,7 @@ public class MissionService(
                 State = x.State,
                 StartDate = x.Start,
                 EndDate = x.End,
-                DayNo = DateOnly.FromDateTime(this.timeProvider.GetLastDailyReset().UtcDateTime)
+                DayNo = DateOnly.FromDateTime(this.timeProvider.GetLastDailyReset().UtcDateTime),
             });
 
         response.DailyMissionList = currentDailyMissions.UnionBy(
@@ -661,7 +642,7 @@ public class MissionService(
                 State = MissionState.Completed,
                 StartDate = x.StartDate,
                 EndDate = x.EndDate,
-                DayNo = x.Date
+                DayNo = x.Date,
             })
             .ToListAsync();
 }

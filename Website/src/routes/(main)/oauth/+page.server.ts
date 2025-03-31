@@ -1,44 +1,93 @@
-import type { PageServerLoad } from './$types';
-import { PUBLIC_BAAS_URL, PUBLIC_BAAS_CLIENT_ID } from '$env/static/public';
+import { error, redirect } from '@sveltejs/kit';
+import type Logger from 'bunyan';
+import { z } from 'zod';
+
+import { PUBLIC_BAAS_CLIENT_ID, PUBLIC_BAAS_URL, PUBLIC_ENABLE_MSW } from '$env/static/public';
 import Cookies from '$lib/auth/cookies.ts';
-import { redirect } from '@sveltejs/kit';
 import getJwtMetadata from '$lib/auth/jwt.ts';
+
+import type { PageServerLoad } from './$types';
 
 const sessionTokenUrl = new URL('/connect/1.0.0/api/session_token', PUBLIC_BAAS_URL);
 const sdkTokenUrl = new URL('/1.0.0/gateway/sdk/token', PUBLIC_BAAS_URL);
 
-const getOriginalPage = (url: URL) => {
-  const stateJson = url.searchParams.get('state');
-  if (!stateJson) {
-    return null;
-  }
+const sessionTokenResponseSchema = z.object({
+  session_token: z.string()
+});
 
-  let stateObject;
-  try {
-    stateObject = JSON.parse(stateJson);
-  } catch {
-    return null;
-  }
+const sdkTokenResponseSchema = z.object({
+  idToken: z.string()
+});
 
-  if (!stateObject.originalPage) {
-    return null;
-  }
-
-  return stateObject.originalPage;
-};
-
-export const load: PageServerLoad = async ({ cookies, url, fetch }) => {
-  const challengeString = cookies.get(Cookies.ChallengeString);
-
-  if (!challengeString) {
-    throw new Error('Failed to get challenge string');
-  }
+export const load: PageServerLoad = async ({ cookies, locals, url, fetch }) => {
+  const { logger } = locals;
 
   const sessionTokenCode = url.searchParams.get('session_token_code');
 
   if (!sessionTokenCode) {
-    throw new Error('Failed to get session token code');
+    error(400, 'Missing session_token_code query parameter');
   }
+
+  logger.debug(
+    { stcMetadata: getJwtMetadata(sessionTokenCode) },
+    'Retrieved session token code with metadata {stcMetadata}'
+  );
+
+  const challengeString = cookies.get(Cookies.ChallengeString);
+  logger.debug({ challengeString }, 'Retrieved challenge string: {challengeString}');
+
+  if (!challengeString) {
+    error(
+      400,
+      'Missing challengeString cookie. ' +
+        'Ensure that your browser is able to accept cookies from this website.'
+    );
+  }
+
+  const idToken = await getBaasToken(sessionTokenCode, challengeString, fetch, logger);
+
+  const jwtMetadata = getJwtMetadata(idToken);
+  if (!jwtMetadata.valid) {
+    throw Error('Invalid JWT returned');
+  }
+
+  const maxAge = (jwtMetadata.expiryTimestampMs - Date.now()) / 1000;
+
+  if (!(await checkUserExists(idToken, url, fetch))) {
+    redirect(302, '/unauthorized/404');
+  }
+
+  cookies.set(Cookies.IdToken, idToken, {
+    path: '/',
+    maxAge,
+    httpOnly: false,
+    ...(!PUBLIC_ENABLE_MSW && {
+      sameSite: 'lax',
+      httpOnly: true,
+      secure: true
+    })
+  });
+
+  cookies.delete('challengeString', {
+    path: '/'
+  });
+
+  const originalPage = getOriginalPage(url) ?? '/';
+
+  if (originalPage.includes('unauthorized')) {
+    redirect(302, '/');
+  }
+
+  redirect(302, originalPage);
+};
+
+const getBaasToken = async (
+  sessionTokenCode: string,
+  challengeString: string,
+  fetch: (url: URL, req: RequestInit) => Promise<Response>,
+  logger: Logger
+) => {
+  logger.debug({ currentTimestamp: Date.now() }, 'Current timestamp: {currentTimestamp}');
 
   const sessionTokenCodeParams = new URLSearchParams({
     client_id: PUBLIC_BAAS_CLIENT_ID,
@@ -52,15 +101,17 @@ export const load: PageServerLoad = async ({ cookies, url, fetch }) => {
   });
 
   if (!sessionTokenResponse.ok) {
+    logger.error(
+      { status: sessionTokenResponse.status },
+      'Session token request failed with status {status}'
+    );
+
     throw new Error('Session token request failed');
   }
 
-  const sessionTokenResponseBody = await sessionTokenResponse.json();
-  const sessionToken = sessionTokenResponseBody.session_token;
-
-  if (!sessionToken) {
-    throw new Error('Failed to parse session token response');
-  }
+  const { session_token: sessionToken } = sessionTokenResponseSchema.parse(
+    await sessionTokenResponse.json()
+  );
 
   const sdkTokenRequest = {
     client_id: PUBLIC_BAAS_CLIENT_ID,
@@ -77,39 +128,54 @@ export const load: PageServerLoad = async ({ cookies, url, fetch }) => {
   });
 
   if (!sdkTokenResponse.ok) {
+    logger.error(
+      { status: sdkTokenResponse.status },
+      'SDK token request failed with status {status}'
+    );
+
     throw new Error('SDK token request failed');
   }
 
-  const sdkTokenResponseBody = await sdkTokenResponse.json();
-  const idToken = sdkTokenResponseBody.idToken;
+  const { idToken } = sdkTokenResponseSchema.parse(await sdkTokenResponse.json());
+  return idToken;
+};
 
-  if (!idToken) {
-    throw new Error('Failed to parse SDK token response');
-  }
-
-  const jwtMetadata = getJwtMetadata(idToken);
-  if (!jwtMetadata.valid) {
-    throw Error('Invalid JWT returned');
-  }
-
-  console.log(jwtMetadata);
-
-  const maxAge = (jwtMetadata.expiryTimestampMs - Date.now()) / 1000;
-
-  cookies.set(Cookies.IdToken, idToken, {
-    path: '/',
-    sameSite: 'lax',
-    httpOnly: true,
-    maxAge,
-    ...(import.meta.env.MODE !== 'development' && {
-      secure: true
-    })
+const checkUserExists = async (
+  idToken: string,
+  url: URL,
+  fetch: (url: URL, req: RequestInit) => Promise<Response>
+) => {
+  const userMeResponse = await fetch(new URL('/api/user/me', url.origin), {
+    headers: {
+      Authorization: `Bearer ${idToken}`
+    }
   });
 
-  cookies.delete('challengeString', {
-    path: '/'
-  });
+  if (userMeResponse.ok) {
+    return true;
+  } else if (userMeResponse.status === 404) {
+    return false;
+  } else {
+    throw new Error(`Unexpected /user/me response in OAuth callback: ${userMeResponse.status}`);
+  }
+};
 
-  const destination = getOriginalPage(url) ?? '/';
-  redirect(302, destination);
+const getOriginalPage = (url: URL) => {
+  const stateJson = url.searchParams.get('state');
+  if (!stateJson) {
+    return null;
+  }
+
+  let stateObject;
+  try {
+    stateObject = JSON.parse(stateJson);
+  } catch {
+    return null;
+  }
+
+  if (!stateObject.originalPage || typeof stateObject.originalPage !== 'string') {
+    return null;
+  }
+
+  return decodeURIComponent(stateObject.originalPage);
 };

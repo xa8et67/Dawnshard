@@ -1,7 +1,7 @@
 ﻿using DragaliaAPI.Features.Dungeon;
-using DragaliaAPI.Models;
+using DragaliaAPI.Features.Shared.Options;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Models.Options;
+using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Test.Utils;
 using Microsoft.Extensions.Caching.Distributed;
@@ -42,15 +42,11 @@ public class DungeonServiceTest
     [Fact]
     public async Task StartDungeon_CanGetAfterwards()
     {
-        DungeonSession session =
-            new()
-            {
-                QuestData = MasterAsset.QuestData.Get(100010303),
-                Party = new List<PartySettingList>()
-                {
-                    new() { CharaId = Shared.Definitions.Enums.Charas.Addis }
-                }
-            };
+        DungeonSession session = new()
+        {
+            QuestData = MasterAsset.QuestData.Get(100010303),
+            Party = new List<PartySettingList>() { new() { CharaId = Charas.Addis } },
+        };
 
         string key = dungeonService.CreateSession(session);
         await dungeonService.SaveSession(CancellationToken.None);

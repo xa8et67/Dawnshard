@@ -32,8 +32,8 @@ public class InventoryRepositoryTest : IClassFixture<DbTestFixture>
 
         (
             await this.fixture.ApiContext.PlayerMaterials.FindAsync(
-                ViewerId,
-                Materials.WaterwyrmsGreatsphere
+                [ViewerId, Materials.WaterwyrmsGreatsphere],
+                cancellationToken: TestContext.Current.CancellationToken
             )
         )!
             .Quantity.Should()
@@ -48,18 +48,19 @@ public class InventoryRepositoryTest : IClassFixture<DbTestFixture>
             {
                 ViewerId = ViewerId,
                 MaterialId = Materials.FirestormPrism,
-                Quantity = 0
-            }
+                Quantity = 0,
+            },
+            TestContext.Current.CancellationToken
         );
 
-        await this.fixture.ApiContext.SaveChangesAsync();
+        await this.fixture.ApiContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await this.inventoryRepository.UpdateQuantity(Materials.FirestormPrism, 10);
 
         (
             await this.fixture.ApiContext.PlayerMaterials.FindAsync(
-                ViewerId,
-                Materials.FirestormPrism
+                [ViewerId, Materials.FirestormPrism],
+                TestContext.Current.CancellationToken
             )
         )!
             .Quantity.Should()
@@ -74,14 +75,19 @@ public class InventoryRepositoryTest : IClassFixture<DbTestFixture>
             5
         );
 
-        (await this.fixture.ApiContext.PlayerMaterials.FindAsync(ViewerId, Materials.SunlightOre))!
+        (
+            await this.fixture.ApiContext.PlayerMaterials.FindAsync(
+                [ViewerId, Materials.SunlightOre],
+                TestContext.Current.CancellationToken
+            )
+        )!
             .Quantity.Should()
             .Be(5);
 
         (
             await this.fixture.ApiContext.PlayerMaterials.FindAsync(
-                ViewerId,
-                Materials.SunlightStone
+                [ViewerId, Materials.SunlightStone],
+                TestContext.Current.CancellationToken
             )
         )!
             .Quantity.Should()
@@ -98,18 +104,19 @@ public class InventoryRepositoryTest : IClassFixture<DbTestFixture>
                 {
                     ViewerId = ViewerId + 2,
                     MaterialId = Materials.AbaddonOrb,
-                    Quantity = 5
+                    Quantity = 5,
                 },
                 new()
                 {
                     ViewerId = ViewerId,
                     MaterialId = Materials.AbaddonOrb,
                     Quantity = 50,
-                }
-            }
+                },
+            },
+            TestContext.Current.CancellationToken
         );
 
-        await this.fixture.ApiContext.SaveChangesAsync();
+        await this.fixture.ApiContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         (await this.inventoryRepository.GetMaterial(Materials.AbaddonOrb))
             .Should()
@@ -119,7 +126,7 @@ public class InventoryRepositoryTest : IClassFixture<DbTestFixture>
                 {
                     ViewerId = ViewerId,
                     MaterialId = Materials.AbaddonOrb,
-                    Quantity = 50
+                    Quantity = 50,
                 },
                 opts => opts.Excluding(x => x.Owner)
             );
@@ -135,7 +142,7 @@ public class InventoryRepositoryTest : IClassFixture<DbTestFixture>
                 {
                     ViewerId = ViewerId + 4,
                     MaterialId = Materials.AbaddonOrb,
-                    Quantity = 5
+                    Quantity = 5,
                 },
                 new()
                 {
@@ -148,20 +155,25 @@ public class InventoryRepositoryTest : IClassFixture<DbTestFixture>
                     ViewerId = ViewerId,
                     MaterialId = Materials.InfernoOrb,
                     Quantity = 50,
-                }
-            }
+                },
+            },
+            TestContext.Current.CancellationToken
         );
 
-        await this.fixture.ApiContext.SaveChangesAsync();
+        await this.fixture.ApiContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        (await this.inventoryRepository.Materials.ToListAsync())
+        (
+            await this.inventoryRepository.Materials.ToListAsync(
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+        )
             .Should()
             .ContainEquivalentOf( // Savefile creation adds materials
                 new DbPlayerMaterial()
                 {
                     ViewerId = ViewerId,
                     MaterialId = Materials.TsunamiOrb,
-                    Quantity = 50
+                    Quantity = 50,
                 },
                 opts => opts.Excluding(x => x.Owner)
             )
@@ -170,7 +182,7 @@ public class InventoryRepositoryTest : IClassFixture<DbTestFixture>
                 {
                     ViewerId = ViewerId,
                     MaterialId = Materials.InfernoOrb,
-                    Quantity = 50
+                    Quantity = 50,
                 },
                 opts => opts.Excluding(x => x.Owner)
             )
@@ -187,14 +199,14 @@ public class InventoryRepositoryTest : IClassFixture<DbTestFixture>
                 {
                     ViewerId = IdentityTestUtils.ViewerId,
                     MaterialId = Materials.Valor,
-                    Quantity = 5
+                    Quantity = 5,
                 },
                 new()
                 {
                     ViewerId = IdentityTestUtils.ViewerId,
                     MaterialId = Materials.Acclaim,
-                    Quantity = 5
-                }
+                    Quantity = 5,
+                },
             }
         );
 
@@ -202,7 +214,7 @@ public class InventoryRepositoryTest : IClassFixture<DbTestFixture>
             new Dictionary<Materials, int>() { { Materials.Valor, 1 }, { Materials.Acclaim, 3 } }
         );
 
-        await this.fixture.ApiContext.SaveChangesAsync();
+        await this.fixture.ApiContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.fixture.ApiContext.PlayerMaterials.Single(x =>
                 x.ViewerId == IdentityTestUtils.ViewerId && x.MaterialId == Materials.Valor
@@ -227,7 +239,7 @@ public class InventoryRepositoryTest : IClassFixture<DbTestFixture>
                 {
                     ViewerId = IdentityTestUtils.ViewerId,
                     MaterialId = Materials.SummerEstelleSkin,
-                    Quantity = 5
+                    Quantity = 5,
                 },
             }
         );
@@ -241,7 +253,7 @@ public class InventoryRepositoryTest : IClassFixture<DbTestFixture>
             .Should()
             .ThrowAsync<InvalidOperationException>();
 
-        await this.fixture.ApiContext.SaveChangesAsync();
+        await this.fixture.ApiContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.fixture.ApiContext.PlayerMaterials.Single(x =>
                 x.ViewerId == IdentityTestUtils.ViewerId
@@ -259,7 +271,7 @@ public class InventoryRepositoryTest : IClassFixture<DbTestFixture>
             {
                 ViewerId = IdentityTestUtils.ViewerId,
                 Quantity = 5,
-                MaterialId = Materials.Dragonfruit
+                MaterialId = Materials.Dragonfruit,
             }
         );
 
@@ -274,7 +286,7 @@ public class InventoryRepositoryTest : IClassFixture<DbTestFixture>
             {
                 ViewerId = IdentityTestUtils.ViewerId,
                 Quantity = 5,
-                MaterialId = Materials.FafnirMedal
+                MaterialId = Materials.FafnirMedal,
             }
         );
 
@@ -291,14 +303,14 @@ public class InventoryRepositoryTest : IClassFixture<DbTestFixture>
                 {
                     ViewerId = IdentityTestUtils.ViewerId,
                     MaterialId = Materials.ValentinesGift,
-                    Quantity = 5
+                    Quantity = 5,
                 },
                 new()
                 {
                     ViewerId = IdentityTestUtils.ViewerId,
                     MaterialId = Materials.QuantumCog,
-                    Quantity = 5
-                }
+                    Quantity = 5,
+                },
             }
         );
 
@@ -307,7 +319,7 @@ public class InventoryRepositoryTest : IClassFixture<DbTestFixture>
                 new Dictionary<Materials, int>()
                 {
                     { Materials.ValentinesGift, 5 },
-                    { Materials.QuantumCog, 5 }
+                    { Materials.QuantumCog, 5 },
                 }
             )
         )
@@ -325,8 +337,8 @@ public class InventoryRepositoryTest : IClassFixture<DbTestFixture>
                 {
                     ViewerId = IdentityTestUtils.ViewerId,
                     MaterialId = Materials.ValeriosConviction,
-                    Quantity = 5
-                }
+                    Quantity = 5,
+                },
             }
         );
 
@@ -335,7 +347,7 @@ public class InventoryRepositoryTest : IClassFixture<DbTestFixture>
                 new Dictionary<Materials, int>()
                 {
                     { Materials.ValeriosConviction, 5 },
-                    { Materials.ValeriosDevotion, 5 }
+                    { Materials.ValeriosDevotion, 5 },
                 }
             )
         )

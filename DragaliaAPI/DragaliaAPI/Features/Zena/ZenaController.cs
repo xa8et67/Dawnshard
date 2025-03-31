@@ -1,4 +1,4 @@
-﻿using DragaliaAPI.Middleware;
+﻿using DragaliaAPI.Infrastructure.Authentication;
 using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace DragaliaAPI.Features.Zena;
 
 [Route("[controller]")]
-[Authorize(AuthenticationSchemes = SchemeName.Zena)]
+[Authorize(AuthenticationSchemes = AuthConstants.SchemeNames.Zena)]
 public class ZenaController(IPlayerIdentityService playerIdentityService, IZenaService zenaService)
     : ControllerBase
 {

@@ -1,9 +1,9 @@
 ﻿using DragaliaAPI.Features.Missions;
 using DragaliaAPI.Features.Present;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared.Reward;
 using DragaliaAPI.Features.Shop;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.Features.Presents;
 using DragaliaAPI.Shared.MasterAsset;
@@ -48,7 +48,7 @@ public class TradeService(
                     x.Id,
                     x.Quantity,
                     x.LimitBreakCount
-                ))
+                )),
             });
     }
 
@@ -68,7 +68,7 @@ public class TradeService(
                 PickupViewStartDate = trade.PickupViewStartDate,
                 PickupViewEndDate = trade.PickupViewEndDate,
                 NeedDewPoint = trade.NeedDewPoint,
-                Priority = trade.Priority
+                Priority = trade.Priority,
             });
     }
 
@@ -94,7 +94,7 @@ public class TradeService(
                     .NeedEntities.Where(y => y.Type != EntityTypes.None)
                     .Select(z => new AtgenBuildEventRewardEntityList(z.Type, z.Id, z.Quantity)),
                 ReadStoryCount = 0,
-                ClearTargetQuestId = 0
+                ClearTargetQuestId = 0,
             });
     }
 
@@ -137,19 +137,20 @@ public class TradeService(
 
         TreasureTrade trade = tradeType switch
         {
-            TradeType.None
-                => throw new DragaliaException(
-                    ResultCode.CommonDataValidationError,
-                    "Invalid trade type none"
-                ),
+            TradeType.None => throw new DragaliaException(
+                ResultCode.CommonDataValidationError,
+                "Invalid trade type none"
+            ),
             TradeType.Treasure => MasterAsset.TreasureTrade[tradeId],
             TradeType.Event => MasterAsset.EventTreasureTradeInfo[tradeId],
-            TradeType.AbilityCrest
-                => throw new DragaliaException(
-                    ResultCode.CommonInvalidArgument,
-                    "Cannot process ability crest type in normal trade endpoint"
-                ),
-            _ => throw new DragaliaException(ResultCode.CommonInvalidArgument, "Invalid trade type")
+            TradeType.AbilityCrest => throw new DragaliaException(
+                ResultCode.CommonInvalidArgument,
+                "Cannot process ability crest type in normal trade endpoint"
+            ),
+            _ => throw new DragaliaException(
+                ResultCode.CommonInvalidArgument,
+                "Invalid trade type"
+            ),
         };
 
         foreach (
@@ -191,7 +192,7 @@ public class TradeService(
                     trade.DestinationEntityId,
                     trade.DestinationEntityQuantity * count,
                     trade.DestinationLimitBreakCount
-                )
+                ),
             };
         }
 

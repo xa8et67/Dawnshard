@@ -1,4 +1,4 @@
-using DragaliaAPI.Controllers;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,7 +21,7 @@ public class MaintenanceController(
 
         return new MaintenanceGetTextResponse()
         {
-            MaintenanceText = maintenanceService.GetMaintenanceText()
+            MaintenanceText = maintenanceService.GetMaintenanceText(),
         };
     }
 }

@@ -9,6 +9,7 @@ using DragaliaAPI.Photon.Plugin.Shared;
 using DragaliaAPI.Photon.Plugin.Shared.Constants;
 using DragaliaAPI.Photon.Plugin.Shared.Helpers;
 using DragaliaAPI.Photon.Shared.Enums;
+using MessagePack;
 using Photon.Hive.Plugin;
 
 namespace DragaliaAPI.Photon.Plugin.Plugins.GameLogic
@@ -18,9 +19,9 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.GameLogic
     /// </summary>
     public class GameLogicPlugin : PluginBase
     {
-        private IPluginLogger logger;
         private RoomState roomState;
-        private GoToIngameStateManager goToIngameStateManager;
+        private IPluginLogger logger = null!;
+        private GoToIngameStateManager goToIngameStateManager = null!;
 
         private readonly PluginConfiguration configuration;
         private readonly PluginStateService pluginStateService;
@@ -79,6 +80,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.GameLogic
             // https://doc.photonengine.com/server/current/plugins/plugins-faq#how_to_get_the_actor_number_in_plugin_callbacks_
             // This is only invalid if the room is recreated from an inactive state, which Dragalia doesn't do (hopefully!)
             const int actorNr = 1;
+
             this.actorState[actorNr] = new ActorState();
 
             long viewerId = info.Request.ActorProperties.GetLong(ActorPropertyKeys.PlayerId);
@@ -100,7 +102,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.GameLogic
             if (
                 info.Request.GameProperties.TryGetValue(
                     GamePropertyKeys.IsSoloPlayWithPhoton,
-                    out object isSoloPlay
+                    out object? isSoloPlay
                 ) && isSoloPlay is true
             )
             {
@@ -228,7 +230,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.GameLogic
         public override void OnLeave(ILeaveGameCallInfo info)
         {
             // Get actor before continuing
-            IActor actor = this.PluginHost.GameActors.FirstOrDefault(x =>
+            IActor? actor = this.PluginHost.GameActors.FirstOrDefault(x =>
                 x.ActorNr == info.ActorNr
             );
 
@@ -347,7 +349,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.GameLogic
             if (
                 info.Request.Properties.TryGetValue(
                     ActorPropertyKeys.GoToIngameState,
-                    out object objValue
+                    out object? objValue
                 ) && objValue is int value
             )
             {
@@ -380,7 +382,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.GameLogic
 
             this.PluginHost.SetProperties(
                 info.ActorNr,
-                new Hashtable() { { ActorPropertyKeys.GoToIngameState, 0 }, },
+                new Hashtable() { { ActorPropertyKeys.GoToIngameState, 0 } },
                 null,
                 false
             );
@@ -397,7 +399,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.GameLogic
                 ResultType =
                     request.FailType == FailQuestRequest.FailTypes.Timeup
                         ? FailQuestResponse.ResultTypes.Timeup
-                        : FailQuestResponse.ResultTypes.Clear
+                        : FailQuestResponse.ResultTypes.Clear,
             };
 
             this.PluginHost.RaiseEvent(Event.FailQuestResponse, response, info.ActorNr);
@@ -416,7 +418,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.GameLogic
                     new Hashtable()
                     {
                         { GamePropertyKeys.GoToIngameInfo, null },
-                        { GamePropertyKeys.RoomId, -1 }
+                        { GamePropertyKeys.RoomId, -1 },
                     },
                     null,
                     true
@@ -491,7 +493,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.GameLogic
                     new Hashtable()
                     {
                         { GamePropertyKeys.GoToIngameInfo, null },
-                        { GamePropertyKeys.RoomId, -this.GenerateRoomId() }
+                        { GamePropertyKeys.RoomId, -this.GenerateRoomId() },
                     },
                     null,
                     true
@@ -500,11 +502,14 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.GameLogic
 
             this.actorState[info.ActorNr] = new ActorState();
 
-            ClearQuestRequest evt = info.DeserializeEvent<ClearQuestRequest>();
+            byte[] augmentedRequest = AugmentQuestClearRequest(
+                info.DeserializeEvent<ClearQuestRequest>().RecordMultiRequest,
+                info.ActorNr
+            );
 
             this.PostApiRequest(
                 this.configuration.DungeonRecordMultiEndpoint,
-                evt.RecordMultiRequest,
+                augmentedRequest,
                 info,
                 this.ClearQuestRequestCallback,
                 callAsync: false
@@ -516,7 +521,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.GameLogic
 
                 this.PostApiRequest(
                     this.configuration.TimeAttackEndpoint,
-                    evt.RecordMultiRequest,
+                    augmentedRequest,
                     info,
                     this.PluginHost.LogIfFailedCallback,
                     callAsync: true
@@ -557,7 +562,9 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.GameLogic
             this.PluginHost.LogIfFailedCallback(response, userState);
 
             if (response.Status != HttpRequestQueueResult.Success)
+            {
                 return;
+            }
 
             HttpRequestUserState typedUserState = (HttpRequestUserState)userState;
 
@@ -591,8 +598,12 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.GameLogic
 
             if (this.pluginStateService.IsUseSecondaryServer)
             {
-                baseUri = this.configuration.SecondaryApiServerUrl;
-                bearerToken = this.configuration.SecondaryBearerToken;
+                baseUri =
+                    this.configuration.SecondaryApiServerUrl
+                    ?? throw new InvalidOperationException("Failed to get SecondaryApiServerUrl");
+                bearerToken =
+                    this.configuration.SecondaryBearerToken
+                    ?? throw new InvalidOperationException("Failed to get SecondaryBearerToken");
             }
             else
             {
@@ -600,7 +611,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.GameLogic
                 bearerToken = this.configuration.BearerToken;
             }
 
-            Uri requestUri = new Uri(baseUri, endpoint);
+            Uri requestUri = new Uri(baseUri, $"2.19.0_20220714193707/{endpoint}");
 
             this.logger.DebugFormat("PostApiRequest: {0}", requestUri.AbsoluteUri);
 
@@ -622,13 +633,41 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.GameLogic
                     {
                         "RoomId",
                         this.PluginHost.GameProperties.GetInt(GamePropertyKeys.RoomId).ToString()
-                    }
-                }
+                    },
+                },
             };
 
             this.PluginHost.HttpRequest(req, info);
         }
 
         private int GenerateRoomId() => this.random.Next(100_0000, 1_000_0000);
+
+        private byte[] AugmentQuestClearRequest(byte[] original, int actorNr)
+        {
+            Dictionary<string, object?> deserialized = MessagePackSerializer.Deserialize<
+                Dictionary<string, object?>
+            >(original);
+
+            deserialized["connecting_viewer_id_list"] = this
+                .PluginHost.GameActors.Where(x => x.ActorNr != actorNr)
+                .OrderBy(x => x.ActorNr)
+                .Select(x => x.GetViewerId())
+                .ToArray();
+
+            deserialized["is_host"] = actorNr == 1;
+
+            deserialized["member_count"] = this.goToIngameStateManager.GetUsedMemberCount(actorNr);
+
+            IActor actor = this.PluginHost.GameActors.First(x => x.ActorNr == actorNr);
+
+            if (
+                actor.Properties.TryGetInt(ActorPropertyKeys.AstralBetCount, out int astralBetCount)
+            )
+            {
+                deserialized["astral_bet_count"] = astralBetCount;
+            }
+
+            return MessagePackSerializer.Serialize(deserialized);
+        }
     }
 }

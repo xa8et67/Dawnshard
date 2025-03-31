@@ -1,13 +1,12 @@
 ﻿using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Dmode;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared;
+using DragaliaAPI.Features.Shared.Reward;
 using DragaliaAPI.Features.Story;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
 using DragaliaAPI.Shared.Definitions.Enums;
 using Microsoft.Extensions.Time.Testing;
-using MockQueryable.Moq;
+using MockQueryable;
 
 namespace DragaliaAPI.Test.Features.Dmode;
 
@@ -52,21 +51,37 @@ public class DmodeControllerTest
     public async Task GetData_ReturnsData()
     {
         UpdateDataList updateDataList = new();
-        mockUpdateDataService.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(updateDataList);
+        mockUpdateDataService
+            .Setup(x => x.SaveChangesAsync(TestContext.Current.CancellationToken))
+            .ReturnsAsync(updateDataList);
 
-        DmodeInfo info =
-            new(50, 0, DateTimeOffset.UnixEpoch, 0, DateTimeOffset.UnixEpoch, 100, 50, true);
+        DmodeInfo info = new(
+            50,
+            0,
+            DateTimeOffset.UnixEpoch,
+            0,
+            DateTimeOffset.UnixEpoch,
+            100,
+            50,
+            true
+        );
         mockDmodeService.Setup(x => x.GetInfo()).ReturnsAsync(info);
 
-        List<DmodeCharaList> charaList =
-            new()
-            {
-                new DmodeCharaList(Charas.ThePrince, 50, 1, Charas.Nadine, Charas.Nadine, 0, 1000)
-            };
+        List<DmodeCharaList> charaList = new()
+        {
+            new DmodeCharaList(Charas.ThePrince, 50, 1, Charas.Nadine, Charas.Nadine, 0, 1000),
+        };
         mockDmodeService.Setup(x => x.GetCharaList()).ReturnsAsync(charaList);
 
-        DmodeExpedition expedition =
-            new(Charas.ThePrince, 0, 0, 0, DateTimeOffset.UnixEpoch, 0, ExpeditionState.Waiting);
+        DmodeExpedition expedition = new(
+            Charas.ThePrince,
+            0,
+            0,
+            0,
+            DateTimeOffset.UnixEpoch,
+            0,
+            ExpeditionState.Waiting
+        );
         mockDmodeService.Setup(x => x.GetExpedition()).ReturnsAsync(expedition);
 
         DmodeDungeonInfo dungeonInfo = new(0, 0, 0, 0, false, DungeonState.Waiting);
@@ -83,19 +98,21 @@ public class DmodeControllerTest
                         ViewerId = UnitTestUtils.ViewerId,
                         StoryId = 1000,
                         StoryType = StoryTypes.DungeonMode,
-                        State = StoryState.Read
-                    }
+                        State = StoryState.Read,
+                    },
                 }
                     .AsQueryable()
                     .BuildMock()
             );
 
-        List<DmodeServitorPassiveList> passiveList =
-            new() { new DmodeServitorPassiveList(DmodeServitorPassiveType.Exp, 5) };
+        List<DmodeServitorPassiveList> passiveList = new()
+        {
+            new DmodeServitorPassiveList(DmodeServitorPassiveType.Exp, 5),
+        };
         mockDmodeService.Setup(x => x.GetServitorPassiveList()).ReturnsAsync(passiveList);
 
         DmodeGetDataResponse? resp = (
-            await dmodeController.GetData(default)
+            await dmodeController.GetData(TestContext.Current.CancellationToken)
         ).GetData<DmodeGetDataResponse>();
 
         resp.Should().NotBeNull();
@@ -117,23 +134,39 @@ public class DmodeControllerTest
     public async Task Entry_InitializesData()
     {
         UpdateDataList updateDataList = new();
-        mockUpdateDataService.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(updateDataList);
+        mockUpdateDataService
+            .Setup(x => x.SaveChangesAsync(TestContext.Current.CancellationToken))
+            .ReturnsAsync(updateDataList);
 
         mockDmodeRepository.Setup(x => x.InitializeForPlayer());
 
-        DmodeInfo info =
-            new(50, 0, DateTimeOffset.UnixEpoch, 0, DateTimeOffset.UnixEpoch, 100, 50, true);
+        DmodeInfo info = new(
+            50,
+            0,
+            DateTimeOffset.UnixEpoch,
+            0,
+            DateTimeOffset.UnixEpoch,
+            100,
+            50,
+            true
+        );
         mockDmodeService.Setup(x => x.GetInfo()).ReturnsAsync(info);
 
-        List<DmodeCharaList> charaList =
-            new()
-            {
-                new DmodeCharaList(Charas.ThePrince, 50, 1, Charas.Nadine, Charas.Nadine, 0, 1000)
-            };
+        List<DmodeCharaList> charaList = new()
+        {
+            new DmodeCharaList(Charas.ThePrince, 50, 1, Charas.Nadine, Charas.Nadine, 0, 1000),
+        };
         mockDmodeService.Setup(x => x.GetCharaList()).ReturnsAsync(charaList);
 
-        DmodeExpedition expedition =
-            new(Charas.ThePrince, 0, 0, 0, DateTimeOffset.UnixEpoch, 0, ExpeditionState.Waiting);
+        DmodeExpedition expedition = new(
+            Charas.ThePrince,
+            0,
+            0,
+            0,
+            DateTimeOffset.UnixEpoch,
+            0,
+            ExpeditionState.Waiting
+        );
         mockDmodeService.Setup(x => x.GetExpedition()).ReturnsAsync(expedition);
 
         DmodeDungeonInfo dungeonInfo = new(0, 0, 0, 0, false, DungeonState.Waiting);
@@ -150,19 +183,21 @@ public class DmodeControllerTest
                         ViewerId = UnitTestUtils.ViewerId,
                         StoryId = 1000,
                         StoryType = StoryTypes.DungeonMode,
-                        State = StoryState.Read
-                    }
+                        State = StoryState.Read,
+                    },
                 }
                     .AsQueryable()
                     .BuildMock()
             );
 
-        List<DmodeServitorPassiveList> passiveList =
-            new() { new DmodeServitorPassiveList(DmodeServitorPassiveType.Exp, 5) };
+        List<DmodeServitorPassiveList> passiveList = new()
+        {
+            new DmodeServitorPassiveList(DmodeServitorPassiveType.Exp, 5),
+        };
         mockDmodeService.Setup(x => x.GetServitorPassiveList()).ReturnsAsync(passiveList);
 
         DmodeGetDataResponse? resp = (
-            await dmodeController.Entry(default)
+            await dmodeController.Entry(TestContext.Current.CancellationToken)
         ).GetData<DmodeGetDataResponse>();
 
         resp.Should().NotBeNull();
@@ -184,8 +219,10 @@ public class DmodeControllerTest
     [Fact]
     public async Task ReadStory_ReadsStory()
     {
-        List<AtgenBuildEventRewardEntityList> rewards =
-            new() { new(EntityTypes.Material, 1000, 10) };
+        List<AtgenBuildEventRewardEntityList> rewards = new()
+        {
+            new(EntityTypes.Material, 1000, 10),
+        };
 
         mockStoryService
             .Setup(x => x.ReadStory(StoryTypes.DungeonMode, 1000))
@@ -195,10 +232,15 @@ public class DmodeControllerTest
         mockRewardService.Setup(x => x.GetEntityResult()).Returns(entityResult);
 
         UpdateDataList updateDataList = new();
-        mockUpdateDataService.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(updateDataList);
+        mockUpdateDataService
+            .Setup(x => x.SaveChangesAsync(TestContext.Current.CancellationToken))
+            .ReturnsAsync(updateDataList);
 
         DmodeReadStoryResponse? resp = (
-            await dmodeController.ReadStory(new DmodeReadStoryRequest(1000), default)
+            await dmodeController.ReadStory(
+                new DmodeReadStoryRequest(1000),
+                TestContext.Current.CancellationToken
+            )
         ).GetData<DmodeReadStoryResponse>();
 
         resp.Should().NotBeNull();
@@ -216,10 +258,14 @@ public class DmodeControllerTest
     public async Task BuildupServitorPassive_BuildsupServitor()
     {
         UpdateDataList updateDataList = new();
-        mockUpdateDataService.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(updateDataList);
+        mockUpdateDataService
+            .Setup(x => x.SaveChangesAsync(TestContext.Current.CancellationToken))
+            .ReturnsAsync(updateDataList);
 
-        List<DmodeServitorPassiveList> passiveList =
-            new() { new DmodeServitorPassiveList(DmodeServitorPassiveType.Exp, 5) };
+        List<DmodeServitorPassiveList> passiveList = new()
+        {
+            new DmodeServitorPassiveList(DmodeServitorPassiveType.Exp, 5),
+        };
 
         mockDmodeService
             .Setup(x => x.BuildupServitorPassive(It.IsAny<IEnumerable<DmodeServitorPassiveList>>()))
@@ -228,7 +274,7 @@ public class DmodeControllerTest
         DmodeBuildupServitorPassiveResponse? resp = (
             await dmodeController.BuildupServitorPassive(
                 new DmodeBuildupServitorPassiveRequest(passiveList),
-                default
+                TestContext.Current.CancellationToken
             )
         ).GetData<DmodeBuildupServitorPassiveResponse>();
 
@@ -244,12 +290,21 @@ public class DmodeControllerTest
     public async Task ExpeditionStart_StartsExpedition()
     {
         UpdateDataList updateDataList = new();
-        mockUpdateDataService.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(updateDataList);
+        mockUpdateDataService
+            .Setup(x => x.SaveChangesAsync(TestContext.Current.CancellationToken))
+            .ReturnsAsync(updateDataList);
 
         List<Charas> charaIdList = new() { Charas.ThePrince, 0, 0, 0 };
 
-        DmodeExpedition expedition =
-            new(Charas.ThePrince, 0, 0, 0, this.fixedTime, 10, ExpeditionState.Playing);
+        DmodeExpedition expedition = new(
+            Charas.ThePrince,
+            0,
+            0,
+            0,
+            this.fixedTime,
+            10,
+            ExpeditionState.Playing
+        );
         mockDmodeService
             .Setup(x => x.StartExpedition(10, It.IsAny<IEnumerable<Charas>>()))
             .ReturnsAsync(expedition);
@@ -257,7 +312,7 @@ public class DmodeControllerTest
         DmodeExpeditionStartResponse? resp = (
             await dmodeController.ExpeditionStart(
                 new DmodeExpeditionStartRequest(10, charaIdList),
-                default
+                TestContext.Current.CancellationToken
             )
         ).GetData<DmodeExpeditionStartResponse>();
 
@@ -269,22 +324,34 @@ public class DmodeControllerTest
     public async Task ExpeditionFinish_FinishesExpedition()
     {
         UpdateDataList updateDataList = new();
-        mockUpdateDataService.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(updateDataList);
+        mockUpdateDataService
+            .Setup(x => x.SaveChangesAsync(TestContext.Current.CancellationToken))
+            .ReturnsAsync(updateDataList);
 
         EntityResult entityResult = new();
         mockRewardService.Setup(x => x.GetEntityResult()).Returns(entityResult);
 
-        DmodeExpedition expedition =
-            new(Charas.ThePrince, 0, 0, 0, this.fixedTime, 10, ExpeditionState.Waiting);
-        DmodeIngameResult ingameResult =
-            new() { CharaIdList = new Charas[] { Charas.ThePrince, 0, 0, 0 }, FloorNum = 10 };
+        DmodeExpedition expedition = new(
+            Charas.ThePrince,
+            0,
+            0,
+            0,
+            this.fixedTime,
+            10,
+            ExpeditionState.Waiting
+        );
+        DmodeIngameResult ingameResult = new()
+        {
+            CharaIdList = new Charas[] { Charas.ThePrince, 0, 0, 0 },
+            FloorNum = 10,
+        };
 
         mockDmodeService
             .Setup(x => x.FinishExpedition(false))
             .ReturnsAsync((expedition, ingameResult));
 
         DmodeExpeditionFinishResponse? resp = (
-            await dmodeController.ExpeditionFinish(default)
+            await dmodeController.ExpeditionFinish(TestContext.Current.CancellationToken)
         ).GetData<DmodeExpeditionFinishResponse>();
 
         resp.Should().NotBeNull();
@@ -301,22 +368,33 @@ public class DmodeControllerTest
     public async Task ExpeditionForceFinish_FinishesExpeditionForced()
     {
         UpdateDataList updateDataList = new();
-        mockUpdateDataService.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(updateDataList);
+        mockUpdateDataService
+            .Setup(x => x.SaveChangesAsync(TestContext.Current.CancellationToken))
+            .ReturnsAsync(updateDataList);
 
         EntityResult entityResult = new();
         mockRewardService.Setup(x => x.GetEntityResult()).Returns(entityResult);
 
-        DmodeExpedition expedition =
-            new(Charas.ThePrince, 0, 0, 0, this.fixedTime, 10, ExpeditionState.Waiting);
-        DmodeIngameResult ingameResult =
-            new() { CharaIdList = new Charas[] { Charas.ThePrince, 0, 0, 0 } };
+        DmodeExpedition expedition = new(
+            Charas.ThePrince,
+            0,
+            0,
+            0,
+            this.fixedTime,
+            10,
+            ExpeditionState.Waiting
+        );
+        DmodeIngameResult ingameResult = new()
+        {
+            CharaIdList = new Charas[] { Charas.ThePrince, 0, 0, 0 },
+        };
 
         mockDmodeService
             .Setup(x => x.FinishExpedition(true))
             .ReturnsAsync((expedition, ingameResult));
 
         DmodeExpeditionForceFinishResponse? resp = (
-            await dmodeController.ExpeditionForceFinish(default)
+            await dmodeController.ExpeditionForceFinish(TestContext.Current.CancellationToken)
         ).GetData<DmodeExpeditionForceFinishResponse>();
 
         resp.Should().NotBeNull();

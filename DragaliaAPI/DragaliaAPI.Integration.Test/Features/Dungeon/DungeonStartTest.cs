@@ -1,10 +1,9 @@
 ﻿using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Services.Game;
+using DragaliaAPI.Features.Tutorial;
+using DragaliaAPI.Infrastructure.Results;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models;
 using Microsoft.EntityFrameworkCore;
-using Snapshooter;
-using Snapshooter.Xunit;
 
 namespace DragaliaAPI.Integration.Test.Features.Dungeon;
 
@@ -13,6 +12,17 @@ namespace DragaliaAPI.Integration.Test.Features.Dungeon;
 /// </summary>
 public class DungeonStartTest : TestFixture
 {
+    private static VerifySettings VerifySettings
+    {
+        get
+        {
+            VerifySettings settings = new();
+            settings.IgnoreMember<DragonList>(x => x.DragonKeyId);
+            settings.IgnoreMember<TalismanList>(x => x.TalismanKeyId);
+            return settings;
+        }
+    }
+
     public DungeonStartTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
         : base(factory, outputHelper)
     {
@@ -28,12 +38,13 @@ public class DungeonStartTest : TestFixture
                 new DungeonStartStartRequest()
                 {
                     PartyNoList = new List<int>() { 1 },
-                    QuestId = 100010103
-                }
+                    QuestId = 100010103,
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
-        Snapshot.Match(response.IngameData.PartyInfo.PartyUnitList, SnapshotOptions);
+        await Verify(response.IngameData.PartyInfo.PartyUnitList, VerifySettings);
 
         response.IngameData.PartyInfo.PartyUnitList.Should().HaveCount(4);
         response.IngameData.PartyInfo.PartyUnitList.Should().BeInAscendingOrder(x => x.Position);
@@ -50,13 +61,14 @@ public class DungeonStartTest : TestFixture
                 new DungeonStartStartRequest()
                 {
                     PartyNoList = new List<int>() { 37, 38 },
-                    QuestId = 100010103
-                }
+                    QuestId = 100010103,
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
         // Abuse of snapshots here is lazy, but the resulting JSON is thousands of lines long...
-        Snapshot.Match(response.IngameData.PartyInfo.PartyUnitList, SnapshotOptions);
+        await Verify(response.IngameData.PartyInfo.PartyUnitList, VerifySettings);
 
         response.IngameData.PartyInfo.PartyUnitList.Should().HaveCount(8);
         response.IngameData.PartyInfo.PartyUnitList.Should().BeInAscendingOrder(x => x.Position);
@@ -72,8 +84,9 @@ public class DungeonStartTest : TestFixture
                 new DungeonStartStartRequest()
                 {
                     PartyNoList = new List<int>() { 38 },
-                    QuestId = 100010103
-                }
+                    QuestId = 100010103,
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -88,56 +101,56 @@ public class DungeonStartTest : TestFixture
     [Fact]
     public async Task StartAssignUnit_HasExpectedPartyList()
     {
-        DungeonSkipStartAssignUnitRequest request =
-            new()
+        DungeonSkipStartAssignUnitRequest request = new()
+        {
+            QuestId = 100010103,
+            RequestPartySettingList = new List<PartySettingList>()
             {
-                QuestId = 100010103,
-                RequestPartySettingList = new List<PartySettingList>()
+                new()
                 {
-                    new()
-                    {
-                        UnitNo = 1,
-                        CharaId = Charas.GalaLeonidas,
-                        EquipWeaponBodyId = WeaponBodies.Draupnir,
-                        EquipDragonKeyId = (ulong)GetDragonKeyId(Dragons.Horus),
-                        EquipCrestSlotType1CrestId1 = AbilityCrests.PrimalCrisis,
-                        EquipCrestSlotType1CrestId2 = AbilityCrests.TheCutieCompetition,
-                        EquipCrestSlotType1CrestId3 = AbilityCrests.AnIndelibleDate,
-                        EquipCrestSlotType2CrestId1 = AbilityCrests.BeautifulGunman,
-                        EquipCrestSlotType2CrestId2 = AbilityCrests.DragonArcanum,
-                        EquipTalismanKeyId = (ulong)GetTalismanKeyId(Talismans.GalaLeonidas),
-                        EquipCrestSlotType3CrestId1 = AbilityCrests.AKnightsDreamAxesBoon,
-                        EquipCrestSlotType3CrestId2 = AbilityCrests.CrownofLightSerpentsBoon,
-                        EditSkill1CharaId = Charas.GalaZethia,
-                        EditSkill2CharaId = Charas.GalaMascula,
-                    },
-                    new()
-                    {
-                        UnitNo = 2,
-                        CharaId = Charas.GalaGatov,
-                        EquipWeaponBodyId = WeaponBodies.Mjoelnir,
-                        EquipDragonKeyId = (ulong)GetDragonKeyId(Dragons.GalaMars),
-                        EquipCrestSlotType1CrestId1 = AbilityCrests.TheCutieCompetition,
-                        EquipCrestSlotType1CrestId2 = AbilityCrests.KungFuMasters,
-                        EquipCrestSlotType1CrestId3 = AbilityCrests.BondsBetweenWorlds,
-                        EquipCrestSlotType2CrestId1 = AbilityCrests.DragonArcanum,
-                        EquipCrestSlotType2CrestId2 = AbilityCrests.BeautifulNothingness,
-                        EquipTalismanKeyId = (ulong)GetTalismanKeyId(Talismans.GalaMym),
-                        EquipCrestSlotType3CrestId1 = AbilityCrests.TutelarysDestinyWolfsBoon,
-                        EquipCrestSlotType3CrestId2 = AbilityCrests.TestamentofEternityFishsBoon,
-                    }
-                }
-            };
+                    UnitNo = 1,
+                    CharaId = Charas.GalaLeonidas,
+                    EquipWeaponBodyId = WeaponBodies.Draupnir,
+                    EquipDragonKeyId = (ulong)GetDragonKeyId(DragonId.Horus),
+                    EquipCrestSlotType1CrestId1 = AbilityCrestId.PrimalCrisis,
+                    EquipCrestSlotType1CrestId2 = AbilityCrestId.TheCutieCompetition,
+                    EquipCrestSlotType1CrestId3 = AbilityCrestId.AnIndelibleDate,
+                    EquipCrestSlotType2CrestId1 = AbilityCrestId.BeautifulGunman,
+                    EquipCrestSlotType2CrestId2 = AbilityCrestId.DragonArcanum,
+                    EquipTalismanKeyId = (ulong)GetTalismanKeyId(Talismans.GalaLeonidas),
+                    EquipCrestSlotType3CrestId1 = AbilityCrestId.AKnightsDreamAxesBoon,
+                    EquipCrestSlotType3CrestId2 = AbilityCrestId.CrownofLightSerpentsBoon,
+                    EditSkill1CharaId = Charas.GalaZethia,
+                    EditSkill2CharaId = Charas.GalaMascula,
+                },
+                new()
+                {
+                    UnitNo = 2,
+                    CharaId = Charas.GalaGatov,
+                    EquipWeaponBodyId = WeaponBodies.Mjoelnir,
+                    EquipDragonKeyId = (ulong)GetDragonKeyId(DragonId.GalaMars),
+                    EquipCrestSlotType1CrestId1 = AbilityCrestId.TheCutieCompetition,
+                    EquipCrestSlotType1CrestId2 = AbilityCrestId.KungFuMasters,
+                    EquipCrestSlotType1CrestId3 = AbilityCrestId.BondsBetweenWorlds,
+                    EquipCrestSlotType2CrestId1 = AbilityCrestId.DragonArcanum,
+                    EquipCrestSlotType2CrestId2 = AbilityCrestId.BeautifulNothingness,
+                    EquipTalismanKeyId = (ulong)GetTalismanKeyId(Talismans.GalaMym),
+                    EquipCrestSlotType3CrestId1 = AbilityCrestId.TutelarysDestinyWolfsBoon,
+                    EquipCrestSlotType3CrestId2 = AbilityCrestId.TestamentofEternityFishsBoon,
+                },
+            },
+        };
 
         DungeonStartStartAssignUnitResponse response = (
             await Client.PostMsgpack<DungeonStartStartAssignUnitResponse>(
                 "/dungeon_start/start_assign_unit",
-                request
+                request,
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
         // Only test the first two since the others are empty
-        Snapshot.Match(response.IngameData.PartyInfo.PartyUnitList.Take(2), SnapshotOptions);
+        await Verify(response.IngameData.PartyInfo.PartyUnitList.Take(2), VerifySettings);
 
         response.IngameData.PartyInfo.PartyUnitList.Should().HaveCount(4);
         response
@@ -151,24 +164,29 @@ public class DungeonStartTest : TestFixture
     [InlineData("start_assign_unit")]
     public async Task Start_InsufficientStamina_ReturnsError(string endpoint)
     {
-        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(p =>
-            p.SetProperty(e => e.StaminaSingle, e => 0)
+        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(
+            p => p.SetProperty(e => e.StaminaSingle, e => 0),
+            cancellationToken: TestContext.Current.CancellationToken
         );
-        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(p =>
-            p.SetProperty(e => e.StaminaMulti, e => 0)
+        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(
+            p => p.SetProperty(e => e.StaminaMulti, e => 0),
+            cancellationToken: TestContext.Current.CancellationToken
         );
-        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(p =>
-            p.SetProperty(e => e.LastStaminaSingleUpdateTime, e => DateTimeOffset.UtcNow)
+        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(
+            p => p.SetProperty(e => e.LastStaminaSingleUpdateTime, e => DateTimeOffset.UtcNow),
+            cancellationToken: TestContext.Current.CancellationToken
         );
-        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(p =>
-            p.SetProperty(e => e.LastStaminaMultiUpdateTime, e => DateTimeOffset.UtcNow)
+        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(
+            p => p.SetProperty(e => e.LastStaminaMultiUpdateTime, e => DateTimeOffset.UtcNow),
+            cancellationToken: TestContext.Current.CancellationToken
         );
 
         (
             await Client.PostMsgpack<DungeonStartStartResponse>(
                 $"/dungeon_start/{endpoint}",
                 new DungeonStartStartRequest() { QuestId = 100010104, PartyNoList = [1] },
-                ensureSuccessHeader: false
+                ensureSuccessHeader: false,
+                cancellationToken: TestContext.Current.CancellationToken
             )
         )
             .DataHeaders.ResultCode.Should()
@@ -178,19 +196,25 @@ public class DungeonStartTest : TestFixture
     [Fact]
     public async Task Start_ZeroStamina_FirstClearOfMainStory_Allows()
     {
-        await this.ApiContext.PlayerQuests.ExecuteDeleteAsync();
+        await this.ApiContext.PlayerQuests.ExecuteDeleteAsync(
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
-        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(p =>
-            p.SetProperty(e => e.StaminaSingle, e => 0)
+        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(
+            p => p.SetProperty(e => e.StaminaSingle, e => 0),
+            cancellationToken: TestContext.Current.CancellationToken
         );
-        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(p =>
-            p.SetProperty(e => e.StaminaMulti, e => 0)
+        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(
+            p => p.SetProperty(e => e.StaminaMulti, e => 0),
+            cancellationToken: TestContext.Current.CancellationToken
         );
-        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(p =>
-            p.SetProperty(e => e.LastStaminaSingleUpdateTime, e => DateTimeOffset.UtcNow)
+        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(
+            p => p.SetProperty(e => e.LastStaminaSingleUpdateTime, e => DateTimeOffset.UtcNow),
+            cancellationToken: TestContext.Current.CancellationToken
         );
-        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(p =>
-            p.SetProperty(e => e.LastStaminaMultiUpdateTime, e => DateTimeOffset.UtcNow)
+        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(
+            p => p.SetProperty(e => e.LastStaminaMultiUpdateTime, e => DateTimeOffset.UtcNow),
+            cancellationToken: TestContext.Current.CancellationToken
         );
 
         (
@@ -201,7 +225,8 @@ public class DungeonStartTest : TestFixture
                     QuestId = 100260101,
                     PartyNoList = new List<int>() { 1 },
                 },
-                ensureSuccessHeader: false
+                ensureSuccessHeader: false,
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).DataHeaders.ResultCode.Should().Be(ResultCode.Success);
     }
@@ -212,7 +237,8 @@ public class DungeonStartTest : TestFixture
         DragaliaResponse<DungeonStartStartResponse> response =
             await this.Client.PostMsgpack<DungeonStartStartResponse>(
                 $"/dungeon_start/start",
-                new DungeonStartStartRequest() { QuestId = 204270302, PartyNoList = [1] }
+                new DungeonStartStartRequest() { QuestId = 204270302, PartyNoList = [1] },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response.Data.OddsInfo.Enemy.Should().Contain(x => x.ParamId == 204130320 && x.IsRare);
@@ -226,7 +252,8 @@ public class DungeonStartTest : TestFixture
         DragaliaResponse<DungeonStartStartResponse> response =
             await this.Client.PostMsgpack<DungeonStartStartResponse>(
                 $"/dungeon_start/start",
-                new DungeonStartStartRequest() { QuestId = earnEventQuestId, PartyNoList = [1] }
+                new DungeonStartStartRequest() { QuestId = earnEventQuestId, PartyNoList = [1] },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response.Data.OddsInfo.Enemy.Should().HaveCount(31);
@@ -242,11 +269,14 @@ public class DungeonStartTest : TestFixture
     [Fact]
     public async Task Start_CoopTutorial_SetsIsBotTutorialTrue()
     {
-        await this
-            .ApiContext.PlayerUserData.Where(x => x.ViewerId == this.ViewerId)
-            .ExecuteUpdateAsync(e =>
-                e.SetProperty(p => p.TutorialStatus, TutorialService.TutorialStatusIds.CoopTutorial)
-            );
+        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(
+            e =>
+                e.SetProperty(
+                    p => p.TutorialStatus,
+                    TutorialService.TutorialStatusIds.CoopTutorial
+                ),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         DragaliaResponse<DungeonStartStartResponse> response =
             await this.Client.PostMsgpack<DungeonStartStartResponse>(
@@ -254,8 +284,9 @@ public class DungeonStartTest : TestFixture
                 new DungeonStartStartRequest()
                 {
                     QuestId = TutorialService.TutorialQuestIds.AvenueToPowerBeginner,
-                    PartyNoList = [1]
-                }
+                    PartyNoList = [1],
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response.Data.IngameData.IsBotTutorial.Should().BeTrue();
@@ -264,14 +295,14 @@ public class DungeonStartTest : TestFixture
     [Fact]
     public async Task Start_AtpBeginner_NotCoopTutorial_SetsIsBotTutorialFalse()
     {
-        await this
-            .ApiContext.PlayerUserData.Where(x => x.ViewerId == this.ViewerId)
-            .ExecuteUpdateAsync(e =>
+        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(
+            e =>
                 e.SetProperty(
                     p => p.TutorialStatus,
                     TutorialService.TutorialStatusIds.CoopTutorial + 1
-                )
-            );
+                ),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         DragaliaResponse<DungeonStartStartResponse> response =
             await this.Client.PostMsgpack<DungeonStartStartResponse>(
@@ -279,8 +310,9 @@ public class DungeonStartTest : TestFixture
                 new DungeonStartStartRequest()
                 {
                     QuestId = TutorialService.TutorialQuestIds.AvenueToPowerBeginner,
-                    PartyNoList = [1]
-                }
+                    PartyNoList = [1],
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response.Data.IngameData.IsBotTutorial.Should().BeFalse();
@@ -292,17 +324,23 @@ public class DungeonStartTest : TestFixture
         int flameDullRes = 1010104;
         WeaponBodies waterSword = WeaponBodies.AbsoluteAqua;
 
-        await this.ApiContext.PlayerPassiveAbilities.ExecuteDeleteAsync();
+        await this
+            .ApiContext.PlayerPassiveAbilities.Where(x => x.ViewerId == this.ViewerId)
+            .ExecuteDeleteAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         await this.AddToDatabase(
             new DbWeaponPassiveAbility() { WeaponPassiveAbilityId = flameDullRes }
         );
 
         await this
-            .ApiContext.PlayerPartyUnits.Where(x => x.PartyNo == 1 && x.UnitNo == 1)
-            .ExecuteUpdateAsync(e =>
-                e.SetProperty(u => u.EquipWeaponBodyId, waterSword)
-                    .SetProperty(u => u.CharaId, Charas.ThePrince)
+            .ApiContext.PlayerPartyUnits.Where(x =>
+                x.ViewerId == this.ViewerId && x.PartyNo == 1 && x.UnitNo == 1
+            )
+            .ExecuteUpdateAsync(
+                e =>
+                    e.SetProperty(u => u.EquipWeaponBodyId, waterSword)
+                        .SetProperty(u => u.CharaId, Charas.ThePrince),
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         DragaliaResponse<DungeonStartStartResponse> response =
@@ -311,8 +349,9 @@ public class DungeonStartTest : TestFixture
                 new DungeonStartStartRequest()
                 {
                     QuestId = TutorialService.TutorialQuestIds.AvenueToPowerBeginner,
-                    PartyNoList = [1]
-                }
+                    PartyNoList = [1],
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response
@@ -320,8 +359,4 @@ public class DungeonStartTest : TestFixture
             .GameWeaponPassiveAbilityList.Should()
             .Contain(x => x.WeaponPassiveAbilityId == flameDullRes);
     }
-
-    private static readonly Func<MatchOptions, MatchOptions> SnapshotOptions = opts =>
-        opts.IgnoreField<long>("$..DragonData.DragonKeyId")
-            .IgnoreField<long>("$..TalismanData.TalismanKeyId");
 }

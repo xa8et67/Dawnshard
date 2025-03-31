@@ -1,10 +1,9 @@
 using AutoMapper;
-using DragaliaAPI.Controllers.Dragalia;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Missions;
-using DragaliaAPI.Features.PartyPower;
+using DragaliaAPI.Features.Parties;
+using DragaliaAPI.Features.Shared;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
 using Microsoft.Extensions.Logging;
 
 namespace DragaliaAPI.Test.Controllers;
@@ -54,21 +53,22 @@ public class PartyControllerTest : RepositoryTestFixture
         this.mockPartyRepository.Setup(x => x.UpdatePartyName(1, "Z Team"))
             .Returns(Task.CompletedTask);
 
-        UpdateDataList updateDataList =
-            new()
+        UpdateDataList updateDataList = new()
+        {
+            PartyList = new List<PartyList>()
             {
-                PartyList = new List<PartyList>()
-                {
-                    new() { PartyName = "Z Team", PartyNo = 1, }
-                }
-            };
-        this.mockUpdateDataService.Setup(x => x.SaveChangesAsync(default))
+                new() { PartyName = "Z Team", PartyNo = 1 },
+            },
+        };
+        this.mockUpdateDataService.Setup(x =>
+                x.SaveChangesAsync(TestContext.Current.CancellationToken)
+            )
             .ReturnsAsync(updateDataList);
 
         PartyUpdatePartyNameResponse? response = (
             await this.partyController.UpdatePartyName(
                 new PartyUpdatePartyNameRequest() { PartyName = "Z Team", PartyNo = 1 },
-                default
+                TestContext.Current.CancellationToken
             )
         ).GetData<PartyUpdatePartyNameResponse>();
 

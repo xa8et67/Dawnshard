@@ -62,20 +62,42 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.StateManager
         private readonly PluginStateService pluginStateService;
         private readonly PluginConfiguration configuration;
 
-        private IPluginLogger logger;
+        private IPluginLogger logger = null!;
         private bool roomHidden;
 
         public override string Name => nameof(StateManagerPlugin);
 
-        private Uri StateManagerUrl =>
-            this.pluginStateService.IsUseSecondaryServer
-                ? this.configuration.SecondaryStateManagerUrl
-                : this.configuration.StateManagerUrl;
+        private Uri StateManagerUrl
+        {
+            get
+            {
+                if (this.pluginStateService.IsUseSecondaryServer)
+                {
+                    return this.configuration.SecondaryStateManagerUrl
+                        ?? throw new InvalidOperationException(
+                            "Failed to get SecondaryStateManagerUrl"
+                        );
+                }
 
-        private string BearerToken =>
-            this.pluginStateService.IsUseSecondaryServer
-                ? this.configuration.SecondaryBearerToken
-                : this.configuration.BearerToken;
+                return this.configuration.StateManagerUrl;
+            }
+        }
+
+        private string BearerToken
+        {
+            get
+            {
+                if (this.pluginStateService.IsUseSecondaryServer)
+                {
+                    return this.configuration.SecondaryBearerToken
+                        ?? throw new InvalidOperationException(
+                            "Failed to get SecondaryBearerToken"
+                        );
+                }
+
+                return this.configuration.BearerToken;
+            }
+        }
 
         public StateManagerPlugin(
             PluginStateService pluginStateService,
@@ -93,7 +115,6 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.StateManager
         )
         {
             this.logger = host.CreateLogger(this.Name);
-
             return base.SetupInstance(host, config, out errorMsg);
         }
 
@@ -110,7 +131,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.StateManager
                         this.PluginHost.GameId,
                         info.Request.GameProperties
                     ),
-                    Player = DtoHelpers.CreatePlayer(actorNr, info.Request.ActorProperties)
+                    Player = DtoHelpers.CreatePlayer(actorNr, info.Request.ActorProperties),
                 }
             );
 
@@ -124,7 +145,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.StateManager
                 new GameModifyRequest
                 {
                     GameName = this.PluginHost.GameId,
-                    Player = DtoHelpers.CreatePlayer(info.ActorNr, info.Request.ActorProperties)
+                    Player = DtoHelpers.CreatePlayer(info.ActorNr, info.Request.ActorProperties),
                 }
             );
 
@@ -139,7 +160,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.StateManager
                 return;
             }
 
-            IActor actor = this.PluginHost.GameActors.FirstOrDefault(x =>
+            IActor? actor = this.PluginHost.GameActors.FirstOrDefault(x =>
                 x.ActorNr == info.ActorNr
             );
 
@@ -157,7 +178,10 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.StateManager
                 new GameModifyRequest
                 {
                     GameName = this.PluginHost.GameId,
-                    Player = DtoHelpers.CreatePlayer(info.ActorNr, actor.Properties.GetProperties())
+                    Player = DtoHelpers.CreatePlayer(
+                        info.ActorNr,
+                        actor.Properties.GetProperties()
+                    ),
                 }
             );
 
@@ -179,13 +203,19 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.StateManager
         public override void OnSetProperties(ISetPropertiesCallInfo info)
         {
             if (info.Request.Properties.ContainsKey(GamePropertyKeys.EntryConditions))
+            {
                 this.OnSetEntryConditions(info);
+            }
 
             if (info.Request.Properties.ContainsKey(GamePropertyKeys.MatchingType))
+            {
                 this.OnSetMatchingType(info);
+            }
 
             if (info.Request.Properties.ContainsKey(ActorPropertyKeys.GoToIngameState))
+            {
                 this.OnSetGoToIngameState(info);
+            }
         }
 
         public override void OnRaiseEvent(IRaiseEventCallInfo info)
@@ -205,7 +235,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.StateManager
                 {
                     NewVisibility = true,
                     GameName = this.PluginHost.GameId,
-                    Player = null
+                    Player = null,
                 }
             );
 
@@ -225,7 +255,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.StateManager
                 {
                     GameName = this.PluginHost.GameId,
                     NewMatchingType = newType,
-                    Player = null
+                    Player = null,
                 }
             );
 
@@ -234,12 +264,14 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.StateManager
 
         private void OnSetEntryConditions(ISetPropertiesCallInfo info)
         {
-            EntryConditions newEntryConditions = DtoHelpers.CreateEntryConditions(
+            EntryConditions? newEntryConditions = DtoHelpers.CreateEntryConditions(
                 info.Request.Properties
             );
 
             if (newEntryConditions is null)
+            {
                 return;
+            }
 
             HttpRequest request = this.CreateRequest(
                 EntryConditionsEndpoint,
@@ -247,7 +279,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.StateManager
                 {
                     GameName = this.PluginHost.GameId,
                     NewEntryConditions = newEntryConditions,
-                    Player = null
+                    Player = null,
                 }
             );
 
@@ -263,7 +295,9 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.StateManager
             bool shouldHideRoom = goToIngameState.All(x => x > 1) && !this.roomHidden;
 
             if (!shouldHideRoom)
+            {
                 return;
+            }
 
             HttpRequest request = this.CreateRequest(
                 VisibleEndpoint,
@@ -271,7 +305,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.StateManager
                 {
                     NewVisibility = false,
                     GameName = this.PluginHost.GameId,
-                    Player = null
+                    Player = null,
                 }
             );
 
@@ -290,7 +324,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.StateManager
                 {
                     NewRoomId = roomId,
                     GameName = this.PluginHost.GameId,
-                    Player = null
+                    Player = null,
                 }
             );
 
@@ -316,12 +350,7 @@ namespace DragaliaAPI.Photon.Plugin.Plugins.StateManager
                 CustomHeaders = new Dictionary<string, string>()
                 {
                     { "Authorization", $"Bearer {this.BearerToken}" },
-                    { "RoomName", this.PluginHost.GameId },
-                    {
-                        "RoomId",
-                        this.PluginHost.GameProperties.GetInt(GamePropertyKeys.RoomId).ToString()
-                    }
-                }
+                },
             };
         }
     }

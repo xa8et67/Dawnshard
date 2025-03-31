@@ -1,9 +1,10 @@
 ﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 
 namespace DragaliaAPI.Photon.StateManager.Test;
 
-public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
+public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly TestContainersHelper testContainersHelper;
 
@@ -12,25 +13,25 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
         this.testContainersHelper = new();
     }
 
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    protected override void ConfigureWebHost(IWebHostBuilder builder) =>
+        builder.ConfigureAppConfiguration(cfg =>
+            cfg.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["PhotonOptions:Token"] = "photontoken",
+                    ["ConnectionStrings:Redis"] =
+                        this.testContainersHelper.GetRedisConnectionString(),
+                }
+            )
+        );
+
+    public async ValueTask InitializeAsync()
     {
-        Environment.SetEnvironmentVariable(
-            "RedisOptions__Hostname",
-            this.testContainersHelper.RedisHost
-        );
-        Environment.SetEnvironmentVariable(
-            "RedisOptions__Port",
-            this.testContainersHelper.RedisPort.ToString()
-        );
+        await this.testContainersHelper.StartAsync();
     }
 
-    public Task InitializeAsync() => this.testContainersHelper.StartAsync();
-
-    Task IAsyncLifetime.DisposeAsync() => this.testContainersHelper.StopAsync();
-
-    protected override void Dispose(bool disposing)
+    async ValueTask IAsyncDisposable.DisposeAsync()
     {
-        Environment.SetEnvironmentVariable("RedisOptions__Hostname", null);
-        Environment.SetEnvironmentVariable("RedisOptions__Port", null);
+        await this.testContainersHelper.StopAsync();
     }
 }

@@ -48,16 +48,19 @@ public record QuestData(
     private int IdSuffix => this.Id % 1000;
 
     [IgnoreMember]
-    public IEnumerable<AreaInfo> AreaInfo =>
+    public IReadOnlyList<AreaInfo> AreaInfo { get; } =
         new List<AreaInfo>()
         {
-            new(this.Scene01, this.AreaName01),
-            new(this.Scene02, this.AreaName02),
-            new(this.Scene03, this.AreaName03),
-            new(this.Scene04, this.AreaName04),
-            new(this.Scene05, this.AreaName05),
-            new(this.Scene06, this.AreaName06),
-        }.Where(x => !string.IsNullOrEmpty(x.ScenePath) && !string.IsNullOrEmpty(x.AreaName));
+            new(Scene01, AreaName01),
+            new(Scene02, AreaName02),
+            new(Scene03, AreaName03),
+            new(Scene04, AreaName04),
+            new(Scene05, AreaName05),
+            new(Scene06, AreaName06),
+        }
+            .Where(x => !string.IsNullOrEmpty(x.ScenePath) && !string.IsNullOrEmpty(x.AreaName))
+            .ToList()
+            .AsReadOnly();
 
     [IgnoreMember]
     public bool IsEventRegularBattle =>
@@ -66,7 +69,7 @@ public record QuestData(
             EventKindType.Build => this.IdSuffix is 301 or 302 or 303 or 401, // Boss battle (or EX boss battle)
             EventKindType.Raid => this.IdSuffix is 201 or 202 or 203, // Boss battle
             EventKindType.Earn => this.IdSuffix is 201 or 202 or 203 or 401, // Invasion quest
-            _ => false
+            _ => false,
         };
 
     [IgnoreMember]
@@ -74,7 +77,7 @@ public record QuestData(
         this.EventKindType switch
         {
             EventKindType.Build => this.IdSuffix is 501 or 502,
-            _ => false
+            _ => false,
         };
 
     [IgnoreMember]
@@ -83,7 +86,7 @@ public record QuestData(
         {
             EventKindType.Build => this.IdSuffix is 701 or 702,
             EventKindType.Earn => this.IdSuffix is 301 or 302 or 303,
-            _ => false
+            _ => false,
         };
 
     [IgnoreMember]

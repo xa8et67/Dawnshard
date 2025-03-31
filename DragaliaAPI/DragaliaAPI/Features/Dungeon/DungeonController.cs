@@ -1,12 +1,10 @@
-﻿using DragaliaAPI.Controllers;
+﻿using DragaliaAPI.Features.CoOp;
 using DragaliaAPI.Features.Dungeon.Record;
 using DragaliaAPI.Features.Quest;
-using DragaliaAPI.Features.Reward;
-using DragaliaAPI.Models;
+using DragaliaAPI.Features.Shared;
+using DragaliaAPI.Features.Shared.Reward;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
-using DragaliaAPI.Services.Game;
-using DragaliaAPI.Services.Photon;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DragaliaAPI.Features.Dungeon;
@@ -62,18 +60,17 @@ public class DungeonController(
 
         logger.LogDebug("Processing fail request for quest {QuestId}", session.QuestId);
 
-        DungeonFailResponse response =
-            new()
+        DungeonFailResponse response = new()
+        {
+            Result = 1,
+            FailQuestDetail = new()
             {
-                Result = 1,
-                FailQuestDetail = new()
-                {
-                    QuestId = session.QuestId,
-                    WallId = 0,
-                    WallLevel = 0,
-                    IsHost = true,
-                }
-            };
+                QuestId = session.QuestId,
+                WallId = 0,
+                WallLevel = 0,
+                IsHost = true,
+            },
+        };
 
         logger.LogDebug("Session is multiplayer: {IsMulti}", session.IsMulti);
 

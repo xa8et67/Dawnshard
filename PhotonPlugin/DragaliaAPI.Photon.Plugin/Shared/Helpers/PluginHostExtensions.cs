@@ -33,7 +33,7 @@ namespace DragaliaAPI.Photon.Plugin.Shared.Helpers
             Dictionary<byte, object> props = new Dictionary<byte, object>()
             {
                 { EventDataKey, serializedEvent },
-                { EventActorNrKey, 0 }
+                { EventActorNrKey, 0 },
             };
 
             pluginHost.LogInfo($"Raising event {eventCode} (0x{eventCode:X})");
@@ -61,7 +61,7 @@ namespace DragaliaAPI.Photon.Plugin.Shared.Helpers
         public static bool GetIsSoloPlay(this IPluginHost pluginHost) =>
             pluginHost.GameProperties.TryGetValue(
                 GamePropertyKeys.IsSoloPlayWithPhoton,
-                out object isSoloPlay
+                out object? isSoloPlay
             ) && isSoloPlay is true;
 
         public static int GetQuestId(this IPluginHost pluginHost) =>

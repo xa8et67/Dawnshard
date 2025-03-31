@@ -1,6 +1,6 @@
 ﻿using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared.Reward;
 using DragaliaAPI.Features.Wall;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Shared.Definitions.Enums;
@@ -126,7 +126,7 @@ public class LoginService(
 
     public async Task<IList<AtgenMonthlyWallReceiveList>> GetWallMonthlyReceiveList()
     {
-        if (!await wallService.CheckWallInitialized())
+        if (!await wallService.CheckWallLevelsInitialized())
         {
             return [];
         }
@@ -146,7 +146,7 @@ public class LoginService(
             {
                 QuestGroupId = WallService.WallQuestGroupId,
                 IsReceiveReward = wallRewardStatus,
-            }
+            },
         ];
     }
 }

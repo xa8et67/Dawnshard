@@ -1,4 +1,3 @@
-using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
 
 namespace DragaliaAPI.Features.Dungeon.Record;
@@ -19,4 +18,7 @@ public interface IDungeonRecordRewardService
         PlayRecord playRecord,
         DungeonSession session
     );
+
+    AtgenFirstMeeting ProcessFirstMeetingRewards(IList<long> connectingViewerIdList);
+    Task<IList<AtgenDropAll>> ProcessDraconicEssenceDrops(DungeonSession session);
 }

@@ -1,9 +1,9 @@
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Features.Missions;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared.Options;
+using DragaliaAPI.Features.Shared.Reward;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Models.Options;
-using DragaliaAPI.Services.Exceptions;
 using Microsoft.Extensions.Options;
 
 namespace DragaliaAPI.Features.Shop;
@@ -77,7 +77,10 @@ public class ItemSummonService : IItemSummonService
             3 => 100,
             4 => 200,
             5 => 300,
-            _ => throw new DragaliaException(ResultCode.ItemSummonExecCountOver, "Too many summons")
+            _ => throw new DragaliaException(
+                ResultCode.ItemSummonExecCountOver,
+                "Too many summons"
+            ),
         };
 
         await this.paymentService.ProcessPayment(

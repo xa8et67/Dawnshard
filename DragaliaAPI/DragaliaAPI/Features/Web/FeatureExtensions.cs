@@ -1,7 +1,10 @@
 using DragaliaAPI.Features.Web;
 using DragaliaAPI.Features.Web.News;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.Options;
+using DragaliaAPI.Features.Web.Savefile;
+using DragaliaAPI.Features.Web.TimeAttack;
+using DragaliaAPI.Features.Web.Users;
+using DragaliaAPI.Shared.PlayerDetails;
+using static DragaliaAPI.Infrastructure.Authentication.AuthConstants;
 
 // ReSharper disable once CheckNamespace
 namespace DragaliaAPI;
@@ -11,20 +14,21 @@ public static partial class FeatureExtensions
     public static IServiceCollection AddWebFeature(this IServiceCollection serviceCollection)
     {
         serviceCollection
-            .AddTransient<IConfigureOptions<JwtBearerOptions>, ConfigureJwtBearerOptions>()
             .AddScoped<UserService>()
-            .AddScoped<NewsService>();
+            .AddScoped<NewsService>()
+            .AddScoped<SavefileEditService>()
+            .AddScoped<TimeAttackService>();
 
         serviceCollection
             .AddAuthentication()
             .AddJwtBearer(
-                WebAuthenticationHelper.SchemeName,
+                SchemeNames.WebJwt,
                 opts =>
                 {
                     opts.Events = new()
                     {
                         OnMessageReceived = WebAuthenticationHelper.OnMessageReceived,
-                        OnTokenValidated = WebAuthenticationHelper.OnTokenValidated
+                        OnTokenValidated = WebAuthenticationHelper.OnTokenValidated,
                     };
                     // The rest is configured in ConfigureJwtBearerOptions.cs after the ServiceProvider is built.
                 }
@@ -33,11 +37,21 @@ public static partial class FeatureExtensions
         serviceCollection
             .AddAuthorizationBuilder()
             .AddPolicy(
-                WebAuthenticationHelper.PolicyName,
+                PolicyNames.RequireValidWebJwt,
+                builder =>
+                    builder.RequireAuthenticatedUser().AddAuthenticationSchemes(SchemeNames.WebJwt)
+            )
+            .AddPolicy(
+                PolicyNames.RequireDawnshardIdentity,
                 builder =>
                     builder
                         .RequireAuthenticatedUser()
-                        .AddAuthenticationSchemes(WebAuthenticationHelper.SchemeName)
+                        .AddAuthenticationSchemes(SchemeNames.WebJwt)
+                        .RequireAssertion(ctx =>
+                            ctx.User.Identities.Any(x => x.Label == IdentityLabels.Dawnshard)
+                        )
+                        .RequireClaim(CustomClaimType.AccountId)
+                        .RequireClaim(CustomClaimType.ViewerId)
             );
 
         return serviceCollection;

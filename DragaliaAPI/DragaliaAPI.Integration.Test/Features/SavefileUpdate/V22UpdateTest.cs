@@ -16,15 +16,14 @@ public class V22UpdateTest : SavefileUpdateTestFixture
     [Fact]
     public async Task V22Update_Chapter10Completed_GrantsRewards()
     {
-        await this
-            .ApiContext.PlayerUserData.Where(x => x.ViewerId == this.ViewerId)
-            .ExecuteUpdateAsync(u =>
-                u.SetProperty(e => e.Level, 30).SetProperty(e => e.Exp, 18990)
-            );
+        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(
+            u => u.SetProperty(e => e.Level, 30).SetProperty(e => e.Exp, 18990),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         await this
             .ApiContext.PlayerPresents.Where(x => x.ViewerId == this.ViewerId)
-            .ExecuteDeleteAsync();
+            .ExecuteDeleteAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         await this.AddToDatabase(
             new DbPlayerStoryState()
@@ -32,14 +31,15 @@ public class V22UpdateTest : SavefileUpdateTestFixture
                 ViewerId = this.ViewerId,
                 StoryId = Chapter10LastStoryId,
                 StoryType = StoryTypes.Quest,
-                State = StoryState.Read
+                State = StoryState.Read,
             }
         );
 
         await this.LoadIndex();
 
-        DbPlayerUserData userData = await this.ApiContext.PlayerUserData.FirstAsync(x =>
-            x.ViewerId == this.ViewerId
+        DbPlayerUserData userData = await this.ApiContext.PlayerUserData.FirstAsync(
+            x => x.ViewerId == this.ViewerId,
+            cancellationToken: TestContext.Current.CancellationToken
         );
 
         userData.Level.Should().Be(65);
@@ -47,7 +47,7 @@ public class V22UpdateTest : SavefileUpdateTestFixture
 
         List<DbPlayerPresent> presentData = await this
             .ApiContext.PlayerPresents.Where(x => x.ViewerId == this.ViewerId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         List<QuestStoryReward> rewards = MasterAsset
             .QuestStoryRewardInfo.Enumerable.Where(x => x.Id == Chapter10LastStoryId)
@@ -67,26 +67,26 @@ public class V22UpdateTest : SavefileUpdateTestFixture
     [Fact]
     public async Task V22Update_Chapter10NotCompleted_DoesNotGrantRewards()
     {
-        await this
-            .ApiContext.PlayerUserData.Where(x => x.ViewerId == this.ViewerId)
-            .ExecuteUpdateAsync(u =>
-                u.SetProperty(e => e.Level, 30).SetProperty(e => e.Exp, 18990)
-            );
+        await this.ApiContext.PlayerUserData.ExecuteUpdateAsync(
+            u => u.SetProperty(e => e.Level, 30).SetProperty(e => e.Exp, 18990),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         await this
             .ApiContext.PlayerStoryState.Where(x =>
                 x.ViewerId == this.ViewerId && x.StoryId == Chapter10LastStoryId
             )
-            .ExecuteDeleteAsync();
+            .ExecuteDeleteAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         await this
             .ApiContext.PlayerPresents.Where(x => x.ViewerId == this.ViewerId)
-            .ExecuteDeleteAsync();
+            .ExecuteDeleteAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         await this.LoadIndex();
 
-        DbPlayerUserData userData = await this.ApiContext.PlayerUserData.FirstAsync(x =>
-            x.ViewerId == this.ViewerId
+        DbPlayerUserData userData = await this.ApiContext.PlayerUserData.FirstAsync(
+            x => x.ViewerId == this.ViewerId,
+            cancellationToken: TestContext.Current.CancellationToken
         );
 
         userData.Level.Should().Be(30);
@@ -94,7 +94,7 @@ public class V22UpdateTest : SavefileUpdateTestFixture
 
         List<DbPlayerPresent> presentData = await this
             .ApiContext.PlayerPresents.Where(x => x.ViewerId == this.ViewerId)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         presentData.Count.Should().Be(0);
     }

@@ -1,5 +1,5 @@
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Features.Reward.Handlers;
+using DragaliaAPI.Features.Shared.Reward.Handlers;
 using DragaliaAPI.Shared.Definitions.Enums.Summon;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,20 +24,20 @@ public class RewardServiceTest : TestFixture
         SummonTickets ticketType
     )
     {
-        DbSummonTicket ticket = new() { SummonTicketId = ticketType, Quantity = 1, };
-        DbPlayerPresent present =
-            new()
-            {
-                EntityType = EntityTypes.SummonTicket,
-                EntityQuantity = 5,
-                EntityId = (int)ticketType
-            };
+        DbSummonTicket ticket = new() { SummonTicketId = ticketType, Quantity = 1 };
+        DbPlayerPresent present = new()
+        {
+            EntityType = EntityTypes.SummonTicket,
+            EntityQuantity = 5,
+            EntityId = (int)ticketType,
+        };
 
         await this.AddRangeToDatabase([ticket, present]);
 
         await this.Client.PostMsgpack(
             "/present/receive",
-            new PresentReceiveRequest() { PresentIdList = [(ulong)present.PresentId] }
+            new PresentReceiveRequest() { PresentIdList = [(ulong)present.PresentId] },
+            cancellationToken: TestContext.Current.CancellationToken
         );
 
         this.ApiContext.PlayerSummonTickets.Should()
@@ -49,7 +49,7 @@ public class RewardServiceTest : TestFixture
                         ViewerId = this.ViewerId,
                         SummonTicketId = ticketType,
                         Quantity = 6,
-                    }
+                    },
                 ]
             );
     }
@@ -63,19 +63,19 @@ public class RewardServiceTest : TestFixture
     [InlineData(SummonTickets.DragonSummonPlus)]
     public async Task GrantSummoningTickets_Stackable_NoRow_CreatesNewRow(SummonTickets ticketType)
     {
-        DbPlayerPresent present =
-            new()
-            {
-                EntityType = EntityTypes.SummonTicket,
-                EntityQuantity = 5,
-                EntityId = (int)ticketType
-            };
+        DbPlayerPresent present = new()
+        {
+            EntityType = EntityTypes.SummonTicket,
+            EntityQuantity = 5,
+            EntityId = (int)ticketType,
+        };
 
         await this.AddToDatabase(present);
 
         await this.Client.PostMsgpack(
             "/present/receive",
-            new PresentReceiveRequest() { PresentIdList = [(ulong)present.PresentId] }
+            new PresentReceiveRequest() { PresentIdList = [(ulong)present.PresentId] },
+            cancellationToken: TestContext.Current.CancellationToken
         );
 
         this.ApiContext.PlayerSummonTickets.Should()
@@ -86,7 +86,7 @@ public class RewardServiceTest : TestFixture
                         ViewerId = this.ViewerId,
                         SummonTicketId = ticketType,
                         Quantity = 5,
-                    }
+                    },
                 ],
                 opts => opts.Excluding(x => x.KeyId)
             );

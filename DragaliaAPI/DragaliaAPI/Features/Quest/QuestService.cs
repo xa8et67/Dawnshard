@@ -3,10 +3,9 @@ using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Dungeon;
 using DragaliaAPI.Features.Missions;
 using DragaliaAPI.Features.Player;
-using DragaliaAPI.Features.Reward;
-using DragaliaAPI.Models;
+using DragaliaAPI.Features.Shared.Reward;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models;
@@ -120,9 +119,8 @@ public class QuestService(
             StaminaType.Single => questData.PayStaminaSingle,
             // Want to encourage co-op play.
             // Also, `type` here is inferred from endpoint e.g. start_multi, but that doesn't work for time attack.
-            StaminaType.Multi
-                => 0,
-            _ => throw new ArgumentOutOfRangeException(nameof(type))
+            StaminaType.Multi => 0,
+            _ => throw new ArgumentOutOfRangeException(nameof(type)),
         };
     }
 
@@ -317,7 +315,7 @@ public class QuestService(
         if (questData.EventKindType is EventKindType.Build or EventKindType.Clb01)
         {
             foreach (
-                AbilityCrests crest in session
+                AbilityCrestId crest in session
                     .Party.SelectMany(x => x.GetAbilityCrestList())
                     .Distinct()
             )

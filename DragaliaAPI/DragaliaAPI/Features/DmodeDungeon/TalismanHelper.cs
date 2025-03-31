@@ -28,7 +28,11 @@ public static class TalismanHelper
         (100, 1), // Element + Weapon specific dragon damage
         (111, 7), // Dragon Haste
         (118, 2), // Element-specific dragon haste
-        (120, 1) // Element + Weapon specific dragon haste
+        (
+            120,
+            1
+        ) // Element + Weapon specific dragon haste
+        ,
     };
 
     private static readonly (int StartId, int Amount)[] Ability2Pool =
@@ -54,7 +58,7 @@ public static class TalismanHelper
         (130, 1), // Element + Weapon specific dragon time
         (131, 4), // Tradeoffs (Steady|Easy|Lucky|Hasty) Hitter I
         (131, 4),
-        (131, 4)
+        (131, 4),
     };
 
     private const int TalismanIdDifference = 40_000_000;
@@ -108,30 +112,38 @@ public static class TalismanHelper
 
     private static int GenerateAbility(
         Random rdm,
-        IReadOnlyList<(int StartId, int Amount)> pool,
+        (int StartId, int Amount)[] pool,
         int floor,
-        IReadOnlyList<int> thresholds
+        int[] thresholds
     )
     {
         int startIndex = floor >= thresholds[0] ? 1 : 0; // Guarantee ability
-        int index = rdm.Next(startIndex, pool.Count);
+        int index = rdm.Next(startIndex, pool.Length);
         if (index == 0)
+        {
             return 0;
+        }
 
         if (floor == 0)
         {
             // Portrait wyrmprints rewarded from expeditions cannot have any elemental or weapon type restrictions. (wiki)
             // Guarantee non-elem-locked
             while ((index - 1) % 3 != 0)
+            {
                 index--;
+            }
         }
-        else if (pool.Count - 1 != index)
+        else if (pool.Length - 1 != index)
         {
             if ((index - 1) % 3 == 0 && floor >= thresholds[1]) // Guarantee elem-locked
+            {
                 index++;
+            }
 
             if ((index - 1) % 3 == 1 && floor >= thresholds[2]) // Guarantee weapon-locked
+            {
                 index++;
+            }
         }
 
         (int startId, int amount) = pool[index];
@@ -145,7 +157,9 @@ public static class TalismanHelper
             default:
                 Span<int> abilityPool = stackalloc int[amount];
                 for (int i = 0; i < amount; i++)
+                {
                     abilityPool[i] = i + startId;
+                }
 
                 return rdm.Next(abilityPool) + AbilityIdDifference;
         }

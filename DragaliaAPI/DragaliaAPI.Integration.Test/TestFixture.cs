@@ -3,53 +3,63 @@ using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Entities.Abstract;
 using DragaliaAPI.Extensions;
+using DragaliaAPI.Features.CoOp;
 using DragaliaAPI.Features.Dungeon;
 using DragaliaAPI.Features.Fort;
-using DragaliaAPI.Models;
-using DragaliaAPI.Models.Options;
-using DragaliaAPI.Services;
-using DragaliaAPI.Services.Api;
+using DragaliaAPI.Features.Login.Auth;
+using DragaliaAPI.Features.Login.Savefile;
+using DragaliaAPI.Features.Shared;
+using DragaliaAPI.Features.Shared.Options;
+using DragaliaAPI.Infrastructure.Results;
 using DragaliaAPI.Shared.PlayerDetails;
 using DragaliaAPI.Shared.Serialization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Caching.StackExchangeRedis;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
-using Npgsql;
+using static DragaliaAPI.Infrastructure.DragaliaHttpConstants;
 
 namespace DragaliaAPI.Integration.Test;
 
-[Collection(TestCollection.Name)]
 public class TestFixture
 {
     /// <summary>
     /// The device account ID which links to the seeded savefiles <see cref="SeedDatabase"/>
     /// </summary>
-    protected const string DeviceAccountId = "logged_in_id";
+    protected string DeviceAccountId { get; } = $"logged_in_id_{Guid.NewGuid()}";
 
     /// <summary>
     /// The session ID which is associated with the logged in test user.
     /// </summary>
-    protected const string SessionId = "session_id";
+    protected string SessionId { get; } = $"session_id_{Guid.NewGuid()}";
 
-    private readonly CustomWebApplicationFactory factory;
-    private readonly IPlayerIdentityService stubPlayerIdentityService;
+    private readonly WebApplicationFactory<Program> factory;
 
     protected TestFixture(CustomWebApplicationFactory factory, ITestOutputHelper testOutputHelper)
     {
-        this.factory = factory;
-
         this.TestOutputHelper = testOutputHelper;
+        this.MockBaasApi = factory.MockBaasApi;
+        this.MockPhotonStateApi = factory.MockPhotonStateApi;
+
+        this.factory = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureLogging(logging =>
+            {
+                logging.ClearProviders();
+                logging.AddConsole();
+            });
+            builder.ConfigureTestServices(services =>
+            {
+                services.AddSingleton<TimeProvider>(this.MockTimeProvider);
+            });
+        });
 
         this.Client = this.CreateClient();
-
-        this.MockBaasApi.Setup(x => x.GetKeys()).ReturnsAsync(TokenHelper.SecurityKeys);
 
         this.Services = factory.Services.CreateScope().ServiceProvider;
 
@@ -57,29 +67,31 @@ public class TestFixture
         this.LastDailyReset = TimeProvider.System.GetLastDailyReset();
 
         this.SeedDatabase().Wait();
-        this.SeedCache().Wait();
+        this.SeedCache();
 
-        this.stubPlayerIdentityService = new StubPlayerIdentityService(this.ViewerId);
+        IPlayerIdentityService stubPlayerIdentityService = new StubPlayerIdentityService(
+            this.ViewerId
+        );
 
         DbContextOptions<ApiContext> options = this.Services.GetRequiredService<
             DbContextOptions<ApiContext>
         >();
-        this.ApiContext = new ApiContext(options, this.stubPlayerIdentityService);
+        this.ApiContext = new ApiContext(options, stubPlayerIdentityService);
         this.ApiContext.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
 
         this.DungeonService = new DungeonService(
             this.Services.GetRequiredService<IDistributedCache>(),
             this.Services.GetRequiredService<IOptionsMonitor<RedisCachingOptions>>(),
-            this.stubPlayerIdentityService,
+            stubPlayerIdentityService,
             NullLogger<DungeonService>.Instance
         );
     }
 
     protected DateTimeOffset LastDailyReset { get; }
 
-    protected Mock<IBaasApi> MockBaasApi => this.factory.MockBaasApi;
+    protected Mock<IBaasApi> MockBaasApi { get; }
 
-    protected Mock<IPhotonStateApi> MockPhotonStateApi => this.factory.MockPhotonStateApi;
+    protected Mock<IPhotonStateApi> MockPhotonStateApi { get; }
 
     protected FakeTimeProvider MockTimeProvider { get; } = new();
 
@@ -90,10 +102,6 @@ public class TestFixture
     /// <summary>
     /// The viewer ID associated with the logged in user.
     /// </summary>
-    /// <remarks>
-    /// This is not a constant -- although the database is cleared in <see cref="SeedDatabase"/> between each test,
-    /// the seeding of the identity column is not reset, so each test increments the viewer ID by 1.
-    /// </remarks>
     protected long ViewerId { get; private set; }
 
     protected HttpClient Client { get; set; }
@@ -115,7 +123,9 @@ public class TestFixture
     protected void AddCharacter(Charas id)
     {
         if (this.ApiContext.PlayerCharaData.Find(ViewerId, id) is not null)
+        {
             return;
+        }
 
         this.ApiContext.PlayerCharaData.Add(new(this.ViewerId, id));
         this.ApiContext.SaveChanges();
@@ -172,7 +182,7 @@ public class TestFixture
         await savefileService.Import(GetSavefile());
     }
 
-    protected long GetDragonKeyId(Dragons dragon)
+    protected long GetDragonKeyId(DragonId dragon)
     {
         return this
             .ApiContext.PlayerDragonData.Where(x => x.DragonId == dragon)
@@ -183,33 +193,40 @@ public class TestFixture
 
     protected HttpClient CreateClient(Action<IWebHostBuilder>? extraBuilderConfig = null)
     {
-        HttpClient client = factory
-            .WithWebHostBuilder(builder =>
-            {
-                builder.ConfigureLogging(logging =>
-                {
-                    logging.ClearProviders();
-                    logging.AddXUnit(this.TestOutputHelper);
-                });
-                builder.ConfigureTestServices(services =>
-                {
-                    services.AddSingleton<TimeProvider>(this.MockTimeProvider);
-                });
-                extraBuilderConfig?.Invoke(builder);
-            })
-            .CreateClient(
-                new WebApplicationFactoryClientOptions()
-                {
-                    BaseAddress = new Uri(
-                        "http://localhost/2.19.0_20220714193707/",
-                        UriKind.Absolute
-                    ),
-                }
-            );
+        WebApplicationFactory<Program> factoryToUse = this.factory;
 
-        client.DefaultRequestHeaders.Add("SID", SessionId);
+        if (extraBuilderConfig is not null)
+        {
+            factoryToUse = this.factory.WithWebHostBuilder(extraBuilderConfig);
+        }
+
+        HttpClient client = factoryToUse.CreateClient(
+            new WebApplicationFactoryClientOptions()
+            {
+                BaseAddress = new Uri("http://localhost/2.19.0_20220714193707/", UriKind.Absolute),
+            }
+        );
+
+        client.DefaultRequestHeaders.Add(Headers.SessionId, this.SessionId);
         client.DefaultRequestHeaders.Add("Platform", "2");
         client.DefaultRequestHeaders.Add("Res-Ver", "y2XM6giU6zz56wCm");
+
+        return client;
+    }
+
+    protected HttpClient CreateClientForOtherPlayer(
+        DbPlayer player,
+        Action<IWebHostBuilder>? extraBuilderConfig = null
+    )
+    {
+        HttpClient client = this.CreateClient(extraBuilderConfig);
+
+        string sessionId = $"session_id_other_player_{player.ViewerId}_{Guid.NewGuid()}";
+
+        this.CreateSession(sessionId, player.AccountId, player.ViewerId);
+
+        client.DefaultRequestHeaders.Remove(Headers.SessionId);
+        client.DefaultRequestHeaders.Add(Headers.SessionId, sessionId);
 
         return client;
     }
@@ -217,7 +234,9 @@ public class TestFixture
     protected long GetTalismanKeyId(Talismans talisman)
     {
         return this
-            .ApiContext.PlayerTalismans.Where(x => x.TalismanId == talisman)
+            .ApiContext.PlayerTalismans.Where(x =>
+                x.ViewerId == this.ViewerId && x.TalismanId == talisman
+            )
             .Select(x => x.TalismanKeyId)
             .DefaultIfEmpty()
             .First();
@@ -233,12 +252,6 @@ public class TestFixture
 
     private async Task SeedDatabase()
     {
-        await using NpgsqlConnection connection = new(this.factory.PostgresConnectionString);
-        await connection.OpenAsync();
-
-        ArgumentNullException.ThrowIfNull(this.factory.Respawner);
-        await this.factory.Respawner.ResetAsync(connection);
-
         ISavefileService savefileService = this.Services.GetRequiredService<ISavefileService>();
         IPlayerIdentityService playerIdentityService =
             this.Services.GetRequiredService<IPlayerIdentityService>();
@@ -259,7 +272,7 @@ public class TestFixture
                 {
                     ViewerId = newPlayer.ViewerId,
                     MaterialId = x,
-                    Quantity = 99999999
+                    Quantity = 99999999,
                 })
         );
 
@@ -269,7 +282,7 @@ public class TestFixture
                 {
                     ViewerId = newPlayer.ViewerId,
                     DragonGiftId = x,
-                    Quantity = x < DragonGifts.FourLeafClover ? 1 : 999
+                    Quantity = x < DragonGifts.FourLeafClover ? 1 : 999,
                 })
         );
 
@@ -281,7 +294,7 @@ public class TestFixture
             {
                 ViewerId = newPlayer.ViewerId,
                 PlantId = FortPlants.Smithy,
-                Level = 9
+                Level = 9,
             }
         );
 
@@ -290,6 +303,7 @@ public class TestFixture
         )!;
 
         userData.Coin = 100_000_000;
+        userData.Crystal = 1_200_000;
         userData.DewPoint = 100_000_000;
         userData.ManaPoint = 100_000_000;
         userData.Level = 250;
@@ -302,7 +316,7 @@ public class TestFixture
             {
                 ViewerId = newPlayer.ViewerId,
                 Point1Quantity = 100_000_000,
-                Point2Quantity = 100_000_000
+                Point2Quantity = 100_000_000,
             }
         );
 
@@ -318,18 +332,20 @@ public class TestFixture
         apiContext.ChangeTracker.Clear();
     }
 
-    private async Task SeedCache()
-    {
-        this.factory.ResetCache();
+    private void SeedCache() => CreateSession(this.SessionId, this.DeviceAccountId, this.ViewerId);
 
+    private void CreateSession(string sessionId, string deviceAccountId, long viewerId)
+    {
         IDistributedCache cache = this.Services.GetRequiredService<IDistributedCache>();
 
-        Session session =
-            new(SessionId, "id_token", DeviceAccountId, this.ViewerId, DateTimeOffset.MaxValue);
-        await cache.SetStringAsync(
-            ":session:session_id:session_id",
-            JsonSerializer.Serialize(session)
+        Session session = new(
+            sessionId,
+            "id_token",
+            deviceAccountId,
+            viewerId,
+            DateTimeOffset.MaxValue
         );
-        await cache.SetStringAsync(":session_id:device_account_id:logged_in_id", SessionId);
+        cache.SetString($":session:session_id:{sessionId}", JsonSerializer.Serialize(session));
+        cache.SetString($":session_id:device_account_id:{deviceAccountId}", sessionId);
     }
 }

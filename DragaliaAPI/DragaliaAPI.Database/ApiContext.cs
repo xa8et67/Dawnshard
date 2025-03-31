@@ -21,10 +21,6 @@ public class ApiContext : DbContext, IDataProtectionKeyContext
         this.playerIdentityService = playerIdentityService;
     }
 
-#pragma warning disable CS0618 // Type or member is obsolete
-    public DbSet<DbDeviceAccount> DeviceAccounts { get; set; } = null!;
-#pragma warning restore CS0618 // Type or member is obsolete
-
     public DbSet<DbPlayer> Players { get; set; } = null!;
 
     public DbSet<DbPlayerUserData> PlayerUserData { get; set; } = null!;
@@ -107,6 +103,8 @@ public class ApiContext : DbContext, IDataProtectionKeyContext
 
     public DbSet<DbPlayerUseItem> PlayerUseItems { get; set; } = null!;
 
+    public DbSet<DbPlayerDiamondData> PlayerDiamondData { get; set; } = null!;
+
     public DbSet<DbLoginBonus> LoginBonuses { get; set; } = null!;
 
     public DbSet<DbSummonTicket> PlayerSummonTickets { get; set; } = null!;
@@ -134,6 +132,14 @@ public class ApiContext : DbContext, IDataProtectionKeyContext
     public DbSet<DataProtectionKey> DataProtectionKeys { get; set; } = null!;
 
     public DbSet<DbWallRewardDate> WallRewardDates { get; set; } = null!;
+
+    public DbSet<DbPlayerHelper> PlayerHelpers { get; set; }
+
+    public DbSet<DbPlayerFriendship> PlayerFriendships { get; set; }
+
+    public DbSet<DbPlayerFriendshipPlayer> PlayerFriendshipPlayers { get; set; }
+
+    public DbSet<DbPlayerFriendRequest> PlayerFriendRequests { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -194,5 +200,29 @@ public class ApiContext : DbContext, IDataProtectionKeyContext
         modelBuilder
             .Entity<DbPlayerPresentHistory>()
             .HasQueryFilter(x => x.ViewerId == this.playerIdentityService.ViewerId);
+
+        modelBuilder
+            .Entity<DbQuest>()
+            .HasQueryFilter(x => x.ViewerId == this.playerIdentityService.ViewerId);
+
+        modelBuilder
+            .Entity<DbFortBuild>()
+            .HasQueryFilter(x => x.ViewerId == this.playerIdentityService.ViewerId);
+
+        modelBuilder
+            .Entity<DbPlayerDiamondData>()
+            .HasQueryFilter(x => x.ViewerId == this.playerIdentityService.ViewerId);
+
+        modelBuilder
+            .Entity<DbPlayerDmodeInfo>()
+            .HasQueryFilter(x => x.ViewerId == this.playerIdentityService.ViewerId);
+
+        modelBuilder
+            .Entity<DbPlayerMaterial>()
+            .HasQueryFilter(x => x.ViewerId == this.playerIdentityService.ViewerId);
+
+        modelBuilder
+            .Entity<DbPlayerHelper>()
+            .HasQueryFilter(e => e.ViewerId == this.playerIdentityService.ViewerId);
     }
 }

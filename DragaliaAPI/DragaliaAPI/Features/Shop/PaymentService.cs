@@ -4,9 +4,9 @@ using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Dmode;
 using DragaliaAPI.Features.Event;
 using DragaliaAPI.Features.Item;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared.Reward;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.Definitions.Enums.Summon;
 using Microsoft.EntityFrameworkCore;
@@ -131,11 +131,23 @@ public class PaymentService(
                 break;
             case EntityTypes.FreeDiamantium:
             case EntityTypes.PaidDiamantium:
-                logger.LogDebug("Tried to pay with diamantium -- this is not supported.");
-                throw new DragaliaException(
-                    ResultCode.ShopPaymentTypeInvalid,
-                    "Diamantium is not supported."
-                );
+                DbPlayerDiamondData diamondData = await apiContext.PlayerDiamondData.FirstAsync();
+
+                quantity = diamondData.FreeDiamond + diamondData.PaidDiamond;
+                updater = () =>
+                {
+                    if (diamondData.FreeDiamond >= price)
+                    {
+                        diamondData.FreeDiamond -= price;
+                    }
+                    else
+                    {
+                        diamondData.PaidDiamond -= price - diamondData.FreeDiamond;
+                        diamondData.FreeDiamond = 0;
+                    }
+                };
+
+                break;
             default:
                 logger.LogWarning("Unknown/invalid entity type for payment.");
                 throw new DragaliaException(

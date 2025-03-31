@@ -1,7 +1,6 @@
-﻿using DragaliaAPI.Controllers;
+﻿using DragaliaAPI.Features.Shared;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
-using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.Definitions.Enums.Summon;
 using Microsoft.AspNetCore.Mvc;
@@ -33,7 +32,7 @@ public class SummonController(
         {
             excludableList.Add(new AtgenDuplicateEntityList(EntityTypes.Chara, (int)c));
         }
-        foreach (Dragons d in Enum.GetValues<Dragons>())
+        foreach (DragonId d in Enum.GetValues<DragonId>())
         {
             excludableList.Add(new AtgenDuplicateEntityList(EntityTypes.Dragon, (int)d));
         }
@@ -145,12 +144,9 @@ public class SummonController(
         CancellationToken cancellationToken
     )
     {
-        int execCount = summonRequest.ExecCount > 0 ? summonRequest.ExecCount : 1;
-        int summonCount = summonRequest.ExecType == SummonExecTypes.Tenfold ? 10 : execCount;
-
         SummonList? summonList = await summonService.GetSummonList(summonRequest.SummonId);
 
-        if (summonList == null)
+        if (summonList is null)
         {
             throw new DragaliaException(
                 ResultCode.SummonNotFound,
@@ -158,14 +154,15 @@ public class SummonController(
             );
         }
 
-        await summonService.ProcessSummonPayment(summonRequest, summonList);
+        SummonRequestInfo requestInfo = SummonRequestInfo.FromSummonRequest(
+            summonRequest,
+            summonList
+        );
+
+        await summonService.ProcessSummonPayment(requestInfo, summonList);
 
         List<AtgenRedoableSummonResultUnitList> summonResult =
-            await summonService.GenerateSummonResult(
-                execCount,
-                summonRequest.SummonId,
-                summonRequest.ExecType
-            );
+            await summonService.GenerateSummonResult(requestInfo);
 
         (
             IList<AtgenResultUnitList> resultUnitList,
@@ -180,7 +177,7 @@ public class SummonController(
 
         UserSummonList userSummonList = await summonService.UpdateUserSummonInformation(
             summonList,
-            summonCount,
+            requestInfo,
             metaInfo
         );
 
@@ -188,18 +185,17 @@ public class SummonController(
 
         UpdateDataList updateDataList = await updateDataService.SaveChangesAsync(cancellationToken);
 
-        SummonRequestResponse response =
-            new(
-                resultUnitList: resultUnitList,
-                resultPrizeList: [],
-                presageEffectList: [effect.SageEffect, effect.CircleEffect],
-                reversalEffectIndex: effect.ReversalIndex,
-                updateDataList: updateDataList,
-                entityResult: entityResult,
-                summonTicketList: await summonService.GetSummonTicketList(),
-                resultSummonPoint: summonList.AddSummonPoint * summonCount,
-                userSummonList: [userSummonList]
-            );
+        SummonRequestResponse response = new(
+            resultUnitList: resultUnitList,
+            resultPrizeList: [],
+            presageEffectList: [effect.SageEffect, effect.CircleEffect],
+            reversalEffectIndex: effect.ReversalIndex,
+            updateDataList: updateDataList,
+            entityResult: entityResult,
+            summonTicketList: await summonService.GetSummonTicketList(),
+            resultSummonPoint: requestInfo.ResultSummonPoint,
+            userSummonList: [userSummonList]
+        );
 
         return this.Ok(response);
     }

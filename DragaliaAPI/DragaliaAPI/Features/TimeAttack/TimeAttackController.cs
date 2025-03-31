@@ -1,7 +1,7 @@
-﻿using DragaliaAPI.Controllers;
-using DragaliaAPI.Features.Reward;
+﻿using DragaliaAPI.Features.Shared;
+using DragaliaAPI.Features.Shared.Reward;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
 using DragaliaAPI.Shared.MasterAsset.Models.TimeAttack;
 using Microsoft.AspNetCore.Mvc;
 
@@ -47,7 +47,7 @@ public class TimeAttackController(
                 UpdateDataList = updateDataList,
                 EntityResult = entityResult,
                 RankingTierRewardList = rewardList.Select(ToRankingTierRewardList),
-                RankingTierRewardEntityList = receivedRewards.Select(ToRewardEntityList)
+                RankingTierRewardEntityList = receivedRewards.Select(ToRewardEntityList),
             }
         );
     }

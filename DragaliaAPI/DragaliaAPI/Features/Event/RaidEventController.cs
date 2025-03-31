@@ -1,8 +1,8 @@
-﻿using DragaliaAPI.Controllers;
-using DragaliaAPI.Features.Reward;
+﻿using DragaliaAPI.Features.Shared;
+using DragaliaAPI.Features.Shared.Reward;
 using DragaliaAPI.Features.Trade;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
 using DragaliaAPI.Shared.MasterAsset;
 using Microsoft.AspNetCore.Mvc;
 
@@ -32,7 +32,7 @@ public class RaidEventController(
         );
         resp.EventPassiveList = new List<EventPassiveList>
         {
-            await eventService.GetEventPassiveList(request.RaidEventId)
+            await eventService.GetEventPassiveList(request.RaidEventId),
         };
 
         if (

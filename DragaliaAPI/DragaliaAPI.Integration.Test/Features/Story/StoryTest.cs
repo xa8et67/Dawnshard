@@ -6,11 +6,7 @@ namespace DragaliaAPI.Integration.Test.Features.Story;
 public class StoryTest : TestFixture
 {
     public StoryTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
-        : base(factory, outputHelper)
-    {
-        CommonAssertionOptions.ApplyTimeOptions();
-        CommonAssertionOptions.ApplyIgnoreOwnerOptions();
-    }
+        : base(factory, outputHelper) { }
 
     [Fact]
     public async Task ReadStory_StoryNotRead_ResponseHasRewards()
@@ -18,7 +14,8 @@ public class StoryTest : TestFixture
         StoryReadResponse data = (
             await this.Client.PostMsgpack<StoryReadResponse>(
                 "/story/read",
-                new StoryReadRequest() { UnitStoryId = 100001141 }
+                new StoryReadRequest() { UnitStoryId = 100001141 },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -30,8 +27,8 @@ public class StoryTest : TestFixture
                     {
                         EntityType = EntityTypes.Wyrmite,
                         EntityQuantity = 25,
-                        EntityId = 0
-                    }
+                        EntityId = 0,
+                    },
                 }
             );
 
@@ -40,7 +37,7 @@ public class StoryTest : TestFixture
             .BeEquivalentTo(
                 new List<UnitStoryList>()
                 {
-                    new() { UnitStoryId = 100001141, IsRead = true, }
+                    new() { UnitStoryId = 100001141, IsRead = true },
                 }
             );
     }
@@ -54,22 +51,23 @@ public class StoryTest : TestFixture
                 ViewerId = this.ViewerId,
                 State = StoryState.Read,
                 StoryId = 100001121,
-                StoryType = StoryTypes.Chara
+                StoryType = StoryTypes.Chara,
             },
             new DbPlayerStoryState()
             {
                 ViewerId = this.ViewerId,
                 State = StoryState.Read,
                 StoryId = 100001122,
-                StoryType = StoryTypes.Chara
+                StoryType = StoryTypes.Chara,
             }
         );
-        await this.ApiContext.SaveChangesAsync();
+        await this.ApiContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         StoryReadResponse data = (
             await this.Client.PostMsgpack<StoryReadResponse>(
                 "/story/read",
-                new StoryReadRequest() { UnitStoryId = 100001122 }
+                new StoryReadRequest() { UnitStoryId = 100001122 },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -86,12 +84,13 @@ public class StoryTest : TestFixture
             .ApiContext.PlayerUserData.AsNoTracking()
             .Where(x => x.ViewerId == this.ViewerId)
             .Select(x => x.Crystal)
-            .SingleAsync();
+            .SingleAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         StoryReadResponse data = (
             await this.Client.PostMsgpack<StoryReadResponse>(
                 "/story/read",
-                new StoryReadRequest() { UnitStoryId = 100002011 }
+                new StoryReadRequest() { UnitStoryId = 100002011 },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -99,7 +98,7 @@ public class StoryTest : TestFixture
             .ApiContext.PlayerUserData.AsNoTracking()
             .Where(x => x.ViewerId == this.ViewerId)
             .Select(x => x.Crystal)
-            .SingleAsync();
+            .SingleAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         newCrystal.Should().Be(oldCrystal + 25);
 
@@ -115,7 +114,7 @@ public class StoryTest : TestFixture
                     ViewerId = this.ViewerId,
                     State = StoryState.Read,
                     StoryId = 100002011,
-                    StoryType = StoryTypes.Chara
+                    StoryType = StoryTypes.Chara,
                 }
             );
     }

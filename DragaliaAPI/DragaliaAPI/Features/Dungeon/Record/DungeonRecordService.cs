@@ -1,12 +1,11 @@
 ﻿using DragaliaAPI.Features.Chara;
 using DragaliaAPI.Features.Player;
 using DragaliaAPI.Features.Quest;
-using DragaliaAPI.Features.Reward;
-using DragaliaAPI.Models;
+using DragaliaAPI.Features.Shared.Reward;
+using DragaliaAPI.Features.Tutorial;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
 using DragaliaAPI.Shared.Definitions.Enums;
-using static DragaliaAPI.Services.Game.TutorialService;
+using static DragaliaAPI.Features.Tutorial.TutorialService;
 
 namespace DragaliaAPI.Features.Dungeon.Record;
 
@@ -34,22 +33,21 @@ public class DungeonRecordService(
             session.IsHost
         );
 
-        IngameResultData ingameResultData =
-            new()
-            {
-                DungeonKey = dungeonKey,
-                PlayType = QuestPlayType.Default,
-                QuestId = session.QuestId,
-                IsHost = session.IsHost,
-                QuestPartySettingList = session.Party,
-                StartTime = session.StartTime,
-                EndTime = DateTimeOffset.UtcNow,
-                CurrentPlayCount = 1,
-                RebornCount = playRecord.RebornCount,
-                TotalPlayDamage = playRecord.TotalPlayDamage,
-                ClearTime = playRecord.Time,
-                IsClear = true,
-            };
+        IngameResultData ingameResultData = new()
+        {
+            DungeonKey = dungeonKey,
+            PlayType = QuestPlayType.Default,
+            QuestId = session.QuestId,
+            IsHost = session.IsHost,
+            QuestPartySettingList = session.Party,
+            StartTime = session.StartTime,
+            EndTime = DateTimeOffset.UtcNow,
+            CurrentPlayCount = 1,
+            RebornCount = playRecord.RebornCount,
+            TotalPlayDamage = playRecord.TotalPlayDamage,
+            ClearTime = playRecord.Time,
+            IsClear = true,
+        };
 
         await this.ProcessStaminaConsumption(session);
 
@@ -69,12 +67,16 @@ public class DungeonRecordService(
         ingameResultData.RewardRecord.MissionsClearSet = missionStatus.MissionsClearSet;
         ingameResultData.RewardRecord.MissionComplete = missionStatus.MissionCompleteSet;
 
+        IList<AtgenDropAll> essenceDrops =
+            await dungeonRecordRewardService.ProcessDraconicEssenceDrops(session);
+
         (IEnumerable<AtgenDropAll> dropList, int manaDrop, int coinDrop) =
             await dungeonRecordRewardService.ProcessEnemyDrops(playRecord, session);
 
         ingameResultData.RewardRecord.TakeCoin = coinDrop;
         ingameResultData.GrowRecord.TakeMana = manaDrop;
         ingameResultData.RewardRecord.DropAll.AddRange(dropList);
+        ingameResultData.RewardRecord.DropAll.AddRange(essenceDrops);
 
         (
             IEnumerable<AtgenScoreMissionSuccessList> scoreMissionSuccessList,
@@ -131,11 +133,9 @@ public class DungeonRecordService(
 
         // Constant for quests with no stamina usage, wip?
         int experience =
-            session.QuestData.PayStaminaSingle != 0
-                ? session.QuestData.PayStaminaSingle * 10
-                : session.QuestData.PayStaminaMulti != 0
-                    ? session.QuestData.PayStaminaMulti * 100
-                    : 150;
+            session.QuestData.PayStaminaSingle != 0 ? session.QuestData.PayStaminaSingle * 10
+            : session.QuestData.PayStaminaMulti != 0 ? session.QuestData.PayStaminaMulti * 100
+            : 150;
 
         experience *= session.PlayCount;
 

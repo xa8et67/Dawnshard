@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 [assembly: InternalsVisibleTo("DragaliaAPI.Database.Test")]
 [assembly: InternalsVisibleTo("DragaliaAPI.Test")]
@@ -29,25 +28,22 @@ public static class DatabaseConfiguration
             .AddDbContext<ApiContext>(
                 (serviceProvider, options) =>
                 {
-                    PostgresOptions postgresOptions = serviceProvider
-                        .GetRequiredService<IOptions<PostgresOptions>>()
-                        .Value;
+                    IConfiguration configuration =
+                        serviceProvider.GetRequiredService<IConfiguration>();
+
                     options
-                        .UseNpgsql(postgresOptions.GetConnectionString("ApiContext"))
+                        .UseNpgsql(configuration.GetConnectionString("postgres"))
+                        .UseLoggerFactory(serviceProvider.GetRequiredService<ILoggerFactory>())
                         .EnableDetailedErrors();
                 }
             )
-#pragma warning disable CS0618 // Type or member is obsolete
-            .AddScoped<IDeviceAccountRepository, DeviceAccountRepository>()
-#pragma warning restore CS0618 // Type or member is obsolete
             .AddScoped<IUserDataRepository, UserDataRepository>()
             .AddScoped<IUnitRepository, UnitRepository>()
             .AddScoped<IInventoryRepository, InventoryRepository>()
             .AddScoped<IPartyRepository, PartyRepository>()
             .AddScoped<IQuestRepository, QuestRepository>()
             .AddScoped<IInventoryRepository, InventoryRepository>()
-            .AddScoped<IWeaponRepository, WeaponRepository>()
-            .AddScoped<IAbilityCrestRepository, AbilityCrestRepository>();
+            .AddScoped<IWeaponRepository, WeaponRepository>();
 
         return services;
     }

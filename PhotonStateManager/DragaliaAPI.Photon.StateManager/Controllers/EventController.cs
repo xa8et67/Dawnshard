@@ -1,4 +1,3 @@
-using DragaliaAPI.Photon.Shared.Models;
 using DragaliaAPI.Photon.Shared.Requests;
 using DragaliaAPI.Photon.StateManager.Authentication;
 using DragaliaAPI.Photon.StateManager.Models;
@@ -52,7 +51,7 @@ public class EventController : ControllerBase
     public async Task<IActionResult> GameCreate(GameCreateRequest request)
     {
         RedisGame newGame = new(request.Game);
-        newGame.Players.Add(request.Player);
+        newGame.Players.Add(new RedisPlayer(request.Player));
 
         await this.Games.InsertAsync(newGame, this.KeyExpiry);
         await this.Games.SaveAsync();
@@ -100,7 +99,7 @@ public class EventController : ControllerBase
             return this.Conflict();
         }
 
-        game.Players.Add(request.Player);
+        game.Players.Add(new RedisPlayer(request.Player));
         await this.Games.UpdateAsync(game);
 
         this.logger.LogInformation("Added player {@player} to game {@game}", request.Player, game);
@@ -124,7 +123,10 @@ public class EventController : ControllerBase
             return this.NotFound();
         }
 
-        Player? toRemove = game.Players.FirstOrDefault(x => x.ViewerId == request.Player.ViewerId);
+        RedisPlayer? toRemove = game.Players.FirstOrDefault(x =>
+            x.ViewerId == request.Player.ViewerId
+        );
+
         if (toRemove is null)
         {
             this.logger.LogInformation(

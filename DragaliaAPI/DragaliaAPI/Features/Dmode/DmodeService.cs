@@ -1,10 +1,10 @@
 ﻿using System.Collections.Immutable;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Features.DmodeDungeon;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared.Reward;
 using DragaliaAPI.Features.Shop;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models.Dmode;
@@ -260,16 +260,15 @@ public class DmodeService(
 
         expedition.State = ExpeditionState.Waiting;
 
-        DmodeExpedition dmodeExpedition =
-            new(
-                expedition.CharaId1,
-                expedition.CharaId2,
-                expedition.CharaId3,
-                expedition.CharaId4,
-                expedition.StartTime,
-                expedition.TargetFloor,
-                expedition.State
-            );
+        DmodeExpedition dmodeExpedition = new(
+            expedition.CharaId1,
+            expedition.CharaId2,
+            expedition.CharaId3,
+            expedition.CharaId4,
+            expedition.StartTime,
+            expedition.TargetFloor,
+            expedition.State
+        );
 
         logger.LogDebug(
             "Finishing expedition {@expedition}. Force-finished: {isForceFinish}",
@@ -283,7 +282,7 @@ public class DmodeService(
             expedition.CharaId1,
             expedition.CharaId2,
             expedition.CharaId3,
-            expedition.CharaId4
+            expedition.CharaId4,
         };
 
         List<AtgenRewardTalismanList> talismans = new();

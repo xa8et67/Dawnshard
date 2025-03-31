@@ -2,7 +2,7 @@
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Models.Generated;
 
-namespace DragaliaAPI.AutoMapper.Profiles;
+namespace DragaliaAPI.Mapping.AutoMapper;
 
 public class UserDataReverseMapProfile : Profile
 {
@@ -13,7 +13,6 @@ public class UserDataReverseMapProfile : Profile
 
         this.CreateMap<UserData, DbPlayerUserData>()
             .ForMember(x => x.TutorialFlag, opts => opts.Ignore()) // Mapped from TutorialFlagList
-            .ForMember(x => x.LastSaveImportTime, opts => opts.Ignore())
             .ForMember(x => x.ActiveMemoryEventId, opts => opts.MapFrom(src => 0));
     }
 }

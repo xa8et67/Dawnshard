@@ -4,17 +4,18 @@ using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Fort;
 using DragaliaAPI.Features.Missions;
 using DragaliaAPI.Features.Player;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared.Options;
+using DragaliaAPI.Features.Shared.Reward;
 using DragaliaAPI.Features.Shop;
+using DragaliaAPI.Infrastructure;
+using DragaliaAPI.Infrastructure.Results;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Models.Options;
-using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
-using MockQueryable.Moq;
+using MockQueryable;
 using Range = Moq.Range;
 
 namespace DragaliaAPI.Test.Features.Fort;
@@ -65,7 +66,7 @@ public class FortServiceTest
                             {
                                 Normal = 100,
                                 Ripe = 0,
-                                Succulent = 0
+                                Succulent = 0,
                             }
                         },
                         {
@@ -74,7 +75,7 @@ public class FortServiceTest
                             {
                                 Normal = 0,
                                 Ripe = 100,
-                                Succulent = 0
+                                Succulent = 0,
                             }
                         },
                         {
@@ -83,10 +84,10 @@ public class FortServiceTest
                             {
                                 Normal = 0,
                                 Ripe = 0,
-                                Succulent = 100
+                                Succulent = 100,
                             }
-                        }
-                    }
+                        },
+                    },
                 }
             );
 
@@ -126,7 +127,7 @@ public class FortServiceTest
                         BuildStartDate = new(2023, 04, 18, 18, 32, 34, TimeSpan.Zero),
                         Level = 5,
                         PlantId = FortPlants.Dragontree,
-                    }
+                    },
                 }
                     .AsQueryable()
                     .BuildMock()
@@ -157,7 +158,7 @@ public class FortServiceTest
     [Theory]
     [InlineData(2, 250)]
     [InlineData(3, 400)]
-    [InlineData(4, 750)]
+    [InlineData(4, 700)]
     public async Task AddCarpenter_Success_AddsCarpenterWithExpectedCost(
         int existingCarpenters,
         int expectedCost
@@ -225,14 +226,13 @@ public class FortServiceTest
     public async Task LevelupAtOnce_UpgradesBuilding()
     {
         DbPlayerUserData userData = new() { ViewerId = 1, BuildTimePoint = 1 };
-        DbFortBuild build =
-            new()
-            {
-                ViewerId = 1,
-                Level = 2,
-                BuildStartDate = FixedTime,
-                BuildEndDate = FixedTime + TimeSpan.FromSeconds(5)
-            };
+        DbFortBuild build = new()
+        {
+            ViewerId = 1,
+            Level = 2,
+            BuildStartDate = FixedTime,
+            BuildEndDate = FixedTime + TimeSpan.FromSeconds(5),
+        };
 
         mockFortMissionProgressionService
             .Setup(x => x.OnFortPlantLevelUp(0, 3))
@@ -254,15 +254,14 @@ public class FortServiceTest
     [Fact]
     public async Task CancelLevelup_CancelsUpgrade()
     {
-        DbFortBuild build =
-            new()
-            {
-                BuildId = 1,
-                ViewerId = 1,
-                BuildStartDate = FixedTime,
-                BuildEndDate = FixedTime + TimeSpan.FromDays(1),
-                Level = 2,
-            };
+        DbFortBuild build = new()
+        {
+            BuildId = 1,
+            ViewerId = 1,
+            BuildStartDate = FixedTime,
+            BuildEndDate = FixedTime + TimeSpan.FromDays(1),
+            Level = 2,
+        };
         mockFortRepository.Setup(x => x.GetBuilding(1)).ReturnsAsync(build);
 
         await fortService.CancelLevelup(1);
@@ -277,15 +276,14 @@ public class FortServiceTest
     [Fact]
     public async Task CancelBuild_CancelsUpgradeAndDeletes()
     {
-        DbFortBuild build =
-            new()
-            {
-                BuildId = 1,
-                ViewerId = 1,
-                BuildStartDate = FixedTime,
-                BuildEndDate = FixedTime + TimeSpan.FromDays(1),
-                Level = 0,
-            };
+        DbFortBuild build = new()
+        {
+            BuildId = 1,
+            ViewerId = 1,
+            BuildStartDate = FixedTime,
+            BuildEndDate = FixedTime + TimeSpan.FromDays(1),
+            Level = 0,
+        };
         mockFortRepository.Setup(x => x.GetBuilding(1)).ReturnsAsync(build);
         mockFortRepository.Setup(x => x.DeleteBuild(build));
 
@@ -297,15 +295,14 @@ public class FortServiceTest
     [Fact]
     public async Task CancelLevelup_NotBuilding_ThrowsInvalidOperationException()
     {
-        DbFortBuild build =
-            new()
-            {
-                BuildId = 1,
-                ViewerId = 1,
-                BuildStartDate = DateTimeOffset.UnixEpoch,
-                BuildEndDate = DateTimeOffset.UnixEpoch,
-                Level = 3,
-            };
+        DbFortBuild build = new()
+        {
+            BuildId = 1,
+            ViewerId = 1,
+            BuildStartDate = DateTimeOffset.UnixEpoch,
+            BuildEndDate = DateTimeOffset.UnixEpoch,
+            Level = 3,
+        };
         mockFortRepository.Setup(x => x.GetBuilding(1)).ReturnsAsync(build);
 
         await fortService
@@ -323,15 +320,14 @@ public class FortServiceTest
     [Fact]
     public async Task EndLevelup_ResetsBuildDates()
     {
-        DbFortBuild build =
-            new()
-            {
-                BuildId = 1,
-                ViewerId = 1,
-                BuildStartDate = DateTimeOffset.UnixEpoch,
-                BuildEndDate = FixedTime - TimeSpan.FromMinutes(1),
-                Level = 2,
-            };
+        DbFortBuild build = new()
+        {
+            BuildId = 1,
+            ViewerId = 1,
+            BuildStartDate = DateTimeOffset.UnixEpoch,
+            BuildEndDate = FixedTime - TimeSpan.FromMinutes(1),
+            Level = 2,
+        };
         mockFortRepository.Setup(x => x.GetBuilding(1)).ReturnsAsync(build);
 
         mockFortMissionProgressionService
@@ -350,15 +346,14 @@ public class FortServiceTest
     [Fact]
     public async Task EndLevelup_NotConstructionComplete_ThrowsInvalidOperationException()
     {
-        DbFortBuild build =
-            new()
-            {
-                BuildId = 1,
-                ViewerId = 1,
-                BuildStartDate = DateTimeOffset.MinValue,
-                BuildEndDate = DateTimeOffset.MaxValue,
-                Level = 2,
-            };
+        DbFortBuild build = new()
+        {
+            BuildId = 1,
+            ViewerId = 1,
+            BuildStartDate = DateTimeOffset.MinValue,
+            BuildEndDate = DateTimeOffset.MaxValue,
+            Level = 2,
+        };
         mockFortRepository.Setup(x => x.GetBuilding(1)).ReturnsAsync(build);
 
         await fortService
@@ -400,7 +395,7 @@ public class FortServiceTest
                                 BuildStartDate = DateTimeOffset.UnixEpoch,
                                 BuildEndDate = DateTimeOffset.UnixEpoch,
                                 IsNew = true,
-                                LastIncomeDate = DateTimeOffset.UnixEpoch
+                                LastIncomeDate = DateTimeOffset.UnixEpoch,
                             }
                         )
             );
@@ -428,6 +423,9 @@ public class FortServiceTest
             .Setup(x => x.GetFortDetail())
             .ReturnsAsync(new DbFortDetail() { ViewerId = 1, CarpenterNum = 1 });
         mockFortRepository.Setup(x => x.GetActiveCarpenters()).ReturnsAsync(1);
+        mockFortRepository
+            .Setup(x => x.Builds)
+            .Returns(Array.Empty<DbFortBuild>().AsQueryable().BuildMock());
 
         await fortService
             .Invoking(x => x.BuildStart(FortPlants.BlueFlowers, 2, 3))
@@ -443,13 +441,12 @@ public class FortServiceTest
     [Fact]
     public async Task LevelupStart_StartsBuilding()
     {
-        DbFortBuild build =
-            new()
-            {
-                ViewerId = 1,
-                Level = 20,
-                PlantId = FortPlants.Dragonata
-            };
+        DbFortBuild build = new()
+        {
+            ViewerId = 1,
+            Level = 20,
+            PlantId = FortPlants.Dragonata,
+        };
 
         mockUserDataRepository
             .Setup(x => x.GetFortOpenTimeAsync())
@@ -493,19 +490,21 @@ public class FortServiceTest
     [Fact]
     public async Task LevelupStart_InsufficientCarpenters_Throws()
     {
-        DbFortBuild build =
-            new()
-            {
-                ViewerId = 1,
-                Level = 20,
-                PlantId = FortPlants.Dragonata
-            };
+        DbFortBuild build = new()
+        {
+            ViewerId = 1,
+            Level = 20,
+            PlantId = FortPlants.Dragonata,
+        };
 
         mockFortRepository
             .Setup(x => x.GetFortDetail())
             .ReturnsAsync(new DbFortDetail() { ViewerId = 1, CarpenterNum = 1 });
         mockFortRepository.Setup(x => x.GetActiveCarpenters()).ReturnsAsync(1);
         mockFortRepository.Setup(x => x.GetBuilding(1)).ReturnsAsync(build);
+        mockFortRepository
+            .Setup(x => x.Builds)
+            .Returns(Array.Empty<DbFortBuild>().AsQueryable().BuildMock());
 
         await fortService
             .Invoking(x => x.LevelupStart(1))
@@ -524,15 +523,14 @@ public class FortServiceTest
     [Fact]
     public async Task Move_MovesBuilding()
     {
-        DbFortBuild build =
-            new()
-            {
-                ViewerId = 1,
-                Level = 20,
-                PlantId = FortPlants.Dragonata,
-                PositionX = 2,
-                PositionZ = 3,
-            };
+        DbFortBuild build = new()
+        {
+            ViewerId = 1,
+            Level = 20,
+            PlantId = FortPlants.Dragonata,
+            PositionX = 2,
+            PositionZ = 3,
+        };
 
         mockFortRepository.Setup(x => x.GetBuilding(1)).ReturnsAsync(build);
 
@@ -547,16 +545,15 @@ public class FortServiceTest
     [Fact]
     public async Task LevelupAtOnce_Wyrmite_ConsumesPayment()
     {
-        DbFortBuild build =
-            new()
-            {
-                ViewerId = 1,
-                BuildId = 444,
-                Level = 5,
-                PlantId = FortPlants.Smithy,
-                BuildStartDate = FixedTime,
-                BuildEndDate = FixedTime + TimeSpan.FromDays(7)
-            };
+        DbFortBuild build = new()
+        {
+            ViewerId = 1,
+            BuildId = 444,
+            Level = 5,
+            PlantId = FortPlants.Smithy,
+            BuildStartDate = FixedTime,
+            BuildEndDate = FixedTime + TimeSpan.FromDays(7),
+        };
 
         mockFortRepository.Setup(x => x.GetBuilding(444)).ReturnsAsync(build);
         mockPaymentService
@@ -583,16 +580,15 @@ public class FortServiceTest
     [Fact]
     public async Task LevelupAtOnce_PartialWyrmite_ConsumesPayment()
     {
-        DbFortBuild build =
-            new()
-            {
-                ViewerId = 1,
-                BuildId = 445,
-                Level = 5,
-                PlantId = FortPlants.Smithy,
-                BuildStartDate = FixedTime - TimeSpan.FromDays(1),
-                BuildEndDate = FixedTime + TimeSpan.FromDays(6)
-            };
+        DbFortBuild build = new()
+        {
+            ViewerId = 1,
+            BuildId = 445,
+            Level = 5,
+            PlantId = FortPlants.Smithy,
+            BuildStartDate = FixedTime - TimeSpan.FromDays(1),
+            BuildEndDate = FixedTime + TimeSpan.FromDays(6),
+        };
 
         const int wyrmiteDifference = 24 * 60 / 12;
 
@@ -621,16 +617,15 @@ public class FortServiceTest
     [Fact]
     public async Task LevelupAtOnce_HustleHammers_ConsumesPayment()
     {
-        DbFortBuild build =
-            new()
-            {
-                ViewerId = 1,
-                BuildId = 446,
-                Level = 5,
-                PlantId = FortPlants.Smithy,
-                BuildStartDate = FixedTime,
-                BuildEndDate = FixedTime + TimeSpan.FromDays(7)
-            };
+        DbFortBuild build = new()
+        {
+            ViewerId = 1,
+            BuildId = 446,
+            Level = 5,
+            PlantId = FortPlants.Smithy,
+            BuildStartDate = FixedTime,
+            BuildEndDate = FixedTime + TimeSpan.FromDays(7),
+        };
 
         mockFortRepository.Setup(x => x.GetBuilding(446)).ReturnsAsync(build);
         mockPaymentService

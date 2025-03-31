@@ -1,13 +1,14 @@
 ﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Utils;
 using DragaliaAPI.Features.Missions;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared;
+using DragaliaAPI.Features.Shared.Reward;
+using DragaliaAPI.Infrastructure.Results;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset.Models.Missions;
 using DragaliaAPI.Test.Utils;
-using MockQueryable.Moq;
+using MockQueryable;
 
 namespace DragaliaAPI.Test.Features.Missions;
 
@@ -39,18 +40,19 @@ public class MissionControllerTest
     [Fact]
     public async Task GetMissionList_ReturnsMissionList()
     {
-        MissionNotice notice =
-            new()
+        MissionNotice notice = new()
+        {
+            NormalMissionNotice = new AtgenNormalMissionNotice()
             {
-                NormalMissionNotice = new AtgenNormalMissionNotice()
-                {
-                    IsUpdate = true,
-                    AllMissionCount = 420
-                }
-            };
+                IsUpdate = true,
+                AllMissionCount = 420,
+            },
+        };
 
-        CurrentMainStoryMission mainStoryMission =
-            new(1337, new List<AtgenMainStoryMissionStateList>());
+        CurrentMainStoryMission mainStoryMission = new(
+            1337,
+            new List<AtgenMainStoryMissionStateList>()
+        );
 
         this.mockMissionService.Setup(x => x.GetMissionNotice(null)).ReturnsAsync(notice);
 
@@ -62,7 +64,7 @@ public class MissionControllerTest
                 {
                     NormalMissionList = [],
                     MissionNotice = notice,
-                    CurrentMainStoryMission = mainStoryMission
+                    CurrentMainStoryMission = mainStoryMission,
                 }
             );
 
@@ -83,15 +85,14 @@ public class MissionControllerTest
     [Fact]
     public async Task GetDrillMissionList_ReturnsDrillMissionList()
     {
-        MissionNotice notice =
-            new()
+        MissionNotice notice = new()
+        {
+            NormalMissionNotice = new AtgenNormalMissionNotice()
             {
-                NormalMissionNotice = new AtgenNormalMissionNotice()
-                {
-                    IsUpdate = true,
-                    AllMissionCount = 420
-                }
-            };
+                IsUpdate = true,
+                AllMissionCount = 420,
+            },
+        };
 
         this.mockMissionService.Setup(x => x.GetMissionNotice(null)).ReturnsAsync(notice);
         this.mockMissionService.Setup(x => x.GetCompletedDrillGroups())
@@ -108,8 +109,8 @@ public class MissionControllerTest
                         Id = 500,
                         State = MissionState.InProgress,
                         Start = DateTimeOffset.UnixEpoch,
-                        End = DateTimeOffset.UnixEpoch
-                    }
+                        End = DateTimeOffset.UnixEpoch,
+                    },
                 }
                     .AsQueryable()
                     .BuildMock()
@@ -148,18 +149,20 @@ public class MissionControllerTest
                         State = MissionState.Completed,
                         Type = MissionType.Drill,
                         Start = DateTimeOffset.UnixEpoch,
-                        End = DateTimeOffset.UnixEpoch
-                    }
+                        End = DateTimeOffset.UnixEpoch,
+                    },
                 }
             );
 
-        this.mockUpdateDataService.Setup(x => x.SaveChangesAsync(default))
+        this.mockUpdateDataService.Setup(x =>
+                x.SaveChangesAsync(TestContext.Current.CancellationToken)
+            )
             .ReturnsAsync(new UpdateDataList());
 
         DragaliaResult<MissionUnlockDrillMissionGroupResponse> resp =
             await this.missionController.UnlockDrillMissionGroup(
                 new MissionUnlockDrillMissionGroupRequest(100),
-                default
+                TestContext.Current.CancellationToken
             );
 
         MissionUnlockDrillMissionGroupResponse? response = resp.Value;
@@ -177,29 +180,30 @@ public class MissionControllerTest
     [Fact]
     public async Task UnlockMainMissionGroup_UnlocksGroupAndRewards()
     {
-        DbPlayerMission fakeMission =
-            new()
-            {
-                ViewerId = IdentityTestUtils.ViewerId,
-                Id = 5000,
-                State = MissionState.Completed,
-                Type = MissionType.MainStory,
-                Start = DateTimeOffset.UnixEpoch,
-                End = DateTimeOffset.UnixEpoch
-            };
+        DbPlayerMission fakeMission = new()
+        {
+            ViewerId = IdentityTestUtils.ViewerId,
+            Id = 5000,
+            State = MissionState.Completed,
+            Type = MissionType.MainStory,
+            Start = DateTimeOffset.UnixEpoch,
+            End = DateTimeOffset.UnixEpoch,
+        };
 
         MainStoryMissionGroupReward fakeReward = new(EntityTypes.FortPlant, 10, 500);
 
         this.mockMissionService.Setup(x => x.UnlockMainMissionGroup(100))
             .ReturnsAsync((new[] { fakeReward }, new[] { fakeMission }));
 
-        this.mockUpdateDataService.Setup(x => x.SaveChangesAsync(default))
+        this.mockUpdateDataService.Setup(x =>
+                x.SaveChangesAsync(TestContext.Current.CancellationToken)
+            )
             .ReturnsAsync(new UpdateDataList());
 
         DragaliaResult<MissionUnlockMainStoryGroupResponse> resp =
             await this.missionController.UnlockMainStoryMissionGroup(
                 new MissionUnlockMainStoryGroupRequest(100),
-                default
+                TestContext.Current.CancellationToken
             );
 
         MissionUnlockMainStoryGroupResponse? response = resp.Value;
@@ -243,7 +247,9 @@ public class MissionControllerTest
         this.mockMissionService.Setup(x => x.GetCompletedDrillGroups())
             .ReturnsAsync(new List<DrillMissionGroupList>() { new(1) });
 
-        this.mockUpdateDataService.Setup(x => x.SaveChangesAsync(default))
+        this.mockUpdateDataService.Setup(x =>
+                x.SaveChangesAsync(TestContext.Current.CancellationToken)
+            )
             .ReturnsAsync(new UpdateDataList());
 
         this.mockMissionRepository.Setup(x => x.GetMissionsByType(MissionType.Drill))
@@ -254,7 +260,7 @@ public class MissionControllerTest
         DragaliaResult<MissionReceiveDrillRewardResponse> resp =
             await this.missionController.ReceiveDrillStoryReward(
                 new MissionReceiveDrillRewardRequest(fakeIdList, Enumerable.Empty<int>()),
-                default
+                TestContext.Current.CancellationToken
             );
 
         MissionReceiveDrillRewardResponse? response = resp.Value;

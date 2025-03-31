@@ -1,26 +1,25 @@
-using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Reflection;
 using DragaliaAPI;
-using DragaliaAPI.Authentication;
 using DragaliaAPI.Database;
+using DragaliaAPI.Features.Dragalipatch;
 using DragaliaAPI.Features.GraphQL;
+using DragaliaAPI.Features.Shared.Options;
+using DragaliaAPI.Infrastructure;
+using DragaliaAPI.Infrastructure.Authentication;
 using DragaliaAPI.Infrastructure.Hangfire;
-using DragaliaAPI.MessagePack;
-using DragaliaAPI.Middleware;
-using DragaliaAPI.Models;
-using DragaliaAPI.Models.Options;
-using DragaliaAPI.Services.Health;
+using DragaliaAPI.Infrastructure.Middleware;
+using DragaliaAPI.Infrastructure.OutputCaching;
+using DragaliaAPI.Infrastructure.Serialization.MessagePack;
 using DragaliaAPI.Shared;
 using DragaliaAPI.Shared.MasterAsset;
 using EntityGraphQL.AspNet;
 using Hangfire;
+using LinqToDB.Data;
+using LinqToDB.EntityFrameworkCore;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.JSInterop;
+using Microsoft.FeatureManagement;
 using Serilog;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -42,47 +41,37 @@ builder
         reloadOnChange: true
     );
 
-builder.WebHost.UseStaticWebAssets();
+string kpfPath = Path.Combine(Directory.GetCurrentDirectory(), "config");
 
-builder.Logging.ClearProviders();
-builder.Logging.AddSerilog();
-builder.Host.UseSerilog(
-    (context, services, loggerConfig) =>
-        loggerConfig
-            .ReadFrom.Configuration(context.Configuration)
-            .ReadFrom.Services(services)
-            .Enrich.FromLogContext()
-            // Blazor keeps throwing these errors from MudBlazor internals; there is nothing we can do about them
-            .Filter.ByExcluding(evt => evt.Exception is JSDisconnectedException)
-);
+builder.Configuration.AddKeyPerFile(directoryPath: kpfPath, optional: true, reloadOnChange: true);
+
+builder.AddServiceDefaults();
+builder.ConfigureObservability();
 
 builder
     .Services.AddControllers()
-    .AddMvcOptions(option =>
+    .ConfigureApplicationPartManager(static manager =>
+        manager.FeatureProviders.Add(new CustomControllerFeatureProvider())
+    )
+    .AddMvcOptions(static option =>
     {
         option.OutputFormatters.Add(new CustomMessagePackOutputFormatter(CustomResolver.Options));
         option.InputFormatters.Add(new CustomMessagePackInputFormatter(CustomResolver.Options));
     });
 
-RedisOptions redisOptions =
-    builder.Configuration.GetSection(nameof(RedisOptions)).Get<RedisOptions>()
-    ?? throw new InvalidOperationException("Failed to get Redis config");
-HangfireOptions hangfireOptions =
-    builder.Configuration.GetSection(nameof(HangfireOptions)).Get<HangfireOptions>()
-    ?? new() { Enabled = false };
+HangfireOptions? hangfireOptions = builder
+    .Configuration.GetSection(nameof(HangfireOptions))
+    .Get<HangfireOptions>();
 
 builder.Services.ConfigureDatabaseServices(builder.Configuration);
+
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-    options.ConfigurationOptions = new()
-    {
-        EndPoints = new() { { redisOptions.Hostname, redisOptions.Port } },
-        Password = redisOptions.Password,
-    };
+    options.Configuration = builder.Configuration.GetConnectionString("redis");
     options.InstanceName = "RedisInstance";
 });
 
-if (hangfireOptions.Enabled)
+if (hangfireOptions is { Enabled: true })
 {
     builder.Services.ConfigureHangfire();
 }
@@ -92,80 +81,92 @@ builder.Services.AddDataProtection().PersistKeysToDbContext<ApiContext>();
 builder
     .Services.AddAuthorization()
     .ConfigureAuthentication()
-    .AddResponseCompression()
+    .AddOutputCache(static opts =>
+    {
+        opts.AddBasePolicy(
+            static cachePolicyBuilder =>
+                cachePolicyBuilder
+                    .AddPolicy<RepeatedRequestPolicy>()
+                    .Expire(TimeSpan.FromMinutes(2)),
+            excludeDefaultPolicy: true
+        );
+    })
     .ConfigureHealthchecks()
-    .AddAutoMapper(Assembly.GetExecutingAssembly());
+    .AddAutoMapper(Assembly.GetExecutingAssembly())
+    .AddFeatureManagement();
 
 builder
     .Services.ConfigureGameServices(builder.Configuration)
     .ConfigureGameOptions(builder.Configuration)
     .ConfigureSharedServices()
-    .ConfigureGraphQLSchema()
-    .ConfigureBlazorFrontend();
+    .ConfigureGraphQLSchema();
 
 WebApplication app = builder.Build();
+
+app.Logger.LogDebug("Using key-per-file configuration from path {KpfPath}", kpfPath);
 
 Stopwatch watch = new();
 app.Logger.LogInformation("Loading MasterAsset data.");
 
 watch.Start();
-await MasterAsset.LoadAsync();
+await MasterAsset.LoadAsync(app.Services.GetRequiredService<IFeatureManager>());
 watch.Stop();
 
 app.Logger.LogInformation("Loaded MasterAsset in {Time} ms.", watch.ElapsedMilliseconds);
+
+app.Logger.LogDebug(
+    "Using PostgreSQL connection {ConnectionString}",
+    builder.Configuration.GetConnectionString("postgres")
+);
+
+app.Logger.LogDebug(
+    "Using PostgreSQL connection {ConnectionString}",
+    builder.Configuration.GetConnectionString("postgres")
+);
 
 PostgresOptions postgresOptions = app
     .Services.GetRequiredService<IOptions<PostgresOptions>>()
     .Value;
 
-app.Logger.LogDebug(
-    "Using PostgreSQL connection {Host}:{Port}",
-    postgresOptions.Hostname,
-    postgresOptions.Port
-);
-
-app.Logger.LogDebug(
-    "Using Redis connection {Host}:{Port}",
-    redisOptions.Hostname,
-    redisOptions.Port
-);
-
 if (!postgresOptions.DisableAutoMigration)
-    app.MigrateDatabase();
-
-app.UseStaticFiles();
-app.UseAuthentication();
-app.UseResponseCompression();
-
-#pragma warning disable CA1861 // Avoid constant arrays as arguments. Only created once as top-level statement.
-FrozenSet<string> apiRoutePrefixes = new[]
 {
-    "/2.19.0_20220714193707",
-    "/2.19.0_20220719103923"
-}.ToFrozenSet();
-#pragma warning restore CA1861
+    app.MigrateDatabase();
+}
 
 // Game endpoints
 app.MapWhen(
-    ctx => apiRoutePrefixes.Any(prefix => ctx.Request.Path.StartsWithSegments(prefix)),
-    applicationBuilder =>
+    static ctx =>
+        DragaliaHttpConstants.RoutePrefixes.List.Any(prefix =>
+            ctx.Request.Path.StartsWithSegments(prefix)
+        ),
+    static applicationBuilder =>
     {
-        foreach (string prefix in apiRoutePrefixes)
+        foreach (string prefix in DragaliaHttpConstants.RoutePrefixes.List)
+        {
             applicationBuilder.UsePathBase(prefix);
+        }
 
+        applicationBuilder.UseMiddleware<HeaderLogContextMiddleware>();
+        applicationBuilder.UseSerilogRequestLogging();
+        applicationBuilder.UseAuthentication();
         applicationBuilder.UseRouting();
         applicationBuilder.UseAuthorization();
-        applicationBuilder.UseMiddleware<PlayerIdentityLoggingMiddleware>();
-        applicationBuilder.UseSerilogRequestLogging();
+        applicationBuilder.UseMiddleware<IdentityLogContextMiddleware>();
+        applicationBuilder.UseMiddleware<ResultCodeLoggingMiddleware>();
+        applicationBuilder.UseOutputCache();
         applicationBuilder.UseMiddleware<NotFoundHandlerMiddleware>();
-        applicationBuilder.UseMiddleware<ExceptionHandlerMiddleware>();
+        applicationBuilder.UseExceptionHandler(cfg =>
+            cfg.Run(ExceptionHandlerMiddleware.HandleAsync)
+        );
         applicationBuilder.UseMiddleware<DailyResetMiddleware>();
         applicationBuilder.UseEndpoints(endpoints =>
         {
             endpoints.MapControllers();
             endpoints.MapGraphQL<ApiContext>(configureEndpoint: endpoint =>
                 endpoint.RequireAuthorization(policy =>
-                    policy.RequireAuthenticatedUser().AddAuthenticationSchemes(SchemeName.Developer)
+                    policy
+                        .RequireAuthenticatedUser()
+                        .AddAuthenticationSchemes(AuthConstants.SchemeNames.Developer)
                 )
             );
         });
@@ -175,22 +176,14 @@ app.MapWhen(
 // Svelte website API
 app.MapWhen(
     static ctx => ctx.Request.Path.StartsWithSegments("/api"),
-    applicationBuilder =>
+    static applicationBuilder =>
     {
-        // todo unfuck cors
-        applicationBuilder.UseCors(cors =>
-            cors.WithOrigins("http://localhost:3001")
-                .AllowCredentials()
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-        );
         applicationBuilder.UseRouting();
         applicationBuilder.UseSerilogRequestLogging();
 #pragma warning disable ASP0001
         applicationBuilder.UseAuthorization();
 #pragma warning restore ASP0001
-        applicationBuilder.UseAntiforgery();
-        applicationBuilder.UseMiddleware<PlayerIdentityLoggingMiddleware>();
+        applicationBuilder.UseMiddleware<IdentityLogContextMiddleware>();
         applicationBuilder.UseEndpoints(endpoints =>
         {
             endpoints.MapControllers();
@@ -198,28 +191,7 @@ app.MapWhen(
     }
 );
 
-// Blazor website
-app.MapWhen(
-    static ctx => !ctx.Request.Path.StartsWithSegments("/api"),
-    applicationBuilder =>
-    {
-        {
-            applicationBuilder.UseRouting();
-#pragma warning disable ASP0001
-            applicationBuilder.UseAuthorization();
-#pragma warning restore ASP0001
-            applicationBuilder.UseAntiforgery();
-            applicationBuilder.UseMiddleware<PlayerIdentityLoggingMiddleware>();
-            applicationBuilder.UseEndpoints(endpoints =>
-            {
-                endpoints.MapRazorPages();
-                endpoints.MapRazorComponents<App>().AddInteractiveServerRenderMode();
-            });
-        }
-    }
-);
-
-if (hangfireOptions.Enabled)
+if (hangfireOptions is { Enabled: true })
 {
     app.AddHangfireJobs();
     app.UseHangfireDashboard();
@@ -228,30 +200,16 @@ if (hangfireOptions.Enabled)
         {
             policy
                 .RequireAuthenticatedUser()
-                .RequireRole(Constants.Roles.Developer)
-                .AddAuthenticationSchemes(SchemeName.Developer);
+                .RequireRole(AuthConstants.Roles.Developer)
+                .AddAuthenticationSchemes(AuthConstants.SchemeNames.Developer);
         });
 }
 
-app.MapHealthChecks(
-    "/health",
-    new HealthCheckOptions() { ResponseWriter = HealthCheckWriter.WriteResponse }
-);
-app.MapGet("/ping", () => Results.Ok());
-app.MapGet(
-    "/dragalipatch/config",
-    (
-        [FromServices] IOptionsMonitor<LoginOptions> loginOptions,
-        [FromServices] IOptionsMonitor<DragalipatchOptions> patchOptions
-    ) =>
-        new DragalipatchResponse()
-        {
-            Mode = patchOptions.CurrentValue.Mode,
-            ConeshellKey = patchOptions.CurrentValue.ConeshellKey,
-            CdnUrl = patchOptions.CurrentValue.CdnUrl,
-            UseUnifiedLogin = loginOptions.CurrentValue.UseBaasLogin
-        }
-);
+app.MapDefaultEndpoints();
+app.MapDragalipatchConfigEndpoint();
+
+LinqToDBForEFTools.Initialize();
+DataConnection.TurnTraceSwitchOn();
 
 app.Run();
 

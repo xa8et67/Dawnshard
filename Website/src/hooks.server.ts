@@ -1,31 +1,106 @@
-import { PUBLIC_DAWNSHARD_API_URL } from '$env/static/public';
-import { DAWNSHARD_API_URL_SSR } from '$env/static/private';
-import type { Handle, HandleFetch } from '@sveltejs/kit';
+import { randomUUID } from 'node:crypto';
+
+import type { Handle, HandleFetch, HandleServerError } from '@sveltejs/kit';
+import { sequence } from '@sveltejs/kit/hooks';
+import { generateSetInitialModeExpression } from 'mode-watcher';
+
+import { env } from '$env/dynamic/private';
+import { PUBLIC_ENABLE_MSW } from '$env/static/public';
 import Cookies from '$lib/auth/cookies.ts';
 import getJwtMetadata from '$lib/auth/jwt.ts';
+import createLogger from '$lib/server/logger.ts';
 
-const publicApiUrl = new URL(PUBLIC_DAWNSHARD_API_URL);
-const internalApiUrl = new URL(DAWNSHARD_API_URL_SSR);
+if (!env.DAWNSHARD_API_URL_SSR) {
+  throw new Error('Failed to load environment variable DAWNSHARD_API_URL_SSR!');
+}
 
-export const handleFetch: HandleFetch = ({ request, fetch }) => {
+const internalApiUrl = new URL(env.DAWNSHARD_API_URL_SSR);
+
+if (PUBLIC_ENABLE_MSW === 'true') {
+  const { server } = await import('./mocks/node');
+  server.listen({
+    onUnhandledRequest: (request, print) => {
+      if (!request.url.includes('baas.lukefz.xyz')) {
+        print.warning();
+      }
+    }
+  });
+}
+
+export const handleFetch: HandleFetch = ({ request, event, fetch }) => {
+  const { logger } = event.locals;
   const requestUrl = new URL(request.url);
-  if (requestUrl.origin === publicApiUrl.origin) {
+
+  logger.debug({ url: requestUrl.href }, 'Sending fetch request to {url}');
+
+  if (event.url.origin === requestUrl.origin && requestUrl.pathname.startsWith('/api')) {
     // Rewrite URL to internal
-    const newUrl = request.url.replace(publicApiUrl.origin, internalApiUrl.origin);
+    const newUrl = request.url.replace(requestUrl.origin, internalApiUrl.origin);
+    logger.debug(
+      { oldUrl: requestUrl.href, newUrl },
+      'Rewriting request: from {oldUrl} to {newUrl}'
+    );
+
+    // We need to explicitly add the JWT back in, because SvelteKit seems to refuse to forward cookies here; it's
+    // possible it views the request as changing origins and no longer internal.
+    const idToken = event.cookies.get(Cookies.IdToken);
+    if (idToken) {
+      request.headers.append('Authorization', `Bearer ${idToken}`);
+    }
+
     return fetch(new Request(newUrl, request));
   }
 
   return fetch(request);
 };
 
-export const handle: Handle = ({ event, resolve }) => {
+const handleHeadScript: Handle = ({ event, resolve }) => {
+  if (event.request.url.includes('webview')) {
+    // Don't inject dark mode script into webview pages, otherwise a user with the storage key set
+    // from visiting the actual website will get dark mode in-game, which looks bad
+    return resolve(event);
+  }
+
+  return resolve(event, {
+    transformPageChunk: ({ html }) => {
+      return html.replace('%modewatcher.snippet%', generateSetInitialModeExpression({}));
+    }
+  });
+};
+
+const handleLogger: Handle = ({ event, resolve }) => {
+  event.locals.logger = createLogger({
+    requestPath: new URL(event.request.url).pathname,
+    requestId: randomUUID()
+  });
+
+  return resolve(event);
+};
+
+const handleAuth: Handle = ({ event, resolve }) => {
   const idToken = event.cookies.get(Cookies.IdToken);
+
   if (!idToken) {
     event.locals.hasValidJwt = false;
+    return resolve(event);
+  }
+
+  const jwtMetadata = getJwtMetadata(idToken);
+  const valid = jwtMetadata.valid && jwtMetadata.expiryTimestampMs > Date.now();
+
+  event.locals.hasValidJwt = valid;
+
+  if (!valid) {
+    event.cookies.delete(Cookies.IdToken, { path: '/' });
   } else {
-    const jwtMetadata = getJwtMetadata(idToken);
-    event.locals.hasValidJwt = jwtMetadata.valid && jwtMetadata.expiryTimestampMs > Date.now();
+    event.locals.logger.fields['jwtSubject'] = jwtMetadata.subject;
   }
 
   return resolve(event);
+};
+
+export const handle = sequence(handleHeadScript, handleLogger, handleAuth);
+
+export const handleError: HandleServerError = ({ error, event, status, message }) => {
+  event.locals.logger.error({ error, status, message }, 'Unhandled error occurred: {message}');
 };

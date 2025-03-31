@@ -1,5 +1,6 @@
 ﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Utils;
+using DragaliaAPI.Infrastructure.Results;
 using DragaliaAPI.Shared.MasterAsset.Models.Missions;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,7 +13,6 @@ public class DungeonSkipTest : TestFixture
     public DungeonSkipTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
         : base(factory, outputHelper)
     {
-        CommonAssertionOptions.ApplyTimeOptions();
         this.MockTimeProvider.SetUtcNow(DateTimeOffset.UtcNow);
     }
 
@@ -28,7 +28,7 @@ public class DungeonSkipTest : TestFixture
             {
                 ViewerId = ViewerId,
                 QuestId = questId,
-                State = 3
+                State = 3,
             }
         );
 
@@ -43,9 +43,10 @@ public class DungeonSkipTest : TestFixture
                 {
                     PartyNo = 1,
                     PlayCount = playCount,
-                    SupportViewerId = 1000,
-                    QuestId = questId
-                }
+                    SupportViewerId = long.MaxValue - 1,
+                    QuestId = questId,
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response.Data.IngameResultData.RewardRecord.DropAll.Should().NotBeEmpty();
@@ -89,7 +90,7 @@ public class DungeonSkipTest : TestFixture
             {
                 ViewerId = ViewerId,
                 QuestId = questId,
-                State = 3
+                State = 3,
             }
         );
 
@@ -103,13 +104,14 @@ public class DungeonSkipTest : TestFixture
                 new DungeonSkipStartAssignUnitRequest()
                 {
                     PlayCount = playCount,
-                    SupportViewerId = 1000,
+                    SupportViewerId = long.MaxValue - 1,
                     QuestId = questId,
                     RequestPartySettingList = new List<PartySettingList>()
                     {
-                        new() { CharaId = Shared.Definitions.Enums.Charas.ThePrince, }
-                    }
-                }
+                        new() { CharaId = Shared.Definitions.Enums.Charas.ThePrince },
+                    },
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response.Data.IngameResultData.RewardRecord.DropAll.Should().NotBeEmpty();
@@ -161,17 +163,18 @@ public class DungeonSkipTest : TestFixture
                 $"{Endpoint}/start_multiple_quest",
                 new DungeonSkipStartMultipleQuestRequest()
                 {
-                    SupportViewerId = 1000,
+                    SupportViewerId = long.MaxValue - 1,
                     PartyNo = 1,
                     RequestQuestMultipleList = new List<AtgenRequestQuestMultipleList>
                     {
-                        new() { QuestId = atpMaster, PlayCount = 1, },
-                        new() { QuestId = flameRuinsExpert, PlayCount = 1, },
-                        new() { QuestId = atfMaster, PlayCount = 1, },
-                        new() { QuestId = brunhildaMaster, PlayCount = 1, },
-                        new() { QuestId = flameIoStandard, PlayCount = 1, },
-                    }
-                }
+                        new() { QuestId = atpMaster, PlayCount = 1 },
+                        new() { QuestId = flameRuinsExpert, PlayCount = 1 },
+                        new() { QuestId = atfMaster, PlayCount = 1 },
+                        new() { QuestId = brunhildaMaster, PlayCount = 1 },
+                        new() { QuestId = flameIoStandard, PlayCount = 1 },
+                    },
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response.Data.IngameResultData.RewardRecord.DropAll.Should().NotBeEmpty();
@@ -197,7 +200,7 @@ public class DungeonSkipTest : TestFixture
                     flameRuinsExpert,
                     atfMaster,
                     brunhildaMaster,
-                    flameIoStandard
+                    flameIoStandard,
                 }
             );
         response
@@ -248,8 +251,9 @@ public class DungeonSkipTest : TestFixture
                     PartyNo = 1,
                     PlayCount = playCount,
                     SupportViewerId = 1000,
-                    QuestId = questId
-                }
+                    QuestId = questId,
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response
@@ -266,9 +270,44 @@ public class DungeonSkipTest : TestFixture
                     QuestBonusReserveCount = 3,
                     QuestBonusReserveTime = response.Data.IngameResultData.EndTime,
                     QuestBonusStackCount = 0,
-                    QuestBonusStackTime = DateTimeOffset.UnixEpoch
-                }
+                    QuestBonusStackTime = DateTimeOffset.UnixEpoch,
+                },
+                opts => opts.WithDateTimeTolerance(TimeSpan.FromSeconds(10))
             );
+    }
+
+    [Fact]
+    public async Task DungeonSkipStart_RewardsCorrectDragonEssences()
+    {
+        // Ch. 5 / 4-3 Dark Terminus (Hard)
+        int questId = 100050209;
+        int existingEssenceQuantity = this
+            .ApiContext.PlayerMaterials.Where(x => x.ViewerId == this.ViewerId)
+            .First(x => x.MaterialId == Materials.ChthoniussEssence)
+            .Quantity;
+
+        await this.AddToDatabase(new DbQuest() { QuestId = questId, DailyPlayCount = 0 });
+
+        DungeonSkipStartResponse response = (
+            await this.Client.PostMsgpack<DungeonSkipStartResponse>(
+                $"{Endpoint}/start",
+                new DungeonSkipStartRequest()
+                {
+                    PartyNo = 1,
+                    PlayCount = 4,
+                    SupportViewerId = 1000,
+                    QuestId = questId,
+                },
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+        ).Data;
+
+        response.UpdateDataList.MaterialList.Should().NotBeNull();
+        response
+            .UpdateDataList.MaterialList.Should()
+            .Contain(x => x.MaterialId == Materials.ChthoniussEssence)
+            .Which.Quantity.Should()
+            .Be(existingEssenceQuantity + 3);
     }
 
     [Fact]
@@ -284,14 +323,14 @@ public class DungeonSkipTest : TestFixture
                 {
                     ViewerId = ViewerId,
                     QuestId = questId,
-                    State = 3
+                    State = 3,
                 },
                 new DbPlayerMission()
                 {
                     Id = clear5QuestsMission,
                     Type = MissionType.Daily,
                     State = MissionState.InProgress,
-                }
+                },
             ]
         );
 
@@ -303,8 +342,9 @@ public class DungeonSkipTest : TestFixture
                     PartyNo = 1,
                     PlayCount = playCount,
                     SupportViewerId = 1000,
-                    QuestId = questId
-                }
+                    QuestId = questId,
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response

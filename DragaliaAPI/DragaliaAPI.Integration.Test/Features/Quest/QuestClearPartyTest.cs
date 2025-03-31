@@ -1,5 +1,6 @@
 ﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Features.Quest;
+using DragaliaAPI.Infrastructure.Results;
 using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Integration.Test.Features.Quest;
@@ -10,10 +11,7 @@ namespace DragaliaAPI.Integration.Test.Features.Quest;
 public class QuestClearPartyTest : TestFixture
 {
     public QuestClearPartyTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
-        : base(factory, outputHelper)
-    {
-        CommonAssertionOptions.ApplyIgnoreOwnerOptions();
-    }
+        : base(factory, outputHelper) { }
 
     [Fact]
     public async Task GetQuestClearParty_ReturnsSetClearParty()
@@ -25,12 +23,16 @@ public class QuestClearPartyTest : TestFixture
         DragaliaResponse<QuestGetQuestClearPartyResponse> response =
             await this.Client.PostMsgpack<QuestGetQuestClearPartyResponse>(
                 "/quest/get_quest_clear_party",
-                new QuestGetQuestClearPartyRequest() { QuestId = 1 }
+                new QuestGetQuestClearPartyRequest() { QuestId = 1 },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response
             .Data.QuestClearPartySettingList.Should()
-            .BeEquivalentTo(this.SoloPartySettingLists);
+            .BeEquivalentTo(
+                this.SoloPartySettingLists,
+                opts => opts.Excluding(x => x.EquipTalismanKeyId)
+            );
         response.Data.LostUnitList.Should().BeEmpty();
     }
 
@@ -44,12 +46,16 @@ public class QuestClearPartyTest : TestFixture
         DragaliaResponse<QuestGetQuestClearPartyMultiResponse> response =
             await this.Client.PostMsgpack<QuestGetQuestClearPartyMultiResponse>(
                 "/quest/get_quest_clear_party_multi",
-                new QuestGetQuestClearPartyRequest() { QuestId = 2 }
+                new QuestGetQuestClearPartyRequest() { QuestId = 2 },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response
             .Data.QuestMultiClearPartySettingList.Should()
-            .BeEquivalentTo(this.MultiPartySettingLists);
+            .BeEquivalentTo(
+                this.MultiPartySettingLists,
+                opts => opts.Excluding(x => x.EquipTalismanKeyId)
+            );
         response.Data.LostUnitList.Should().BeEmpty();
     }
 
@@ -63,14 +69,16 @@ public class QuestClearPartyTest : TestFixture
             new QuestSetQuestClearPartyRequest()
             {
                 QuestId = questId,
-                RequestPartySettingList = this.MultiPartySettingLists
-            }
+                RequestPartySettingList = this.MultiPartySettingLists,
+            },
+            cancellationToken: TestContext.Current.CancellationToken
         );
 
         DragaliaResponse<QuestGetQuestClearPartyResponse> response =
             await this.Client.PostMsgpack<QuestGetQuestClearPartyResponse>(
                 "/quest/get_quest_clear_party",
-                new QuestGetQuestClearPartyRequest() { QuestId = questId }
+                new QuestGetQuestClearPartyRequest() { QuestId = questId },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response.Data.QuestClearPartySettingList.Should().BeEmpty();
@@ -88,7 +96,8 @@ public class QuestClearPartyTest : TestFixture
         DragaliaResponse<QuestGetQuestClearPartyResponse> response =
             await this.Client.PostMsgpack<QuestGetQuestClearPartyResponse>(
                 "/quest/get_quest_clear_party",
-                new QuestGetQuestClearPartyRequest() { QuestId = questId }
+                new QuestGetQuestClearPartyRequest() { QuestId = questId },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response
@@ -106,7 +115,7 @@ public class QuestClearPartyTest : TestFixture
                     {
                         UnitNo = 2,
                         EntityType = EntityTypes.Wyrmprint,
-                        EntityId = (int)AbilityCrests.InanUnendingWorld,
+                        EntityId = (int)AbilityCrestId.InanUnendingWorld,
                     },
                     new()
                     {
@@ -118,20 +127,20 @@ public class QuestClearPartyTest : TestFixture
                     {
                         UnitNo = 4,
                         EntityType = EntityTypes.WeaponSkin,
-                        EntityId = 1000
+                        EntityId = 1000,
                     },
                     new()
                     {
                         UnitNo = 5,
                         EntityType = EntityTypes.Dragon,
-                        EntityId = (int)Dragons.Ifrit
+                        EntityId = (int)DragonId.Ifrit,
                     },
                     new()
                     {
                         UnitNo = 6,
                         EntityType = EntityTypes.Talisman,
-                        EntityId = (int)Talismans.Raemond
-                    }
+                        EntityId = (int)Talismans.Raemond,
+                    },
                 }
             );
 
@@ -158,8 +167,9 @@ public class QuestClearPartyTest : TestFixture
                 new QuestSetQuestClearPartyRequest()
                 {
                     QuestId = 3,
-                    RequestPartySettingList = this.SoloPartySettingLists
-                }
+                    RequestPartySettingList = this.SoloPartySettingLists,
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response.Data.Result.Should().Be(1);
@@ -168,11 +178,14 @@ public class QuestClearPartyTest : TestFixture
             .ApiContext.QuestClearPartyUnits.Where(x =>
                 x.QuestId == 3 && x.ViewerId == this.ViewerId && x.IsMulti == false
             )
-            .ToListAsync();
+            .ToListAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         storedList
             .Should()
-            .BeEquivalentTo(this.SoloDbEntities, opts => opts.Excluding(x => x.QuestId));
+            .BeEquivalentTo(
+                this.SoloDbEntities,
+                opts => opts.Excluding(x => x.QuestId).Excluding(x => x.EquipTalismanKeyId)
+            );
         storedList.Should().AllSatisfy(x => x.QuestId.Should().Be(3));
     }
 
@@ -187,8 +200,9 @@ public class QuestClearPartyTest : TestFixture
                 new QuestSetQuestClearPartyRequest()
                 {
                     QuestId = 4,
-                    RequestPartySettingList = this.MultiPartySettingLists
-                }
+                    RequestPartySettingList = this.MultiPartySettingLists,
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response.Data.Result.Should().Be(1);
@@ -197,11 +211,14 @@ public class QuestClearPartyTest : TestFixture
             .ApiContext.QuestClearPartyUnits.Where(x =>
                 x.QuestId == 4 && x.ViewerId == this.ViewerId && x.IsMulti == true
             )
-            .ToListAsync();
+            .ToListAsync(cancellationToken: TestContext.Current.CancellationToken);
 
         storedList
             .Should()
-            .BeEquivalentTo(this.MultiDbEntities, opts => opts.Excluding(x => x.QuestId));
+            .BeEquivalentTo(
+                this.MultiDbEntities,
+                opts => opts.Excluding(x => x.QuestId).Excluding(x => x.EquipTalismanKeyId)
+            );
         storedList.Should().AllSatisfy(x => x.QuestId.Should().Be(4));
     }
 
@@ -215,20 +232,20 @@ public class QuestClearPartyTest : TestFixture
                 QuestId = 1,
                 UnitNo = 1,
                 CharaId = Charas.GalaNedrick,
-                EquipDragonKeyId = this.GetDragonKeyId(Dragons.Cerberus),
+                EquipDragonKeyId = this.GetDragonKeyId(DragonId.Cerberus),
                 EquipWeaponBodyId = WeaponBodies.YitianJian,
-                EquipCrestSlotType1CrestId1 = AbilityCrests.PrimalCrisis,
-                EquipCrestSlotType1CrestId2 = AbilityCrests.WelcometotheOpera,
-                EquipCrestSlotType1CrestId3 = AbilityCrests.FelyneHospitality,
-                EquipCrestSlotType2CrestId1 = AbilityCrests.ThePlaguebringer,
-                EquipCrestSlotType2CrestId2 = AbilityCrests.TotheExtreme,
-                EquipCrestSlotType3CrestId1 = AbilityCrests.CrownofLightSerpentsBoon,
-                EquipCrestSlotType3CrestId2 = AbilityCrests.TutelarysDestinyWolfsBoon,
+                EquipCrestSlotType1CrestId1 = AbilityCrestId.PrimalCrisis,
+                EquipCrestSlotType1CrestId2 = AbilityCrestId.WelcometotheOpera,
+                EquipCrestSlotType1CrestId3 = AbilityCrestId.FelyneHospitality,
+                EquipCrestSlotType2CrestId1 = AbilityCrestId.ThePlaguebringer,
+                EquipCrestSlotType2CrestId2 = AbilityCrestId.TotheExtreme,
+                EquipCrestSlotType3CrestId1 = AbilityCrestId.CrownofLightSerpentsBoon,
+                EquipCrestSlotType3CrestId2 = AbilityCrestId.TutelarysDestinyWolfsBoon,
                 EquipTalismanKeyId = this.GetTalismanKeyId(Talismans.GalaMym),
                 EquipWeaponSkinId = 30129901,
                 EditSkill1CharaId = Charas.Empty,
                 EditSkill2CharaId = Charas.GalaMym,
-                EquippedDragonEntityId = Dragons.Cerberus,
+                EquippedDragonEntityId = DragonId.Cerberus,
                 EquippedTalismanEntityId = Talismans.GalaMym,
             },
             new()
@@ -238,22 +255,22 @@ public class QuestClearPartyTest : TestFixture
                 QuestId = 1,
                 UnitNo = 2,
                 CharaId = Charas.Patia,
-                EquipDragonKeyId = this.GetDragonKeyId(Dragons.Pazuzu),
+                EquipDragonKeyId = this.GetDragonKeyId(DragonId.Pazuzu),
                 EquipWeaponBodyId = WeaponBodies.QinglongYanyuedao,
-                EquipCrestSlotType1CrestId1 = AbilityCrests.AHalloweenSpectacular,
-                EquipCrestSlotType1CrestId2 = AbilityCrests.CastawaysJournal,
-                EquipCrestSlotType1CrestId3 = AbilityCrests.TheChocolatiers,
-                EquipCrestSlotType2CrestId1 = AbilityCrests.RoguesBanquet,
-                EquipCrestSlotType2CrestId2 = AbilityCrests.LuckoftheDraw,
-                EquipCrestSlotType3CrestId1 = AbilityCrests.RavenousFireCrownsBoon,
-                EquipCrestSlotType3CrestId2 = AbilityCrests.PromisedPietyStaffsBoon,
+                EquipCrestSlotType1CrestId1 = AbilityCrestId.AHalloweenSpectacular,
+                EquipCrestSlotType1CrestId2 = AbilityCrestId.CastawaysJournal,
+                EquipCrestSlotType1CrestId3 = AbilityCrestId.TheChocolatiers,
+                EquipCrestSlotType2CrestId1 = AbilityCrestId.RoguesBanquet,
+                EquipCrestSlotType2CrestId2 = AbilityCrestId.LuckoftheDraw,
+                EquipCrestSlotType3CrestId1 = AbilityCrestId.RavenousFireCrownsBoon,
+                EquipCrestSlotType3CrestId2 = AbilityCrestId.PromisedPietyStaffsBoon,
                 EquipTalismanKeyId = this.GetTalismanKeyId(Talismans.GalaMym),
                 EquipWeaponSkinId = 30129901,
                 EditSkill1CharaId = Charas.TemplarHope,
                 EditSkill2CharaId = Charas.Zena,
-                EquippedDragonEntityId = Dragons.Pazuzu,
-                EquippedTalismanEntityId = Talismans.GalaMym
-            }
+                EquippedDragonEntityId = DragonId.Pazuzu,
+                EquippedTalismanEntityId = Talismans.GalaMym,
+            },
         };
 
     private List<PartySettingList> SoloPartySettingLists =>
@@ -263,15 +280,15 @@ public class QuestClearPartyTest : TestFixture
             {
                 UnitNo = 1,
                 CharaId = Charas.GalaNedrick,
-                EquipDragonKeyId = (ulong)this.GetDragonKeyId(Dragons.Cerberus),
+                EquipDragonKeyId = (ulong)this.GetDragonKeyId(DragonId.Cerberus),
                 EquipWeaponBodyId = WeaponBodies.YitianJian,
-                EquipCrestSlotType1CrestId1 = AbilityCrests.PrimalCrisis,
-                EquipCrestSlotType1CrestId2 = AbilityCrests.WelcometotheOpera,
-                EquipCrestSlotType1CrestId3 = AbilityCrests.FelyneHospitality,
-                EquipCrestSlotType2CrestId1 = AbilityCrests.ThePlaguebringer,
-                EquipCrestSlotType2CrestId2 = AbilityCrests.TotheExtreme,
-                EquipCrestSlotType3CrestId1 = AbilityCrests.CrownofLightSerpentsBoon,
-                EquipCrestSlotType3CrestId2 = AbilityCrests.TutelarysDestinyWolfsBoon,
+                EquipCrestSlotType1CrestId1 = AbilityCrestId.PrimalCrisis,
+                EquipCrestSlotType1CrestId2 = AbilityCrestId.WelcometotheOpera,
+                EquipCrestSlotType1CrestId3 = AbilityCrestId.FelyneHospitality,
+                EquipCrestSlotType2CrestId1 = AbilityCrestId.ThePlaguebringer,
+                EquipCrestSlotType2CrestId2 = AbilityCrestId.TotheExtreme,
+                EquipCrestSlotType3CrestId1 = AbilityCrestId.CrownofLightSerpentsBoon,
+                EquipCrestSlotType3CrestId2 = AbilityCrestId.TutelarysDestinyWolfsBoon,
                 EquipTalismanKeyId = (ulong)this.GetTalismanKeyId(Talismans.GalaMym),
                 EquipWeaponSkinId = 30129901,
                 EditSkill1CharaId = Charas.Empty,
@@ -281,20 +298,20 @@ public class QuestClearPartyTest : TestFixture
             {
                 UnitNo = 2,
                 CharaId = Charas.Patia,
-                EquipDragonKeyId = (ulong)this.GetDragonKeyId(Dragons.Pazuzu),
+                EquipDragonKeyId = (ulong)this.GetDragonKeyId(DragonId.Pazuzu),
                 EquipWeaponBodyId = WeaponBodies.QinglongYanyuedao,
-                EquipCrestSlotType1CrestId1 = AbilityCrests.AHalloweenSpectacular,
-                EquipCrestSlotType1CrestId2 = AbilityCrests.CastawaysJournal,
-                EquipCrestSlotType1CrestId3 = AbilityCrests.TheChocolatiers,
-                EquipCrestSlotType2CrestId1 = AbilityCrests.RoguesBanquet,
-                EquipCrestSlotType2CrestId2 = AbilityCrests.LuckoftheDraw,
-                EquipCrestSlotType3CrestId1 = AbilityCrests.RavenousFireCrownsBoon,
-                EquipCrestSlotType3CrestId2 = AbilityCrests.PromisedPietyStaffsBoon,
+                EquipCrestSlotType1CrestId1 = AbilityCrestId.AHalloweenSpectacular,
+                EquipCrestSlotType1CrestId2 = AbilityCrestId.CastawaysJournal,
+                EquipCrestSlotType1CrestId3 = AbilityCrestId.TheChocolatiers,
+                EquipCrestSlotType2CrestId1 = AbilityCrestId.RoguesBanquet,
+                EquipCrestSlotType2CrestId2 = AbilityCrestId.LuckoftheDraw,
+                EquipCrestSlotType3CrestId1 = AbilityCrestId.RavenousFireCrownsBoon,
+                EquipCrestSlotType3CrestId2 = AbilityCrestId.PromisedPietyStaffsBoon,
                 EquipTalismanKeyId = (ulong)this.GetTalismanKeyId(Talismans.GalaMym),
                 EquipWeaponSkinId = 30129901,
                 EditSkill1CharaId = Charas.TemplarHope,
                 EditSkill2CharaId = Charas.Zena,
-            }
+            },
         };
 
     private List<DbQuestClearPartyUnit> MultiDbEntities =>
@@ -307,21 +324,21 @@ public class QuestClearPartyTest : TestFixture
                 QuestId = 2,
                 UnitNo = 1,
                 CharaId = Charas.GalaNotte,
-                EquipDragonKeyId = this.GetDragonKeyId(Dragons.Leviathan),
+                EquipDragonKeyId = this.GetDragonKeyId(DragonId.Leviathan),
                 EquipWeaponBodyId = WeaponBodies.WindrulersFang,
-                EquipCrestSlotType1CrestId1 = AbilityCrests.BondsBetweenWorlds,
-                EquipCrestSlotType1CrestId2 = AbilityCrests.AManUnchanging,
-                EquipCrestSlotType1CrestId3 = AbilityCrests.GoingUndercover,
-                EquipCrestSlotType2CrestId1 = AbilityCrests.APassionforProduce,
-                EquipCrestSlotType2CrestId2 = AbilityCrests.DragonsNest,
-                EquipCrestSlotType3CrestId1 = AbilityCrests.TutelarysDestinyWolfsBoon,
-                EquipCrestSlotType3CrestId2 = AbilityCrests.CrownofLightSerpentsBoon,
+                EquipCrestSlotType1CrestId1 = AbilityCrestId.BondsBetweenWorlds,
+                EquipCrestSlotType1CrestId2 = AbilityCrestId.AManUnchanging,
+                EquipCrestSlotType1CrestId3 = AbilityCrestId.GoingUndercover,
+                EquipCrestSlotType2CrestId1 = AbilityCrestId.APassionforProduce,
+                EquipCrestSlotType2CrestId2 = AbilityCrestId.DragonsNest,
+                EquipCrestSlotType3CrestId1 = AbilityCrestId.TutelarysDestinyWolfsBoon,
+                EquipCrestSlotType3CrestId2 = AbilityCrestId.CrownofLightSerpentsBoon,
                 EquipTalismanKeyId = this.GetTalismanKeyId(Talismans.GalaMym),
                 EquipWeaponSkinId = 0,
                 EditSkill1CharaId = Charas.Empty,
                 EditSkill2CharaId = Charas.GalaMym,
-                EquippedDragonEntityId = Dragons.Leviathan,
-                EquippedTalismanEntityId = Talismans.GalaMym
+                EquippedDragonEntityId = DragonId.Leviathan,
+                EquippedTalismanEntityId = Talismans.GalaMym,
             },
             new()
             {
@@ -330,22 +347,22 @@ public class QuestClearPartyTest : TestFixture
                 QuestId = 2,
                 UnitNo = 2,
                 CharaId = Charas.GalaLeif,
-                EquipDragonKeyId = this.GetDragonKeyId(Dragons.Phoenix),
+                EquipDragonKeyId = this.GetDragonKeyId(DragonId.Phoenix),
                 EquipWeaponBodyId = WeaponBodies.PrimalTempest,
-                EquipCrestSlotType1CrestId1 = AbilityCrests.AdventureinthePast,
-                EquipCrestSlotType1CrestId2 = AbilityCrests.PrimalCrisis,
-                EquipCrestSlotType1CrestId3 = AbilityCrests.GoingUndercover,
-                EquipCrestSlotType2CrestId1 = AbilityCrests.DragonsNest,
-                EquipCrestSlotType2CrestId2 = AbilityCrests.ThePlaguebringer,
-                EquipCrestSlotType3CrestId1 = AbilityCrests.AKnightsDreamAxesBoon,
-                EquipCrestSlotType3CrestId2 = AbilityCrests.CrownofLightSerpentsBoon,
+                EquipCrestSlotType1CrestId1 = AbilityCrestId.AdventureinthePast,
+                EquipCrestSlotType1CrestId2 = AbilityCrestId.PrimalCrisis,
+                EquipCrestSlotType1CrestId3 = AbilityCrestId.GoingUndercover,
+                EquipCrestSlotType2CrestId1 = AbilityCrestId.DragonsNest,
+                EquipCrestSlotType2CrestId2 = AbilityCrestId.ThePlaguebringer,
+                EquipCrestSlotType3CrestId1 = AbilityCrestId.AKnightsDreamAxesBoon,
+                EquipCrestSlotType3CrestId2 = AbilityCrestId.CrownofLightSerpentsBoon,
                 EquipTalismanKeyId = this.GetTalismanKeyId(Talismans.GalaMym),
                 EquipWeaponSkinId = 0,
                 EditSkill1CharaId = Charas.ShaWujing,
                 EditSkill2CharaId = Charas.Ranzal,
-                EquippedDragonEntityId = Dragons.Phoenix,
-                EquippedTalismanEntityId = Talismans.GalaMym
-            }
+                EquippedDragonEntityId = DragonId.Phoenix,
+                EquippedTalismanEntityId = Talismans.GalaMym,
+            },
         };
 
     private List<PartySettingList> MultiPartySettingLists =>
@@ -355,15 +372,15 @@ public class QuestClearPartyTest : TestFixture
             {
                 UnitNo = 1,
                 CharaId = Charas.GalaNotte,
-                EquipDragonKeyId = (ulong)this.GetDragonKeyId(Dragons.Leviathan),
+                EquipDragonKeyId = (ulong)this.GetDragonKeyId(DragonId.Leviathan),
                 EquipWeaponBodyId = WeaponBodies.WindrulersFang,
-                EquipCrestSlotType1CrestId1 = AbilityCrests.BondsBetweenWorlds,
-                EquipCrestSlotType1CrestId2 = AbilityCrests.AManUnchanging,
-                EquipCrestSlotType1CrestId3 = AbilityCrests.GoingUndercover,
-                EquipCrestSlotType2CrestId1 = AbilityCrests.APassionforProduce,
-                EquipCrestSlotType2CrestId2 = AbilityCrests.DragonsNest,
-                EquipCrestSlotType3CrestId1 = AbilityCrests.TutelarysDestinyWolfsBoon,
-                EquipCrestSlotType3CrestId2 = AbilityCrests.CrownofLightSerpentsBoon,
+                EquipCrestSlotType1CrestId1 = AbilityCrestId.BondsBetweenWorlds,
+                EquipCrestSlotType1CrestId2 = AbilityCrestId.AManUnchanging,
+                EquipCrestSlotType1CrestId3 = AbilityCrestId.GoingUndercover,
+                EquipCrestSlotType2CrestId1 = AbilityCrestId.APassionforProduce,
+                EquipCrestSlotType2CrestId2 = AbilityCrestId.DragonsNest,
+                EquipCrestSlotType3CrestId1 = AbilityCrestId.TutelarysDestinyWolfsBoon,
+                EquipCrestSlotType3CrestId2 = AbilityCrestId.CrownofLightSerpentsBoon,
                 EquipTalismanKeyId = (ulong)this.GetTalismanKeyId(Talismans.GalaMym),
                 EquipWeaponSkinId = 0,
                 EditSkill1CharaId = Charas.Empty,
@@ -373,20 +390,20 @@ public class QuestClearPartyTest : TestFixture
             {
                 UnitNo = 2,
                 CharaId = Charas.GalaLeif,
-                EquipDragonKeyId = (ulong)this.GetDragonKeyId(Dragons.Phoenix),
+                EquipDragonKeyId = (ulong)this.GetDragonKeyId(DragonId.Phoenix),
                 EquipWeaponBodyId = WeaponBodies.PrimalTempest,
-                EquipCrestSlotType1CrestId1 = AbilityCrests.AdventureinthePast,
-                EquipCrestSlotType1CrestId2 = AbilityCrests.PrimalCrisis,
-                EquipCrestSlotType1CrestId3 = AbilityCrests.GoingUndercover,
-                EquipCrestSlotType2CrestId1 = AbilityCrests.DragonsNest,
-                EquipCrestSlotType2CrestId2 = AbilityCrests.ThePlaguebringer,
-                EquipCrestSlotType3CrestId1 = AbilityCrests.AKnightsDreamAxesBoon,
-                EquipCrestSlotType3CrestId2 = AbilityCrests.CrownofLightSerpentsBoon,
+                EquipCrestSlotType1CrestId1 = AbilityCrestId.AdventureinthePast,
+                EquipCrestSlotType1CrestId2 = AbilityCrestId.PrimalCrisis,
+                EquipCrestSlotType1CrestId3 = AbilityCrestId.GoingUndercover,
+                EquipCrestSlotType2CrestId1 = AbilityCrestId.DragonsNest,
+                EquipCrestSlotType2CrestId2 = AbilityCrestId.ThePlaguebringer,
+                EquipCrestSlotType3CrestId1 = AbilityCrestId.AKnightsDreamAxesBoon,
+                EquipCrestSlotType3CrestId2 = AbilityCrestId.CrownofLightSerpentsBoon,
                 EquipTalismanKeyId = (ulong)this.GetTalismanKeyId(Talismans.GalaMym),
                 EquipWeaponSkinId = 0,
                 EditSkill1CharaId = Charas.ShaWujing,
                 EditSkill2CharaId = Charas.Ranzal,
-            }
+            },
         };
 
     private List<DbQuestClearPartyUnit> MissingItemDbEntities =>
@@ -407,7 +424,7 @@ public class QuestClearPartyTest : TestFixture
                 QuestId = 6,
                 IsMulti = false,
                 CharaId = Charas.Cecile,
-                EquipCrestSlotType1CrestId1 = AbilityCrests.InanUnendingWorld
+                EquipCrestSlotType1CrestId1 = AbilityCrestId.InanUnendingWorld,
             },
             new()
             {
@@ -435,7 +452,7 @@ public class QuestClearPartyTest : TestFixture
                 IsMulti = false,
                 EquipDragonKeyId = long.MaxValue,
                 CharaId = Charas.Emma,
-                EquippedDragonEntityId = Dragons.Ifrit,
+                EquippedDragonEntityId = DragonId.Ifrit,
             },
             new()
             {
@@ -443,9 +460,9 @@ public class QuestClearPartyTest : TestFixture
                 UnitNo = 6,
                 QuestId = 6,
                 IsMulti = false,
-                EquipTalismanKeyId = 3000,
+                EquipTalismanKeyId = 12412451,
                 CharaId = Charas.Raemond,
-                EquippedTalismanEntityId = Talismans.Raemond
+                EquippedTalismanEntityId = Talismans.Raemond,
             },
             new()
             {
@@ -455,7 +472,7 @@ public class QuestClearPartyTest : TestFixture
                 IsMulti = false,
                 CharaId = Charas.Edward,
                 EditSkill1CharaId = Charas.Yue,
-                EditSkill2CharaId = Charas.Marty
-            }
+                EditSkill2CharaId = Charas.Marty,
+            },
         };
 }

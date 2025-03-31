@@ -3,11 +3,11 @@ using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Missions;
 using DragaliaAPI.Features.Player;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared.Options;
+using DragaliaAPI.Features.Shared.Reward;
 using DragaliaAPI.Features.Shop;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Models.Options;
-using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models;
@@ -53,12 +53,11 @@ public class FortService(
             < 2 => 0,
             2 => 250,
             3 => 400,
-            4 => 750,
-            _
-                => throw new DragaliaException(
-                    ResultCode.FortExtendCarpenterLimit,
-                    $"User has reached maximum carpenter."
-                )
+            4 => 700,
+            _ => throw new DragaliaException(
+                ResultCode.FortExtendCarpenterLimit,
+                $"User has reached maximum carpenter."
+            ),
         };
 
         if (paymentType is not (PaymentTypes.Diamantium or PaymentTypes.Wyrmite))
@@ -237,7 +236,7 @@ public class FortService(
         {
             MaxCarpenterCount = MaximumCarpenterNum,
             WorkingCarpenterNum = activeCarpenters,
-            CarpenterNum = dbDetail.CarpenterNum
+            CarpenterNum = dbDetail.CarpenterNum,
         };
     }
 
@@ -352,11 +351,24 @@ public class FortService(
 
         DbFortBuild build = await fortRepository.GetBuilding(buildId);
 
-        if (
-            build.BuildStatus is not FortBuildStatus.LevelUp
-            || dateTimeProvider.GetUtcNow() < build.BuildEndDate
-        )
+        DateTimeOffset time = dateTimeProvider.GetUtcNow();
+
+        if (build.BuildStatus is not FortBuildStatus.LevelUp || time < build.BuildEndDate)
+        {
+            logger.LogDebug(
+                "Building {@Build} has not finished levelling up. Current time: {Time}",
+                new
+                {
+                    build.BuildId,
+                    build.PlantId,
+                    build.Level,
+                    build.BuildStartDate,
+                    build.BuildEndDate,
+                },
+                time
+            );
             throw new InvalidOperationException($"This building has not completed levelling up.");
+        }
 
         await FinishUpgrade(build, true);
     }
@@ -380,17 +392,16 @@ public class FortService(
 
         await Upgrade(plantDetail);
 
-        DbFortBuild build =
-            new()
-            {
-                ViewerId = playerIdentityService.ViewerId,
-                PlantId = fortPlantId,
-                Level = 0,
-                PositionX = positionX,
-                PositionZ = positionZ,
-                IsNew = true,
-                LastIncomeDate = DateTimeOffset.UnixEpoch
-            };
+        DbFortBuild build = new()
+        {
+            ViewerId = playerIdentityService.ViewerId,
+            PlantId = fortPlantId,
+            Level = 0,
+            PositionX = positionX,
+            PositionZ = positionZ,
+            IsNew = true,
+            LastIncomeDate = DateTimeOffset.UnixEpoch,
+        };
 
         await SetBuildTime(build, plantDetail);
 
@@ -504,9 +515,28 @@ public class FortService(
         // Check Carpenter available
         if (fortDetail.WorkingCarpenterNum >= fortDetail.CarpenterNum)
         {
+            var builds = await fortRepository
+                .Builds.Where(x => x.BuildEndDate != DateTimeOffset.UnixEpoch)
+                .Select(x => new
+                {
+                    x.BuildId,
+                    x.PlantId,
+                    x.Level,
+                    x.BuildStartDate,
+                    x.BuildEndDate,
+                })
+                .ToListAsync();
+
+            logger.LogDebug(
+                "Failed to perform upgrade {@PlantDetail} - carpenters busy",
+                plantDetail
+            );
+            logger.LogDebug("FortDetail: {@FortDetail}", fortDetail);
+            logger.LogDebug("Currently in progress builds: {@Builds}", builds);
+
             throw new DragaliaException(
                 ResultCode.FortBuildCarpenterBusy,
-                $"All carpenters are currently busy"
+                "All carpenters are currently busy"
             );
         }
 

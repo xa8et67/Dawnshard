@@ -1,8 +1,9 @@
 using DragaliaAPI.MissionDesigner.Models;
 using DragaliaAPI.MissionDesigner.Models.Attributes;
 using DragaliaAPI.MissionDesigner.Models.EventMission;
+using DragaliaAPI.MissionDesigner.Models.RegularMission;
 
-namespace DragaliaAPI.MissionDesigner.Missions;
+namespace DragaliaAPI.MissionDesigner.Missions.MemoryEvent;
 
 [ContainsMissionList]
 public static class MiracleOfDragonyule
@@ -27,7 +28,7 @@ public static class MiracleOfDragonyule
             new EventQuestClearWithCrestMission()
             {
                 MissionId = 10020201,
-                Crest = AbilityCrests.ASliceofDragonyule
+                Crest = AbilityCrestId.ASliceofDragonyule,
             },
             // Collect 500 Holiday Cheer in One Go
             new EventPointCollectionRecordMission() { MissionId = 10020302 },
@@ -66,21 +67,21 @@ public static class MiracleOfDragonyule
             {
                 MissionId = 10020801,
                 VariationType = VariationTypes.Normal,
-                FullClear = true
+                FullClear = true,
             },
             // Completely Clear a Challenge Battle on Master
             new EventChallengeBattleClearMission()
             {
                 MissionId = 10020901,
                 VariationType = VariationTypes.Extreme,
-                FullClear = true
+                FullClear = true,
             },
             // Earn the "The True Saint Starfall" Epithet
             new EventChallengeBattleClearMission()
             {
                 MissionId = 10021001,
                 VariationType = VariationTypes.Extreme,
-                FullClear = true
+                FullClear = true,
             },
         ];
 }

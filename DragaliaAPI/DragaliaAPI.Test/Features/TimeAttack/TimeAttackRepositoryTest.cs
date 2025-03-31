@@ -23,24 +23,23 @@ public class TimeAttackRepositoryTest : RepositoryTestFixture
     {
         string gameId = Guid.NewGuid().ToString();
 
-        DbTimeAttackClear clear =
-            new()
+        DbTimeAttackClear clear = new()
+        {
+            GameId = gameId,
+            QuestId = 1,
+            Players = new List<DbTimeAttackPlayer>()
             {
-                GameId = gameId,
-                QuestId = 1,
-                Players = new List<DbTimeAttackPlayer>()
+                new()
                 {
-                    new()
-                    {
-                        GameId = gameId,
-                        ViewerId = 1,
-                        PartyInfo = "{}"
-                    }
-                }
-            };
+                    GameId = gameId,
+                    ViewerId = 1,
+                    PartyInfo = "{}",
+                },
+            },
+        };
 
         await this.timeAttackRepository.CreateOrUpdateClear(clear);
-        await this.ApiContext.SaveChangesAsync();
+        await this.ApiContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.ApiContext.TimeAttackClears.Should().ContainEquivalentOf(clear);
     }
@@ -61,13 +60,13 @@ public class TimeAttackRepositoryTest : RepositoryTestFixture
                     {
                         GameId = gameId,
                         ViewerId = 2,
-                        PartyInfo = "{}"
-                    }
-                }
+                        PartyInfo = "{}",
+                    },
+                },
             }
         );
 
-        await this.ApiContext.SaveChangesAsync();
+        await this.ApiContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await this.timeAttackRepository.CreateOrUpdateClear(
             new()
@@ -80,13 +79,13 @@ public class TimeAttackRepositoryTest : RepositoryTestFixture
                     {
                         GameId = gameId,
                         ViewerId = 3,
-                        PartyInfo = "{}"
-                    }
-                }
+                        PartyInfo = "{}",
+                    },
+                },
             }
         );
 
-        await this.ApiContext.SaveChangesAsync();
+        await this.ApiContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.ApiContext.TimeAttackClears.Should().Contain(x => x.GameId == gameId);
         this.ApiContext.TimeAttackClears.First(x => x.GameId == gameId)
@@ -98,14 +97,14 @@ public class TimeAttackRepositoryTest : RepositoryTestFixture
                     {
                         GameId = gameId,
                         ViewerId = 2,
-                        PartyInfo = "{}"
+                        PartyInfo = "{}",
                     },
                     new()
                     {
                         GameId = gameId,
                         ViewerId = 3,
-                        PartyInfo = "{}"
-                    }
+                        PartyInfo = "{}",
+                    },
                 },
                 opts => opts.Excluding(x => x.Clear).Excluding(x => x.Player)
             );

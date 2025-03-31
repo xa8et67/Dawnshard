@@ -1,10 +1,9 @@
-﻿using DragaliaAPI.Controllers;
-using DragaliaAPI.Features.ClearParty;
-using DragaliaAPI.Features.Reward;
+﻿using DragaliaAPI.Features.ClearParty;
+using DragaliaAPI.Features.Friends;
+using DragaliaAPI.Features.Shared;
 using DragaliaAPI.Features.Story;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
-using DragaliaAPI.Services.Game;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models.QuestDrops;
@@ -14,7 +13,7 @@ namespace DragaliaAPI.Features.Quest;
 
 [Route("quest")]
 [ApiController]
-public class QuestController(
+internal sealed class QuestController(
     IStoryService storyService,
     IHelperService helperService,
     IUpdateDataService updateDataService,
@@ -47,16 +46,16 @@ public class QuestController(
             {
                 QuestStoryRewardList = questRewardList,
                 EntityResult = entityResult,
-                UpdateDataList = updateDataList
+                UpdateDataList = updateDataList,
             }
         );
     }
 
     [HttpPost("get_support_user_list")]
-    public async Task<DragaliaResult> GetUserSupportList()
+    public async Task<DragaliaResult> GetUserSupportList(CancellationToken cancellationToken)
     {
-        // TODO: this is actually going to be a pretty complicated system
         QuestGetSupportUserListResponse response = await helperService.GetHelpers();
+
         return Ok(response);
     }
 
@@ -76,7 +75,7 @@ public class QuestController(
             new QuestGetQuestClearPartyResponse()
             {
                 QuestClearPartySettingList = clearParty,
-                LostUnitList = lostUnitList
+                LostUnitList = lostUnitList,
             }
         );
     }
@@ -96,7 +95,7 @@ public class QuestController(
             new QuestGetQuestClearPartyMultiResponse()
             {
                 QuestMultiClearPartySettingList = clearParty,
-                LostUnitList = lostUnitList
+                LostUnitList = lostUnitList,
             }
         );
     }
@@ -164,8 +163,8 @@ public class QuestController(
                     {
                         EntityId = x.Id,
                         EntityType = x.EntityType,
-                    })
-                }
+                    }),
+                },
             }
         );
     }

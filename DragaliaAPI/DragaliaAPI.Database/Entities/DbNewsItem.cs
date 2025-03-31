@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace DragaliaAPI.Database.Entities;
@@ -41,18 +39,22 @@ public class DbNewsItem
     /// <summary>
     /// Gets or sets a relative path to the summary header image.
     /// </summary>
-    /// <remarks>
-    /// Will be combined with the configured CDN base address to deliver a fully qualified URL in the response.
-    /// </remarks>
     public string? HeaderImagePath { get; set; }
+
+    /// <summary>
+    /// Gets or sets the alt text for the summary header image.
+    /// </summary>
+    public string? HeaderImageAltText { get; set; }
 
     /// <summary>
     /// Gets or sets a relative path to the body image.
     /// </summary>
-    /// <remarks>
-    /// Will be combined with the configured CDN base address to deliver a fully qualified URL in the response.
-    /// </remarks>
     public string? BodyImagePath { get; set; }
+
+    /// <summary>
+    /// Gets or sets the alt text for the body image.
+    /// </summary>
+    public string? BodyImageAltText { get; set; }
 }
 
 public class DbNewsItemConfiguration : IEntityTypeConfiguration<DbNewsItem>
@@ -62,7 +64,9 @@ public class DbNewsItemConfiguration : IEntityTypeConfiguration<DbNewsItem>
         builder.Property(x => x.Headline).HasMaxLength(256);
         builder.Property(x => x.Description).HasMaxLength(4096);
         builder.Property(x => x.HeaderImagePath).HasMaxLength(512);
+        builder.Property(x => x.HeaderImageAltText).HasMaxLength(1024);
         builder.Property(x => x.BodyImagePath).HasMaxLength(512);
+        builder.Property(x => x.BodyImageAltText).HasMaxLength(1024);
 
         builder.HasData(
             new DbNewsItem()
@@ -73,7 +77,8 @@ public class DbNewsItemConfiguration : IEntityTypeConfiguration<DbNewsItem>
                 Description =
                     "The below infographic shows the endeavour rewards available for the progressing the Mercurial Gauntlet.",
                 BodyImagePath = "/dawnshard/news/mg-endeavours.webp",
-                Date = new DateTimeOffset(2024, 06, 02, 16, 07, 00, TimeSpan.FromHours(1))
+                BodyImageAltText = "Mercurial Gauntlet rewards infographic",
+                Date = new DateTimeOffset(2024, 06, 02, 16, 07, 00, TimeSpan.FromHours(1)),
             }
         );
     }

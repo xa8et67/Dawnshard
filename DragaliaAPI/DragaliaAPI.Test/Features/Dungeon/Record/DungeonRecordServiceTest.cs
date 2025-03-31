@@ -4,10 +4,9 @@ using DragaliaAPI.Features.Dungeon;
 using DragaliaAPI.Features.Dungeon.Record;
 using DragaliaAPI.Features.Player;
 using DragaliaAPI.Features.Quest;
-using DragaliaAPI.Features.Reward;
-using DragaliaAPI.Models;
+using DragaliaAPI.Features.Shared.Reward;
+using DragaliaAPI.Features.Tutorial;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Test.Utils;
@@ -48,8 +47,6 @@ public class DungeonRecordServiceTest
         );
 
         this.mockTutorialService.Setup(x => x.AddTutorialFlag(1022)).ReturnsAsync(new List<int>());
-
-        CommonAssertionOptions.ApplyTimeOptions();
     }
 
     [Fact]
@@ -57,61 +54,55 @@ public class DungeonRecordServiceTest
     {
         int lSurtrSoloId = 232031101;
 
-        DungeonSession session =
-            new()
-            {
-                QuestData = MasterAsset.QuestData[lSurtrSoloId],
-                Party = new List<PartySettingList>(),
-                StartTime = DateTimeOffset.UtcNow
-            };
-        PlayRecord playRecord = new() { Time = 10, };
+        DungeonSession session = new()
+        {
+            QuestData = MasterAsset.QuestData[lSurtrSoloId],
+            Party = new List<PartySettingList>(),
+            StartTime = DateTimeOffset.UtcNow,
+        };
+        PlayRecord playRecord = new() { Time = 10 };
 
-        DbQuest mockQuest =
-            new()
-            {
-                ViewerId = 1,
-                QuestId = lSurtrSoloId,
-                State = 0,
-                BestClearTime = 999
-            };
+        DbQuest mockQuest = new()
+        {
+            ViewerId = 1,
+            QuestId = lSurtrSoloId,
+            State = 0,
+            BestClearTime = 999,
+        };
 
-        List<AtgenDropAll> dropList =
+        List<AtgenDropAll> dropList = new()
+        {
             new()
             {
-                new()
-                {
-                    Id = (int)Materials.FirestormRuby,
-                    Quantity = 10,
-                    Type = EntityTypes.Material
-                }
-            };
+                Id = (int)Materials.FirestormRuby,
+                Quantity = 10,
+                Type = EntityTypes.Material,
+            },
+        };
 
-        List<AtgenDropAll> eventDrops =
+        List<AtgenDropAll> eventDrops = new()
+        {
             new()
             {
-                new()
-                {
-                    Id = (int)Materials.WoodlandHerbs,
-                    Quantity = 20,
-                    Type = EntityTypes.Material
-                }
-            };
+                Id = (int)Materials.WoodlandHerbs,
+                Quantity = 20,
+                Type = EntityTypes.Material,
+            },
+        };
 
-        List<AtgenScoreMissionSuccessList> scoreMissionSuccessLists =
+        List<AtgenScoreMissionSuccessList> scoreMissionSuccessLists = new()
+        {
             new()
             {
-                new()
-                {
-                    ScoreMissionCompleteType = QuestCompleteType.LimitFall,
-                    ScoreTargetValue = 100,
-                }
-            };
+                ScoreMissionCompleteType = QuestCompleteType.LimitFall,
+                ScoreTargetValue = 100,
+            },
+        };
 
-        List<AtgenEventPassiveUpList> passiveUpLists =
-            new()
-            {
-                new() { PassiveId = 1, Progress = 2 }
-            };
+        List<AtgenEventPassiveUpList> passiveUpLists = new()
+        {
+            new() { PassiveId = 1, Progress = 2 },
+        };
 
         List<AtgenMissionsClearSet> missionsClearSets = new List<AtgenMissionsClearSet>()
         {
@@ -119,31 +110,29 @@ public class DungeonRecordServiceTest
             {
                 Type = EntityTypes.CollectEventItem,
                 Id = 1,
-                Quantity = 2
-            }
+                Quantity = 2,
+            },
         };
 
-        List<AtgenFirstClearSet> missionCompleteSets =
+        List<AtgenFirstClearSet> missionCompleteSets = new()
+        {
             new()
             {
-                new()
-                {
-                    Type = EntityTypes.ExchangeTicket,
-                    Id = 2,
-                    Quantity = 3
-                }
-            };
+                Type = EntityTypes.ExchangeTicket,
+                Id = 2,
+                Quantity = 3,
+            },
+        };
 
-        List<AtgenFirstClearSet> firstClearSets =
+        List<AtgenFirstClearSet> firstClearSets = new()
+        {
             new()
             {
-                new()
-                {
-                    Type = EntityTypes.RaidEventItem,
-                    Id = 4,
-                    Quantity = 5
-                }
-            };
+                Type = EntityTypes.RaidEventItem,
+                Id = 4,
+                Quantity = 5,
+            },
+        };
 
         List<AtgenScoringEnemyPointList> enemyScoring =
         [
@@ -151,8 +140,8 @@ public class DungeonRecordServiceTest
             {
                 ScoringEnemyId = 100,
                 Point = 1,
-                SmashCount = 2
-            }
+                SmashCount = 2,
+            },
         ];
 
         QuestMissionStatus missionStatus = new([], missionsClearSets, missionCompleteSets);
@@ -187,6 +176,8 @@ public class DungeonRecordServiceTest
                     eventDrops
                 )
             );
+        this.mockDungeonRewardService.Setup(x => x.ProcessDraconicEssenceDrops(session))
+            .ReturnsAsync([]);
 
         this.mockQuestService.Setup(x => x.GetQuestStamina(lSurtrSoloId, StaminaType.Single))
             .ReturnsAsync(40);
@@ -236,15 +227,16 @@ public class DungeonRecordServiceTest
                         TakeCharaExp = 0,
                         BonusFactor = 1,
                         ManaBonusFactor = 1,
-                        CharaGrowRecord = new List<AtgenCharaGrowRecord>()
+                        CharaGrowRecord = new List<AtgenCharaGrowRecord>(),
                     },
                     EventPassiveUpList = passiveUpLists,
                     ScoreMissionSuccessList = scoreMissionSuccessLists,
                     ScoringEnemyPointList = enemyScoring,
                     IsBestClearTime = true,
                     ClearTime = playRecord.Time,
-                    ConvertedEntityList = new List<ConvertedEntityList>()
-                }
+                    ConvertedEntityList = new List<ConvertedEntityList>(),
+                },
+                opts => opts.WithDateTimeTolerance()
             );
 
         this.mockDungeonRewardService.VerifyAll();

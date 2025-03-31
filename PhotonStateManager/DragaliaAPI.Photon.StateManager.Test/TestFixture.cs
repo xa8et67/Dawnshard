@@ -4,34 +4,27 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Redis.OM.Contracts;
-using Xunit.Abstractions;
 
 namespace DragaliaAPI.Photon.StateManager.Test;
 
 [Collection(TestCollection.Name)]
 public class TestFixture : IAsyncLifetime
 {
-    private const string PhotonToken = "photontoken";
-
     public TestFixture(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
     {
         this.Client = factory
-            .WithWebHostBuilder(
-                (builder) =>
-                    builder.ConfigureLogging(logging =>
-                    {
-                        logging.ClearProviders();
-                        logging.AddXUnit(outputHelper);
-                    })
+            .WithWebHostBuilder(builder =>
+                builder.ConfigureLogging(logging =>
+                {
+                    logging.ClearProviders();
+                })
             )
             .CreateClient();
 
         this.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
             "Bearer",
-            PhotonToken
+            "photontoken"
         );
-
-        Environment.SetEnvironmentVariable("PHOTON_TOKEN", PhotonToken);
 
         this.RedisConnectionProvider =
             factory.Services.GetRequiredService<IRedisConnectionProvider>();
@@ -41,10 +34,12 @@ public class TestFixture : IAsyncLifetime
 
     protected IRedisConnectionProvider RedisConnectionProvider { get; }
 
-    public Task InitializeAsync() => Task.CompletedTask;
+    public ValueTask InitializeAsync() => ValueTask.CompletedTask;
 
-    public async Task DisposeAsync() =>
+#pragma warning disable CA1816 // Call GC.SuppressFinalize correctly
+    public async ValueTask DisposeAsync() =>
         await this
             .RedisConnectionProvider.RedisCollection<RedisGame>()
             .DeleteAsync(this.RedisConnectionProvider.RedisCollection<RedisGame>());
+#pragma warning restore CA1816
 }

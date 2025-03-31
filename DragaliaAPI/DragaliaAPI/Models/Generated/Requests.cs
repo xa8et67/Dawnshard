@@ -2,7 +2,7 @@
 
 using DragaliaAPI.Features.Shop;
 using DragaliaAPI.Features.Version;
-using DragaliaAPI.MessagePack;
+using DragaliaAPI.Infrastructure.Serialization.MessagePack;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.Definitions.Enums.Summon;
 using MessagePack;
@@ -13,14 +13,14 @@ namespace DragaliaAPI.Models.Generated;
 public partial class AbilityCrestBuildupPieceRequest
 {
     [Key("ability_crest_id")]
-    public AbilityCrests AbilityCrestId { get; set; }
+    public AbilityCrestId AbilityCrestId { get; set; }
 
     [Key("buildup_ability_crest_piece_list")]
     public IEnumerable<AtgenBuildupAbilityCrestPieceList> BuildupAbilityCrestPieceList { get; set; } =
         [];
 
     public AbilityCrestBuildupPieceRequest(
-        AbilityCrests abilityCrestId,
+        AbilityCrestId abilityCrestId,
         IEnumerable<AtgenBuildupAbilityCrestPieceList> buildupAbilityCrestPieceList
     )
     {
@@ -35,13 +35,13 @@ public partial class AbilityCrestBuildupPieceRequest
 public partial class AbilityCrestBuildupPlusCountRequest
 {
     [Key("ability_crest_id")]
-    public AbilityCrests AbilityCrestId { get; set; }
+    public AbilityCrestId AbilityCrestId { get; set; }
 
     [Key("plus_count_params_list")]
     public IEnumerable<AtgenPlusCountParamsList> PlusCountParamsList { get; set; } = [];
 
     public AbilityCrestBuildupPlusCountRequest(
-        AbilityCrests abilityCrestId,
+        AbilityCrestId abilityCrestId,
         IEnumerable<AtgenPlusCountParamsList> plusCountParamsList
     )
     {
@@ -56,13 +56,13 @@ public partial class AbilityCrestBuildupPlusCountRequest
 public partial class AbilityCrestResetPlusCountRequest
 {
     [Key("ability_crest_id")]
-    public AbilityCrests AbilityCrestId { get; set; }
+    public AbilityCrestId AbilityCrestId { get; set; }
 
     [Key("plus_count_type_list")]
     public IEnumerable<PlusCountType> PlusCountTypeList { get; set; } = [];
 
     public AbilityCrestResetPlusCountRequest(
-        AbilityCrests abilityCrestId,
+        AbilityCrestId abilityCrestId,
         IEnumerable<PlusCountType> plusCountTypeList
     )
     {
@@ -103,13 +103,13 @@ public partial class AbilityCrestSetAbilityCrestSetRequest
 public partial class AbilityCrestSetFavoriteRequest
 {
     [Key("ability_crest_id")]
-    public AbilityCrests AbilityCrestId { get; set; }
+    public AbilityCrestId AbilityCrestId { get; set; }
 
     [Key("is_favorite")]
     [MessagePackFormatter(typeof(BoolToIntFormatter))]
     public bool IsFavorite { get; set; }
 
-    public AbilityCrestSetFavoriteRequest(AbilityCrests abilityCrestId, bool isFavorite)
+    public AbilityCrestSetFavoriteRequest(AbilityCrestId abilityCrestId, bool isFavorite)
     {
         this.AbilityCrestId = abilityCrestId;
         this.IsFavorite = isFavorite;
@@ -1048,13 +1048,13 @@ public partial class DragonBuildupRequest
 public partial class DragonBuyGiftToSendMultipleRequest
 {
     [Key("dragon_id")]
-    public Dragons DragonId { get; set; }
+    public DragonId DragonId { get; set; }
 
     [Key("dragon_gift_id_list")]
     public IEnumerable<DragonGifts> DragonGiftIdList { get; set; } = [];
 
     public DragonBuyGiftToSendMultipleRequest(
-        Dragons dragonId,
+        DragonId dragonId,
         IEnumerable<DragonGifts> dragonGiftIdList
     )
     {
@@ -1069,12 +1069,12 @@ public partial class DragonBuyGiftToSendMultipleRequest
 public partial class DragonBuyGiftToSendRequest
 {
     [Key("dragon_id")]
-    public Dragons DragonId { get; set; }
+    public DragonId DragonId { get; set; }
 
     [Key("dragon_gift_id")]
     public DragonGifts DragonGiftId { get; set; }
 
-    public DragonBuyGiftToSendRequest(Dragons dragonId, DragonGifts dragonGiftId)
+    public DragonBuyGiftToSendRequest(DragonId dragonId, DragonGifts dragonGiftId)
     {
         this.DragonId = dragonId;
         this.DragonGiftId = dragonGiftId;
@@ -1140,7 +1140,7 @@ public partial class DragonSellRequest
 public partial class DragonSendGiftMultipleRequest
 {
     [Key("dragon_id")]
-    public Dragons DragonId { get; set; }
+    public DragonId DragonId { get; set; }
 
     [Key("dragon_gift_id")]
     public DragonGifts DragonGiftId { get; set; }
@@ -1148,7 +1148,7 @@ public partial class DragonSendGiftMultipleRequest
     [Key("quantity")]
     public int Quantity { get; set; }
 
-    public DragonSendGiftMultipleRequest(Dragons dragonId, DragonGifts dragonGiftId, int quantity)
+    public DragonSendGiftMultipleRequest(DragonId dragonId, DragonGifts dragonGiftId, int quantity)
     {
         this.DragonId = dragonId;
         this.DragonGiftId = dragonGiftId;
@@ -1162,12 +1162,12 @@ public partial class DragonSendGiftMultipleRequest
 public partial class DragonSendGiftRequest
 {
     [Key("dragon_id")]
-    public Dragons DragonId { get; set; }
+    public DragonId DragonId { get; set; }
 
     [Key("dragon_gift_id")]
     public DragonGifts DragonGiftId { get; set; }
 
-    public DragonSendGiftRequest(Dragons dragonId, DragonGifts dragonGiftId)
+    public DragonSendGiftRequest(DragonId dragonId, DragonGifts dragonGiftId)
     {
         this.DragonId = dragonId;
         this.DragonGiftId = dragonGiftId;
@@ -1295,16 +1295,13 @@ public partial class DungeonRecordRecordMultiRequest
     [Key("dungeon_key")]
     public string DungeonKey { get; set; }
 
-    [Key("connecting_viewer_id_list")]
-    public IEnumerable<ulong> ConnectingViewerIdList { get; set; } = [];
-
     [Key("no_play_flg")]
     public int NoPlayFlg { get; set; }
 
     public DungeonRecordRecordMultiRequest(
         PlayRecord playRecord,
         string dungeonKey,
-        IEnumerable<ulong> connectingViewerIdList,
+        IList<long> connectingViewerIdList,
         int noPlayFlg
     )
     {
@@ -2217,10 +2214,7 @@ public partial class FriendReplyRequest
     [Key("friend_id")]
     public ulong FriendId { get; set; }
 
-    [Key("reply")]
-    public int Reply { get; set; }
-
-    public FriendReplyRequest(ulong friendId, int reply)
+    public FriendReplyRequest(ulong friendId, FriendReplyType reply)
     {
         this.FriendId = friendId;
         this.Reply = reply;
@@ -2279,25 +2273,25 @@ public partial class FriendSetSupportCharaRequest
     public WeaponBodies WeaponBodyId { get; set; }
 
     [Key("crest_slot_type_1_crest_id_1")]
-    public AbilityCrests CrestSlotType1CrestId1 { get; set; }
+    public AbilityCrestId CrestSlotType1CrestId1 { get; set; }
 
     [Key("crest_slot_type_1_crest_id_2")]
-    public AbilityCrests CrestSlotType1CrestId2 { get; set; }
+    public AbilityCrestId CrestSlotType1CrestId2 { get; set; }
 
     [Key("crest_slot_type_1_crest_id_3")]
-    public AbilityCrests CrestSlotType1CrestId3 { get; set; }
+    public AbilityCrestId CrestSlotType1CrestId3 { get; set; }
 
     [Key("crest_slot_type_2_crest_id_1")]
-    public AbilityCrests CrestSlotType2CrestId1 { get; set; }
+    public AbilityCrestId CrestSlotType2CrestId1 { get; set; }
 
     [Key("crest_slot_type_2_crest_id_2")]
-    public AbilityCrests CrestSlotType2CrestId2 { get; set; }
+    public AbilityCrestId CrestSlotType2CrestId2 { get; set; }
 
     [Key("crest_slot_type_3_crest_id_1")]
-    public AbilityCrests CrestSlotType3CrestId1 { get; set; }
+    public AbilityCrestId CrestSlotType3CrestId1 { get; set; }
 
     [Key("crest_slot_type_3_crest_id_2")]
-    public AbilityCrests CrestSlotType3CrestId2 { get; set; }
+    public AbilityCrestId CrestSlotType3CrestId2 { get; set; }
 
     [Key("talisman_key_id")]
     public ulong TalismanKeyId { get; set; }
@@ -2309,13 +2303,13 @@ public partial class FriendSetSupportCharaRequest
         ulong amuletKeyId,
         ulong amulet2KeyId,
         WeaponBodies weaponBodyId,
-        AbilityCrests crestSlotType1CrestId1,
-        AbilityCrests crestSlotType1CrestId2,
-        AbilityCrests crestSlotType1CrestId3,
-        AbilityCrests crestSlotType2CrestId1,
-        AbilityCrests crestSlotType2CrestId2,
-        AbilityCrests crestSlotType3CrestId1,
-        AbilityCrests crestSlotType3CrestId2,
+        AbilityCrestId crestSlotType1CrestId1,
+        AbilityCrestId crestSlotType1CrestId2,
+        AbilityCrestId crestSlotType1CrestId3,
+        AbilityCrestId crestSlotType2CrestId1,
+        AbilityCrestId crestSlotType2CrestId2,
+        AbilityCrestId crestSlotType3CrestId1,
+        AbilityCrestId crestSlotType3CrestId2,
         ulong talismanKeyId
     )
     {
@@ -3796,7 +3790,7 @@ public partial class QuestSearchQuestClearPartyMultiRequest
     public Charas CharaIdList { get; set; }
 
     [Key("dragon_id_list")]
-    public Dragons DragonIdList { get; set; }
+    public DragonId DragonIdList { get; set; }
 
     [Key("weapon_body_id_list")]
     public IEnumerable<int> WeaponBodyIdList { get; set; } = [];
@@ -3808,7 +3802,7 @@ public partial class QuestSearchQuestClearPartyMultiRequest
         int questId,
         int partySwitchNo,
         Charas charaIdList,
-        Dragons dragonIdList,
+        DragonId dragonIdList,
         IEnumerable<int> weaponBodyIdList,
         IEnumerable<int> abilityCrestIdList
     )
@@ -3837,7 +3831,7 @@ public partial class QuestSearchQuestClearPartyRequest
     public Charas CharaIdList { get; set; }
 
     [Key("dragon_id_list")]
-    public Dragons DragonIdList { get; set; }
+    public DragonId DragonIdList { get; set; }
 
     [Key("weapon_body_id_list")]
     public IEnumerable<int> WeaponBodyIdList { get; set; } = [];
@@ -3849,7 +3843,7 @@ public partial class QuestSearchQuestClearPartyRequest
         int questId,
         int partySwitchNo,
         Charas charaIdList,
-        Dragons dragonIdList,
+        DragonId dragonIdList,
         IEnumerable<int> weaponBodyIdList,
         IEnumerable<int> abilityCrestIdList
     )

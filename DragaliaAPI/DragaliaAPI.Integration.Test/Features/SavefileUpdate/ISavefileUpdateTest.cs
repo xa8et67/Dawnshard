@@ -1,4 +1,4 @@
-using DragaliaAPI.Features.SavefileUpdate;
+using DragaliaAPI.Features.Login.SavefileUpdate;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DragaliaAPI.Integration.Test.Features.SavefileUpdate;
@@ -17,7 +17,7 @@ public class ISavefileUpdateTest : TestFixture
     public void ISavefileUpdate_HasExpectedCount()
     {
         // Update this test when adding a new update.
-        this.updates.Should().HaveCount(22);
+        this.updates.Should().HaveCount(24);
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using DragaliaAPI.Database.Entities;
+using DragaliaAPI.Infrastructure.Results;
 using DragaliaAPI.Shared.Definitions.Enums.Summon;
 using DragaliaAPI.Shared.Features.Presents;
 using DragaliaAPI.Shared.MasterAsset;
@@ -11,15 +12,7 @@ public class PresentTest : TestFixture
     private const string Controller = "/present";
 
     public PresentTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
-        : base(factory, outputHelper)
-    {
-        CommonAssertionOptions.ApplyTimeOptions(toleranceSec: 3);
-
-        // Ignore auto-generated PK
-        AssertionOptions.AssertEquivalencyUsing(opts =>
-            opts.Excluding(member => member.Name == nameof(PresentDetailList.PresentId))
-        );
-    }
+        : base(factory, outputHelper) { }
 
     [Fact]
     public async Task GetPresentList_ReturnsPresentList()
@@ -39,15 +32,16 @@ public class PresentTest : TestFixture
                     ViewerId = ViewerId,
                     EntityType = EntityTypes.Dew,
                     EntityQuantity = 200,
-                    MessageId = PresentMessage.Chapter10Clear
-                }
+                    MessageId = PresentMessage.Chapter10Clear,
+                },
             }
         );
 
         DragaliaResponse<PresentGetPresentListResponse> response =
             await this.Client.PostMsgpack<PresentGetPresentListResponse>(
                 $"{Controller}/get_present_list",
-                new PresentGetPresentListRequest() { IsLimit = false, PresentId = 0 }
+                new PresentGetPresentListRequest() { IsLimit = false, PresentId = 0 },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response
@@ -72,13 +66,15 @@ public class PresentTest : TestFixture
                             MessageId = PresentMessage.Chapter10Clear,
                             CreateTime = DateTimeOffset.UtcNow,
                             ReceiveLimitTime = DateTimeOffset.UnixEpoch,
-                        }
+                        },
                     },
                     UpdateDataList = new UpdateDataList()
                     {
-                        PresentNotice = new() { PresentCount = 2, PresentLimitCount = 0 }
-                    }
-                }
+                        PresentNotice = new() { PresentCount = 2, PresentLimitCount = 0 },
+                    },
+                },
+                opts =>
+                    opts.WithDateTimeTolerance().For(x => x.PresentList).Exclude(x => x.PresentId)
             );
 
         response.Data.PresentList.Should().BeInDescendingOrder(x => x.PresentId);
@@ -105,15 +101,16 @@ public class PresentTest : TestFixture
                     ViewerId = ViewerId,
                     EntityType = EntityTypes.Dew,
                     EntityQuantity = 200,
-                    MessageId = PresentMessage.Chapter10Clear
-                }
+                    MessageId = PresentMessage.Chapter10Clear,
+                },
             }
         );
 
         DragaliaResponse<PresentGetPresentListResponse> response =
             await this.Client.PostMsgpack<PresentGetPresentListResponse>(
                 $"{Controller}/get_present_list",
-                new PresentGetPresentListRequest() { IsLimit = true, PresentId = 0 }
+                new PresentGetPresentListRequest() { IsLimit = true, PresentId = 0 },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response
@@ -130,13 +127,17 @@ public class PresentTest : TestFixture
                             MessageId = PresentMessage.Maintenance,
                             CreateTime = DateTimeOffset.UtcNow,
                             ReceiveLimitTime = expireDate,
-                        }
+                        },
                     },
                     UpdateDataList = new UpdateDataList()
                     {
-                        PresentNotice = new() { PresentCount = 1, PresentLimitCount = 1 }
-                    }
-                }
+                        PresentNotice = new() { PresentCount = 1, PresentLimitCount = 1 },
+                    },
+                },
+                opts =>
+                    opts.WithDateTimeTolerance()
+                        .For(x => x.PresentLimitList)
+                        .Exclude(x => x.PresentId)
             );
 
         response.Data.PresentLimitList.Should().BeInDescendingOrder(x => x.PresentId);
@@ -163,7 +164,8 @@ public class PresentTest : TestFixture
         DragaliaResponse<PresentGetPresentListResponse> firstResponse =
             await this.Client.PostMsgpack<PresentGetPresentListResponse>(
                 $"{Controller}/get_present_list",
-                new PresentGetPresentListRequest() { IsLimit = false, PresentId = 0 }
+                new PresentGetPresentListRequest() { IsLimit = false, PresentId = 0 },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         firstResponse.Data.PresentList.Should().HaveCount(100);
@@ -174,8 +176,9 @@ public class PresentTest : TestFixture
                 new PresentGetPresentListRequest()
                 {
                     IsLimit = false,
-                    PresentId = firstResponse.Data.PresentList.Last().PresentId
-                }
+                    PresentId = firstResponse.Data.PresentList.Last().PresentId,
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         secondResponse.Data.PresentList.Should().HaveCount(20);
@@ -197,66 +200,91 @@ public class PresentTest : TestFixture
             x.ViewerId == ViewerId && x.MaterialId == Materials.Squishums
         );
 
-        List<DbPlayerPresent> presents =
+        List<DbPlayerPresent> presents = new()
+        {
             new()
             {
-                new()
-                {
-                    ViewerId = ViewerId,
-                    EntityType = EntityTypes.Wyrmite,
-                    EntityQuantity = 100,
-                },
-                new()
-                {
-                    ViewerId = ViewerId,
-                    EntityType = EntityTypes.Dew,
-                    EntityQuantity = 200,
-                },
-                new()
-                {
-                    ViewerId = ViewerId,
-                    EntityType = EntityTypes.Chara,
-                    EntityId = (int)Charas.Akasha,
-                },
-                new()
-                {
-                    ViewerId = ViewerId,
-                    EntityType = EntityTypes.Wyrmprint,
-                    EntityId = (int)AbilityCrests.ADogsDay,
-                },
-                new()
-                {
-                    ViewerId = ViewerId,
-                    EntityType = EntityTypes.Material,
-                    EntityId = (int)Materials.Squishums,
-                    EntityQuantity = 100,
-                },
-                new()
-                {
-                    ViewerId = ViewerId,
-                    EntityType = EntityTypes.Dragon,
-                    EntityId = (int)Dragons.Arsene,
-                },
-                new()
-                {
-                    ViewerId = ViewerId,
-                    EntityType = EntityTypes.HustleHammer,
-                    EntityQuantity = 100,
-                },
-                new()
-                {
-                    ViewerId = ViewerId,
-                    EntityType = EntityTypes.Rupies,
-                    EntityQuantity = 100_000,
-                },
-                new()
-                {
-                    ViewerId = ViewerId,
-                    EntityType = EntityTypes.Title,
-                    EntityId = (int)Emblems.SupremeBogfish,
-                    EntityQuantity = 1,
-                }
-            };
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.Wyrmite,
+                EntityQuantity = 50,
+            },
+            new()
+            {
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.Wyrmite,
+                EntityQuantity = 50,
+            },
+            new()
+            {
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.Dew,
+                EntityQuantity = 200,
+            },
+            new()
+            {
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.Chara,
+                EntityId = (int)Charas.Akasha,
+            },
+            new()
+            {
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.Wyrmprint,
+                EntityId = (int)AbilityCrestId.ADogsDay,
+            },
+            new()
+            {
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.Material,
+                EntityId = (int)Materials.Squishums,
+                EntityQuantity = 100,
+            },
+            new()
+            {
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.Dragon,
+                EntityId = (int)DragonId.Arsene,
+            },
+            new()
+            {
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.HustleHammer,
+                EntityQuantity = 50,
+            },
+            new()
+            {
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.HustleHammer,
+                EntityQuantity = 50,
+            },
+            new()
+            {
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.Rupies,
+                EntityQuantity = 100_000,
+            },
+            new()
+            {
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.Title,
+                EntityId = (int)Emblems.SupremeBogfish,
+                EntityQuantity = 1,
+            },
+            new()
+            {
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.FreeDiamantium,
+                EntityId = 0,
+                EntityQuantity = 50,
+            },
+            new()
+            {
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.FreeDiamantium,
+                EntityId = 0,
+                EntityQuantity = 50,
+            },
+        };
 
         await this.AddRangeToDatabase(presents);
 
@@ -265,7 +293,8 @@ public class PresentTest : TestFixture
         DragaliaResponse<PresentReceiveResponse> response =
             await this.Client.PostMsgpack<PresentReceiveResponse>(
                 $"{Controller}/receive",
-                new PresentReceiveRequest() { PresentIdList = presentIdList }
+                new PresentReceiveRequest() { PresentIdList = presentIdList },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response.Data.ReceivePresentIdList.Should().BeEquivalentTo(presentIdList);
@@ -285,24 +314,30 @@ public class PresentTest : TestFixture
                 new MaterialList()
                 {
                     MaterialId = Materials.Squishums,
-                    Quantity = oldSquishums.Quantity + 100
+                    Quantity = oldSquishums.Quantity + 100,
                 }
             );
 
         response.Data.UpdateDataList.CharaList.Should().Contain(x => x.CharaId == Charas.Akasha);
 
-        response.Data.UpdateDataList.DragonList.Should().Contain(x => x.DragonId == Dragons.Arsene);
+        response
+            .Data.UpdateDataList.DragonList.Should()
+            .Contain(x => x.DragonId == DragonId.Arsene);
         response
             .Data.UpdateDataList.DragonReliabilityList.Should()
-            .Contain(x => x.DragonId == Dragons.Arsene);
+            .Contain(x => x.DragonId == DragonId.Arsene);
 
         response
             .Data.UpdateDataList.AbilityCrestList.Should()
-            .Contain(x => x.AbilityCrestId == AbilityCrests.ADogsDay);
+            .Contain(x => x.AbilityCrestId == AbilityCrestId.ADogsDay);
 
         response
             .Data.UpdateDataList.PresentNotice.Should()
-            .BeEquivalentTo(new PresentNotice() { PresentCount = 0, PresentLimitCount = 0, });
+            .BeEquivalentTo(new PresentNotice() { PresentCount = 0, PresentLimitCount = 0 });
+
+        response
+            .Data.UpdateDataList.DiamondData.Should()
+            .BeEquivalentTo(new DiamondData() { FreeDiamond = 100, PaidDiamond = 0 });
 
         // Not sure if entity_result is correct so won't test that
     }
@@ -310,29 +345,28 @@ public class PresentTest : TestFixture
     [Fact]
     public async Task Receive_ReceiveSinglePresent_ClaimsOne()
     {
-        List<DbPlayerPresent> presents =
+        List<DbPlayerPresent> presents = new()
+        {
             new()
             {
-                new()
-                {
-                    ViewerId = ViewerId,
-                    EntityType = EntityTypes.Dragon,
-                    EntityId = (int)Dragons.Raphael,
-                },
-                new()
-                {
-                    ViewerId = ViewerId,
-                    EntityType = EntityTypes.Wyrmite,
-                    EntityQuantity = 100,
-                    ReceiveLimitTime = DateTimeOffset.UtcNow + TimeSpan.FromDays(1)
-                },
-                new()
-                {
-                    ViewerId = ViewerId,
-                    EntityType = EntityTypes.Rupies,
-                    EntityQuantity = 100_000,
-                },
-            };
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.Dragon,
+                EntityId = (int)DragonId.Raphael,
+            },
+            new()
+            {
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.Wyrmite,
+                EntityQuantity = 100,
+                ReceiveLimitTime = DateTimeOffset.UtcNow + TimeSpan.FromDays(1),
+            },
+            new()
+            {
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.Rupies,
+                EntityQuantity = 100_000,
+            },
+        };
 
         await this.AddRangeToDatabase(presents);
 
@@ -341,7 +375,8 @@ public class PresentTest : TestFixture
         DragaliaResponse<PresentReceiveResponse> response =
             await this.Client.PostMsgpack<PresentReceiveResponse>(
                 $"{Controller}/receive",
-                new PresentReceiveRequest() { PresentIdList = presentIdList }
+                new PresentReceiveRequest() { PresentIdList = presentIdList },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response.Data.ReceivePresentIdList.Should().BeEquivalentTo(presentIdList);
@@ -350,14 +385,14 @@ public class PresentTest : TestFixture
 
         response
             .Data.UpdateDataList.DragonList.Should()
-            .Contain(x => x.DragonId == Dragons.Raphael);
+            .Contain(x => x.DragonId == DragonId.Raphael);
         response
             .Data.UpdateDataList.DragonReliabilityList.Should()
-            .Contain(x => x.DragonId == Dragons.Raphael);
+            .Contain(x => x.DragonId == DragonId.Raphael);
 
         response
             .Data.UpdateDataList.PresentNotice.Should()
-            .BeEquivalentTo(new PresentNotice() { PresentCount = 1, PresentLimitCount = 1, });
+            .BeEquivalentTo(new PresentNotice() { PresentCount = 1, PresentLimitCount = 1 });
     }
 
     [Fact]
@@ -367,22 +402,21 @@ public class PresentTest : TestFixture
             .ApiContext.PlayerUserData.AsNoTracking()
             .First(x => x.ViewerId == ViewerId);
 
-        List<DbPlayerPresent> presents =
+        List<DbPlayerPresent> presents = new()
+        {
             new()
             {
-                new()
-                {
-                    ViewerId = ViewerId,
-                    EntityType = EntityTypes.Wyrmprint,
-                    EntityId = (int)AbilityCrests.DearDiary,
-                },
-                new()
-                {
-                    ViewerId = ViewerId,
-                    EntityType = EntityTypes.Wyrmprint,
-                    EntityId = (int)AbilityCrests.DearDiary,
-                },
-            };
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.Wyrmprint,
+                EntityId = (int)AbilityCrestId.DearDiary,
+            },
+            new()
+            {
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.Wyrmprint,
+                EntityId = (int)AbilityCrestId.DearDiary,
+            },
+        };
 
         await this.AddRangeToDatabase(presents);
 
@@ -391,7 +425,8 @@ public class PresentTest : TestFixture
         DragaliaResponse<PresentReceiveResponse> response =
             await this.Client.PostMsgpack<PresentReceiveResponse>(
                 $"{Controller}/receive",
-                new PresentReceiveRequest() { PresentIdList = presentIdList }
+                new PresentReceiveRequest() { PresentIdList = presentIdList },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response.Data.ReceivePresentIdList.Should().BeEquivalentTo(presentIdList);
@@ -399,7 +434,7 @@ public class PresentTest : TestFixture
         response
             .Data.UpdateDataList.AbilityCrestList.Should()
             .ContainSingle()
-            .And.Contain(x => x.AbilityCrestId == AbilityCrests.DearDiary);
+            .And.Contain(x => x.AbilityCrestId == AbilityCrestId.DearDiary);
         response.Data.UpdateDataList.UserData.DewPoint.Should().Be(oldUserData.DewPoint + 3000);
 
         response
@@ -409,7 +444,7 @@ public class PresentTest : TestFixture
                 new ConvertedEntityList()
                 {
                     BeforeEntityType = EntityTypes.Wyrmprint,
-                    BeforeEntityId = (int)AbilityCrests.DearDiary,
+                    BeforeEntityId = (int)AbilityCrestId.DearDiary,
                     BeforeEntityQuantity = 1,
                     AfterEntityType = EntityTypes.Dew,
                     AfterEntityId = 0,
@@ -421,22 +456,21 @@ public class PresentTest : TestFixture
     [Fact]
     public async Task Receive_DuplicateCharacter_DiscardsSecond()
     {
-        List<DbPlayerPresent> presents =
+        List<DbPlayerPresent> presents = new()
+        {
             new()
             {
-                new()
-                {
-                    ViewerId = ViewerId,
-                    EntityType = EntityTypes.Chara,
-                    EntityId = (int)Charas.Addis,
-                },
-                new()
-                {
-                    ViewerId = ViewerId,
-                    EntityType = EntityTypes.Chara,
-                    EntityId = (int)Charas.Addis,
-                },
-            };
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.Chara,
+                EntityId = (int)Charas.Addis,
+            },
+            new()
+            {
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.Chara,
+                EntityId = (int)Charas.Addis,
+            },
+        };
 
         await this.AddRangeToDatabase(presents);
 
@@ -445,7 +479,8 @@ public class PresentTest : TestFixture
         DragaliaResponse<PresentReceiveResponse> response =
             await this.Client.PostMsgpack<PresentReceiveResponse>(
                 $"{Controller}/receive",
-                new PresentReceiveRequest() { PresentIdList = presentIdList }
+                new PresentReceiveRequest() { PresentIdList = presentIdList },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response.Data.ReceivePresentIdList.Should().Contain((ulong)presents.First().PresentId);
@@ -466,22 +501,21 @@ public class PresentTest : TestFixture
     [Fact]
     public async Task Receive_DuplicateDragon_GrantsBoth()
     {
-        List<DbPlayerPresent> presents =
+        List<DbPlayerPresent> presents = new()
+        {
             new()
             {
-                new()
-                {
-                    ViewerId = ViewerId,
-                    EntityType = EntityTypes.Dragon,
-                    EntityId = (int)Dragons.Homura,
-                },
-                new()
-                {
-                    ViewerId = ViewerId,
-                    EntityType = EntityTypes.Dragon,
-                    EntityId = (int)Dragons.Homura,
-                },
-            };
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.Dragon,
+                EntityId = (int)DragonId.Homura,
+            },
+            new()
+            {
+                ViewerId = ViewerId,
+                EntityType = EntityTypes.Dragon,
+                EntityId = (int)DragonId.Homura,
+            },
+        };
 
         await this.AddRangeToDatabase(presents);
 
@@ -490,7 +524,8 @@ public class PresentTest : TestFixture
         DragaliaResponse<PresentReceiveResponse> response =
             await this.Client.PostMsgpack<PresentReceiveResponse>(
                 $"{Controller}/receive",
-                new PresentReceiveRequest() { PresentIdList = presentIdList }
+                new PresentReceiveRequest() { PresentIdList = presentIdList },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response.Data.ReceivePresentIdList.Should().BeEquivalentTo(presentIdList);
@@ -500,7 +535,7 @@ public class PresentTest : TestFixture
         response
             .Data.UpdateDataList.DragonReliabilityList.Should()
             .ContainSingle()
-            .And.Contain(x => x.DragonId == Dragons.Homura);
+            .And.Contain(x => x.DragonId == DragonId.Homura);
     }
 
     [Fact]
@@ -519,18 +554,21 @@ public class PresentTest : TestFixture
                 EntityType = EntityTypes.SummonTicket,
                 EntityId = (int)SummonTickets.AdventurerSummon,
                 EntityQuantity = 2,
-            }
+            },
         ];
 
         await this.AddRangeToDatabase(presents);
 
-        await this.ApiContext.PlayerSummonTickets.ExecuteDeleteAsync();
+        await this.ApiContext.PlayerSummonTickets.ExecuteDeleteAsync(
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         IEnumerable<ulong> presentIdList = presents.Select(x => (ulong)x.PresentId);
 
         await this.Client.PostMsgpack<PresentReceiveResponse>(
             $"{Controller}/receive",
-            new PresentReceiveRequest() { PresentIdList = presentIdList }
+            new PresentReceiveRequest() { PresentIdList = presentIdList },
+            cancellationToken: TestContext.Current.CancellationToken
         );
 
         this.ApiContext.PlayerSummonTickets.AsNoTracking()
@@ -541,7 +579,7 @@ public class PresentTest : TestFixture
                     {
                         ViewerId = this.ViewerId,
                         SummonTicketId = SummonTickets.AdventurerSummon,
-                        Quantity = 4
+                        Quantity = 4,
                     },
                 ],
                 opts => opts.Excluding(x => x.KeyId)
@@ -570,19 +608,21 @@ public class PresentTest : TestFixture
                 EntityType = EntityTypes.DragonGift,
                 EntityId = (int)DragonGifts.DragonyuleCake,
                 EntityQuantity = 1,
-            }
+            },
         ];
 
-        await this.ApiContext.PlayerDragonGifts.ExecuteDeleteAsync();
+        await this.ApiContext.PlayerDragonGifts.ExecuteDeleteAsync(
+            cancellationToken: TestContext.Current.CancellationToken
+        );
 
         await this.AddRangeToDatabase(
             [
                 new DbPlayerDragonGift()
                 {
                     DragonGiftId = DragonGifts.FourLeafClover,
-                    Quantity = 4
+                    Quantity = 4,
                 },
-                .. presents
+                .. presents,
             ]
         );
 
@@ -591,15 +631,16 @@ public class PresentTest : TestFixture
         DragaliaResponse<PresentReceiveResponse> response =
             await this.Client.PostMsgpack<PresentReceiveResponse>(
                 $"{Controller}/receive",
-                new PresentReceiveRequest() { PresentIdList = presentIdList }
+                new PresentReceiveRequest() { PresentIdList = presentIdList },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         response
             .Data.UpdateDataList.DragonGiftList.Should()
             .BeEquivalentTo<DragonGiftList>(
                 [
-                    new() { DragonGiftId = DragonGifts.FourLeafClover, Quantity = 6, },
-                    new() { DragonGiftId = DragonGifts.DragonyuleCake, Quantity = 2, },
+                    new() { DragonGiftId = DragonGifts.FourLeafClover, Quantity = 6 },
+                    new() { DragonGiftId = DragonGifts.DragonyuleCake, Quantity = 2 },
                 ]
             );
 
@@ -610,16 +651,107 @@ public class PresentTest : TestFixture
                     {
                         ViewerId = this.ViewerId,
                         DragonGiftId = DragonGifts.FourLeafClover,
-                        Quantity = 6
+                        Quantity = 6,
                     },
                     new DbPlayerDragonGift()
                     {
                         ViewerId = this.ViewerId,
                         DragonGiftId = DragonGifts.DragonyuleCake,
-                        Quantity = 2
+                        Quantity = 2,
                     },
                 ]
             );
+    }
+
+    [Fact]
+    public async Task Receive_StackedDragonEntities_HandlesCorrectly()
+    {
+        List<DbPlayerPresent> presents =
+        [
+            new DbPlayerPresent()
+            {
+                EntityType = EntityTypes.Dragon,
+                EntityId = (int)DragonId.Andromeda,
+                EntityQuantity = 2,
+            },
+        ];
+
+        await this.AddRangeToDatabase(presents);
+
+        IEnumerable<ulong> presentIdList = presents.Select(x => (ulong)x.PresentId);
+
+        DragaliaResponse<PresentReceiveResponse> response =
+            await this.Client.PostMsgpack<PresentReceiveResponse>(
+                $"{Controller}/receive",
+                new PresentReceiveRequest() { PresentIdList = presentIdList },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+        response
+            .Data.UpdateDataList.DragonList.Should()
+            .HaveCount(2)
+            .And.AllSatisfy(x => x.DragonId.Should().Be(DragonId.Andromeda));
+
+        this.ApiContext.PlayerDragonData.Should()
+            .BeEquivalentTo(
+                [
+                    new DbPlayerDragonData()
+                    {
+                        ViewerId = this.ViewerId,
+                        DragonId = DragonId.Andromeda,
+                    },
+                    new DbPlayerDragonData()
+                    {
+                        ViewerId = this.ViewerId,
+                        DragonId = DragonId.Andromeda,
+                    },
+                ],
+                opts => opts.Including(x => x.ViewerId).Including(x => x.DragonId)
+            );
+    }
+
+    [Fact]
+    public async Task Receive_DmodePoint_InitializesKaleidoscapeData()
+    {
+        this.ApiContext.PlayerDmodeInfos.ExecuteDelete();
+        this.ApiContext.PlayerDmodeDungeons.ExecuteDelete();
+        this.ApiContext.PlayerDmodeExpeditions.ExecuteDelete();
+
+        List<DbPlayerPresent> presents =
+        [
+            new DbPlayerPresent()
+            {
+                EntityType = EntityTypes.DmodePoint,
+                EntityId = (int)DmodePoint.Point1,
+                EntityQuantity = 100,
+            },
+            new DbPlayerPresent()
+            {
+                EntityType = EntityTypes.DmodePoint,
+                EntityId = (int)DmodePoint.Point1,
+                EntityQuantity = 100,
+            },
+            new DbPlayerPresent()
+            {
+                EntityType = EntityTypes.DmodePoint,
+                EntityId = (int)DmodePoint.Point2,
+                EntityQuantity = 200,
+            },
+        ];
+
+        await this.AddRangeToDatabase(presents);
+
+        IEnumerable<ulong> presentIdList = presents.Select(x => (ulong)x.PresentId);
+
+        DragaliaResponse<PresentReceiveResponse> response =
+            await this.Client.PostMsgpack<PresentReceiveResponse>(
+                $"{Controller}/receive",
+                new PresentReceiveRequest() { PresentIdList = presentIdList },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+        response.Data.UpdateDataList.DmodeInfo.DmodePoint1.Should().Be(200);
+        response.Data.UpdateDataList.DmodeInfo.DmodePoint2.Should().Be(200);
     }
 
     [Fact]
@@ -643,7 +775,8 @@ public class PresentTest : TestFixture
         DragaliaResponse<PresentGetHistoryListResponse> firstResponse =
             await this.Client.PostMsgpack<PresentGetHistoryListResponse>(
                 $"{Controller}/get_history_list",
-                new PresentGetHistoryListRequest() { PresentHistoryId = 0 }
+                new PresentGetHistoryListRequest() { PresentHistoryId = 0 },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         firstResponse
@@ -656,8 +789,9 @@ public class PresentTest : TestFixture
                 $"{Controller}/get_history_list",
                 new PresentGetHistoryListRequest()
                 {
-                    PresentHistoryId = (ulong)presentHistories[99].Id
-                }
+                    PresentHistoryId = (ulong)presentHistories[99].Id,
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         secondResponse.Data.PresentHistoryList.Should().HaveCount(20);

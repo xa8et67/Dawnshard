@@ -1,12 +1,13 @@
-﻿using DragaliaAPI.Controllers;
-using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Database.Repositories;
+﻿using DragaliaAPI.Database.Entities;
+using DragaliaAPI.Features.Shared;
 using DragaliaAPI.Features.Story;
+using DragaliaAPI.Features.Tutorial;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
 using DragaliaAPI.Shared.Definitions.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
+using static DragaliaAPI.Infrastructure.DragaliaHttpConstants;
 
 namespace DragaliaAPI.Features.Summoning;
 
@@ -52,14 +53,16 @@ public class RedoableSummonController(
             RedoableSummonOddsRateList = new RedoableSummonOddsRateList()
             {
                 Normal = normalOddsRate,
-                Guarantee = guaranteeRate
-            }
+                Guarantee = guaranteeRate,
+            },
         };
     }
 
     [HttpPost]
     [Route("pre_exec")]
-    public async Task<DragaliaResult> PreExec([FromHeader(Name = "SID")] string sessionId)
+    public async Task<DragaliaResult> PreExec(
+        [FromHeader(Name = Headers.SessionId)] string sessionId
+    )
     {
         IEnumerable<AtgenRedoableSummonResultUnitList> summonResult =
             await summonService.GenerateRedoableSummonResult();
@@ -69,7 +72,7 @@ public class RedoableSummonController(
             JsonSerializer.Serialize(summonResult),
             new DistributedCacheEntryOptions()
             {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(60)
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(60),
             }
         );
 
@@ -81,7 +84,7 @@ public class RedoableSummonController(
     [HttpPost]
     [Route("fix_exec")]
     public async Task<DragaliaResult> FixExec(
-        [FromHeader(Name = "SID")] string sessionId,
+        [FromHeader(Name = Headers.SessionId)] string sessionId,
         CancellationToken cancellationToken
     )
     {
@@ -105,9 +108,9 @@ public class RedoableSummonController(
         );
         prologueStory.State = StoryState.Read;
 
-        List<Dragons> dragonList = cachedResult
+        List<DragonId> dragonList = cachedResult
             .Where(x => x.EntityType == EntityTypes.Dragon)
-            .Select(x => (Dragons)x.Id)
+            .Select(x => (DragonId)x.Id)
             .ToList();
 
         List<Charas> charaList = cachedResult
@@ -119,9 +122,8 @@ public class RedoableSummonController(
             charaList
         );
 
-        IEnumerable<(Dragons Id, bool IsNew)> repositoryDragonOutput = await unitService.AddDragons(
-            dragonList
-        );
+        IEnumerable<(DragonId Id, bool IsNew)> repositoryDragonOutput =
+            await unitService.AddDragons(dragonList);
 
         UpdateDataList updateData = await updateDataService.SaveChangesAsync(cancellationToken);
 
@@ -130,14 +132,14 @@ public class RedoableSummonController(
             .Select(x => new AtgenDuplicateEntityList()
             {
                 EntityType = EntityTypes.Chara,
-                EntityId = (int)x.id
+                EntityId = (int)x.id,
             });
         IEnumerable<AtgenDuplicateEntityList> newDragons = repositoryDragonOutput
             .Where(x => x.IsNew)
             .Select(x => new AtgenDuplicateEntityList()
             {
                 EntityType = EntityTypes.Dragon,
-                EntityId = (int)x.Id
+                EntityId = (int)x.Id,
             });
 
         return this.Ok(
@@ -146,13 +148,13 @@ public class RedoableSummonController(
                 UserRedoableSummonData = new UserRedoableSummonData()
                 {
                     IsFixedResult = true,
-                    RedoableSummonResultUnitList = cachedResult
+                    RedoableSummonResultUnitList = cachedResult,
                 },
                 UpdateDataList = updateData,
                 EntityResult = new EntityResult()
                 {
-                    NewGetEntityList = newCharas.Concat(newDragons)
-                }
+                    NewGetEntityList = newCharas.Concat(newDragons),
+                },
             }
         );
     }

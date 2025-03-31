@@ -1,6 +1,6 @@
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Utils;
-using DragaliaAPI.Services.Game;
+using DragaliaAPI.Features.Tutorial;
 using DragaliaAPI.Shared.MasterAsset.Models.Missions;
 
 namespace DragaliaAPI.Integration.Test.Features.SavefileUpdate;
@@ -16,11 +16,11 @@ public class V18UpdateTest : SavefileUpdateTestFixture
         await this.AddRangeToDatabase(
             new List<DbPlayerQuestWall>()
             {
-                new() { WallId = (int)QuestWallTypes.Flame, WallLevel = 2, },
-                new() { WallId = (int)QuestWallTypes.Water, WallLevel = 2, },
-                new() { WallId = (int)QuestWallTypes.Wind, WallLevel = 3, },
-                new() { WallId = (int)QuestWallTypes.Light, WallLevel = 4, },
-                new() { WallId = (int)QuestWallTypes.Shadow, WallLevel = 3, },
+                new() { WallId = (int)QuestWallTypes.Flame, WallLevel = 2 },
+                new() { WallId = (int)QuestWallTypes.Water, WallLevel = 2 },
+                new() { WallId = (int)QuestWallTypes.Wind, WallLevel = 3 },
+                new() { WallId = (int)QuestWallTypes.Light, WallLevel = 4 },
+                new() { WallId = (int)QuestWallTypes.Shadow, WallLevel = 3 },
             }
         );
 
@@ -35,7 +35,8 @@ public class V18UpdateTest : SavefileUpdateTestFixture
 
         await this.LoadIndex();
 
-        this.ApiContext.PlayerMissions.Should()
+        this.ApiContext.PlayerMissions.Where(x => x.ViewerId == this.ViewerId)
+            .Should()
             .ContainEquivalentOf(
                 new DbPlayerMission()
                 {
@@ -143,11 +144,11 @@ public class V18UpdateTest : SavefileUpdateTestFixture
         await this.AddRangeToDatabase(
             new List<DbPlayerQuestWall>()
             {
-                new() { WallId = (int)QuestWallTypes.Flame, WallLevel = 80, },
-                new() { WallId = (int)QuestWallTypes.Water, WallLevel = 0, },
-                new() { WallId = (int)QuestWallTypes.Wind, WallLevel = 0, },
-                new() { WallId = (int)QuestWallTypes.Light, WallLevel = 0, },
-                new() { WallId = (int)QuestWallTypes.Shadow, WallLevel = 0, },
+                new() { WallId = (int)QuestWallTypes.Flame, WallLevel = 80 },
+                new() { WallId = (int)QuestWallTypes.Water, WallLevel = 0 },
+                new() { WallId = (int)QuestWallTypes.Wind, WallLevel = 0 },
+                new() { WallId = (int)QuestWallTypes.Light, WallLevel = 0 },
+                new() { WallId = (int)QuestWallTypes.Shadow, WallLevel = 0 },
             }
         );
 
@@ -200,7 +201,8 @@ public class V18UpdateTest : SavefileUpdateTestFixture
                 );
         }
 
-        this.ApiContext.PlayerMissions.Should()
+        this.ApiContext.PlayerMissions.Where(x => x.ViewerId == this.ViewerId)
+            .Should()
             .NotContain(
                 x =>
                     x.Id > 10010200
@@ -217,11 +219,11 @@ public class V18UpdateTest : SavefileUpdateTestFixture
         await this.AddRangeToDatabase(
             new List<DbPlayerQuestWall>()
             {
-                new() { WallId = (int)QuestWallTypes.Flame, WallLevel = 80, },
-                new() { WallId = (int)QuestWallTypes.Water, WallLevel = 80, },
-                new() { WallId = (int)QuestWallTypes.Wind, WallLevel = 80, },
-                new() { WallId = (int)QuestWallTypes.Light, WallLevel = 80, },
-                new() { WallId = (int)QuestWallTypes.Shadow, WallLevel = 80, },
+                new() { WallId = (int)QuestWallTypes.Flame, WallLevel = 80 },
+                new() { WallId = (int)QuestWallTypes.Water, WallLevel = 80 },
+                new() { WallId = (int)QuestWallTypes.Wind, WallLevel = 80 },
+                new() { WallId = (int)QuestWallTypes.Light, WallLevel = 80 },
+                new() { WallId = (int)QuestWallTypes.Shadow, WallLevel = 80 },
             }
         );
 
@@ -236,7 +238,8 @@ public class V18UpdateTest : SavefileUpdateTestFixture
 
         await this.LoadIndex();
 
-        this.ApiContext.PlayerMissions.ToList()
+        this.ApiContext.PlayerMissions.Where(x => x.ViewerId == this.ViewerId)
+            .ToList()
             .Should()
             .AllSatisfy(x => x.State.Should().Be(MissionState.Completed));
     }
@@ -247,11 +250,11 @@ public class V18UpdateTest : SavefileUpdateTestFixture
         await this.AddRangeToDatabase(
             new List<DbPlayerQuestWall>()
             {
-                new() { WallId = (int)QuestWallTypes.Flame, WallLevel = 0, },
-                new() { WallId = (int)QuestWallTypes.Water, WallLevel = 0, },
-                new() { WallId = (int)QuestWallTypes.Wind, WallLevel = 0, },
-                new() { WallId = (int)QuestWallTypes.Light, WallLevel = 0, },
-                new() { WallId = (int)QuestWallTypes.Shadow, WallLevel = 0, },
+                new() { WallId = (int)QuestWallTypes.Flame, WallLevel = 0 },
+                new() { WallId = (int)QuestWallTypes.Water, WallLevel = 0 },
+                new() { WallId = (int)QuestWallTypes.Wind, WallLevel = 0 },
+                new() { WallId = (int)QuestWallTypes.Light, WallLevel = 0 },
+                new() { WallId = (int)QuestWallTypes.Shadow, WallLevel = 0 },
             }
         );
 
@@ -266,7 +269,8 @@ public class V18UpdateTest : SavefileUpdateTestFixture
 
         await this.LoadIndex();
 
-        this.ApiContext.PlayerMissions.ToList()
+        this.ApiContext.PlayerMissions.Where(x => x.ViewerId == this.ViewerId)
+            .ToList()
             .Should()
             .BeEquivalentTo<DbPlayerMission>(
                 [
@@ -311,7 +315,7 @@ public class V18UpdateTest : SavefileUpdateTestFixture
                         Id = 10010601, // Clear The Mercurial Gauntlet (Shadow): Lv. 1
                         Type = MissionType.Normal,
                         State = MissionState.InProgress,
-                    }
+                    },
                 ],
                 opts => opts.Excluding(x => x.ViewerId).Excluding(x => x.GroupId)
             );

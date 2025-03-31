@@ -1,18 +1,14 @@
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Features.Dungeon;
-using DragaliaAPI.Models;
+using DragaliaAPI.Infrastructure.Results;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace DragaliaAPI.Integration.Test.Features.Wall;
 
 public class WallTest : TestFixture
 {
     public WallTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
-        : base(factory, outputHelper)
-    {
-        CommonAssertionOptions.ApplyTimeOptions(toleranceSec: 2);
-    }
+        : base(factory, outputHelper) { }
 
     [Fact]
     public async Task Fail_ReturnsExpectedResponse()
@@ -26,24 +22,24 @@ public class WallTest : TestFixture
             {
                 QuestId = questId,
                 State = 0,
-                ViewerId = ViewerId
+                ViewerId = ViewerId,
             }
         );
 
-        DungeonSession mockSession =
-            new()
-            {
-                Party = new List<PartySettingList>() { new() { CharaId = Charas.ThePrince } },
-                WallId = expectedWallId,
-                WallLevel = expectedWallLevel
-            };
+        DungeonSession mockSession = new()
+        {
+            Party = new List<PartySettingList>() { new() { CharaId = Charas.ThePrince } },
+            WallId = expectedWallId,
+            WallLevel = expectedWallLevel,
+        };
 
         string key = await this.StartDungeon(mockSession);
 
         WallFailResponse response = (
             await Client.PostMsgpack<WallFailResponse>(
                 "/wall/fail",
-                new WallFailRequest() { DungeonKey = key, FailState = 0 }
+                new WallFailRequest() { DungeonKey = key, FailState = 0 },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -54,7 +50,7 @@ public class WallTest : TestFixture
                 {
                     WallId = expectedWallId,
                     WallLevel = expectedWallLevel,
-                    IsHost = true
+                    IsHost = true,
                 }
             );
     }
@@ -64,7 +60,7 @@ public class WallTest : TestFixture
     {
         await this.AddRangeToDatabase(
             [
-                new DbWallRewardDate() { LastClaimDate = DateTimeOffset.UnixEpoch, },
+                new DbWallRewardDate() { LastClaimDate = DateTimeOffset.UnixEpoch },
                 new DbPlayerQuestWall()
                 {
                     ViewerId = ViewerId,
@@ -94,14 +90,15 @@ public class WallTest : TestFixture
                     ViewerId = ViewerId,
                     WallId = 216010005,
                     WallLevel = 5,
-                }
+                },
             ]
         );
 
         WallGetMonthlyRewardResponse response = (
             await this.Client.PostMsgpack<WallGetMonthlyRewardResponse>(
                 "wall/get_monthly_reward",
-                new WallGetMonthlyRewardResponse() { }
+                new WallGetMonthlyRewardResponse() { },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -113,7 +110,7 @@ public class WallTest : TestFixture
                     QuestGroupId = 21601,
                     SumWallLevel = 1 + 2 + 3 + 4 + 5,
                     LastRewardDate = DateTimeOffset.UnixEpoch,
-                    RewardStatus = RewardStatus.Available
+                    RewardStatus = RewardStatus.Available,
                 }
             );
     }
@@ -171,14 +168,15 @@ public class WallTest : TestFixture
                     ViewerId = ViewerId,
                     WallId = 216010005,
                     WallLevel = 5,
-                }
+                },
             }
         );
 
         WallReceiveMonthlyRewardResponse response = (
             await this.Client.PostMsgpack<WallReceiveMonthlyRewardResponse>(
                 "wall/receive_monthly_reward",
-                new WallGetMonthlyRewardRequest() { QuestGroupId = 21601 }
+                new WallGetMonthlyRewardRequest() { QuestGroupId = 21601 },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -190,7 +188,7 @@ public class WallTest : TestFixture
                     QuestGroupId = 21601,
                     SumWallLevel = 5 * 5,
                     LastRewardDate = DateTimeOffset.UnixEpoch,
-                    RewardStatus = RewardStatus.Available
+                    RewardStatus = RewardStatus.Available,
                 }
             );
 
@@ -212,7 +210,7 @@ public class WallTest : TestFixture
                 new MaterialList()
                 {
                     MaterialId = Materials.TwinklingSand,
-                    Quantity = oldTwinklingSand + expectedTwinklingSand
+                    Quantity = oldTwinklingSand + expectedTwinklingSand,
                 }
             );
     }
@@ -224,7 +222,8 @@ public class WallTest : TestFixture
             await this.Client.PostMsgpack<ResultCodeResponse>(
                 "wall/receive_monthly_reward",
                 new WallGetMonthlyRewardRequest() { QuestGroupId = 21601 },
-                ensureSuccessHeader: false
+                ensureSuccessHeader: false,
+                cancellationToken: TestContext.Current.CancellationToken
             )
         );
 
@@ -250,7 +249,8 @@ public class WallTest : TestFixture
             await this.Client.PostMsgpack<ResultCodeResponse>(
                 "wall/receive_monthly_reward",
                 new WallGetMonthlyRewardRequest() { QuestGroupId = 21601 },
-                ensureSuccessHeader: false
+                ensureSuccessHeader: false,
+                cancellationToken: TestContext.Current.CancellationToken
             )
         );
 

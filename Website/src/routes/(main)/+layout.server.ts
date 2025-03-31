@@ -1,10 +1,12 @@
-import type { LayoutServerLoad } from './$types';
 import Cookies from '$lib/auth/cookies.ts';
 
-export const load: LayoutServerLoad = ({ locals, depends }) => {
+import type { LayoutServerLoad } from './$types';
+
+export const load: LayoutServerLoad = ({ locals, depends, url }) => {
   depends(`cookie:${Cookies.IdToken}`);
 
   return {
-    hasValidJwt: locals.hasValidJwt
+    hasValidJwt: locals.hasValidJwt,
+    urlOrigin: url.origin
   };
 };

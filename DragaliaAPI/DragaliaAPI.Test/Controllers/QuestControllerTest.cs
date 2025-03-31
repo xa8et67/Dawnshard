@@ -1,11 +1,10 @@
 using DragaliaAPI.Features.ClearParty;
+using DragaliaAPI.Features.Friends;
 using DragaliaAPI.Features.Quest;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared;
 using DragaliaAPI.Features.Story;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
 using DragaliaAPI.Shared.Definitions.Enums;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace DragaliaAPI.Test.Controllers;
 
@@ -39,15 +38,14 @@ public class QuestControllerTest
     [Fact]
     public async Task ReadStory_ProducesExpectedResponse()
     {
-        EntityResult entityResult =
-            new()
+        EntityResult entityResult = new()
+        {
+            NewGetEntityList = new List<AtgenDuplicateEntityList>()
             {
-                NewGetEntityList = new List<AtgenDuplicateEntityList>()
-                {
-                    new() { EntityType = EntityTypes.Dragon, EntityId = (int)Dragons.BronzeFafnir },
-                    new() { EntityType = EntityTypes.Chara, EntityId = (int)Charas.Ilia }
-                }
-            };
+                new() { EntityType = EntityTypes.Dragon, EntityId = (int)DragonId.BronzeFafnir },
+                new() { EntityType = EntityTypes.Chara, EntityId = (int)Charas.Ilia },
+            },
+        };
 
         this.mockStoryService.Setup(x => x.ReadStory(StoryTypes.Quest, 1))
             .ReturnsAsync(
@@ -63,20 +61,22 @@ public class QuestControllerTest
                     new()
                     {
                         EntityType = EntityTypes.Dragon,
-                        EntityId = (int)Dragons.BronzeFafnir,
-                        EntityQuantity = 2
-                    }
+                        EntityId = (int)DragonId.BronzeFafnir,
+                        EntityQuantity = 2,
+                    },
                 }
             );
         this.mockStoryService.Setup(x => x.GetEntityResult()).Returns(entityResult);
 
-        this.mockUpdateDataService.Setup(x => x.SaveChangesAsync(default))
+        this.mockUpdateDataService.Setup(x =>
+                x.SaveChangesAsync(TestContext.Current.CancellationToken)
+            )
             .ReturnsAsync(new UpdateDataList());
 
         (
             await this.questController.ReadStory(
                 new QuestReadStoryRequest() { QuestStoryId = 1 },
-                default
+                TestContext.Current.CancellationToken
             )
         )
             .GetData<QuestReadStoryResponse>()
@@ -88,14 +88,14 @@ public class QuestControllerTest
                     UpdateDataList = new(),
                     QuestStoryRewardList = new List<AtgenQuestStoryRewardList>()
                     {
-                        new() { EntityType = EntityTypes.Wyrmite, EntityQuantity = 25, },
+                        new() { EntityType = EntityTypes.Wyrmite, EntityQuantity = 25 },
                         new()
                         {
                             EntityType = EntityTypes.Dragon,
-                            EntityId = (int)Dragons.BronzeFafnir,
+                            EntityId = (int)DragonId.BronzeFafnir,
                             EntityQuantity = 2,
                             EntityLevel = 1,
-                            EntityLimitBreakCount = 0
+                            EntityLimitBreakCount = 0,
                         },
                         new()
                         {
@@ -103,9 +103,9 @@ public class QuestControllerTest
                             EntityId = (int)Charas.Ilia,
                             EntityQuantity = 1,
                             EntityLevel = 1,
-                            EntityLimitBreakCount = 0
-                        }
-                    }
+                            EntityLimitBreakCount = 0,
+                        },
+                    },
                 }
             );
 

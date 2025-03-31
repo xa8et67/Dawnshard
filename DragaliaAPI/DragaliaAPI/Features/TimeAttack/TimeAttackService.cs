@@ -1,6 +1,6 @@
 ﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared.Reward;
 using DragaliaAPI.Features.TimeAttack.Validation;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Shared.Definitions.Enums;
@@ -78,9 +78,9 @@ public class TimeAttackService(
                         GameId = gameId,
                         ViewerId = playerIdentityService.ViewerId,
                         PartyInfo = JsonSerializer.Serialize(entry.PartyInfo),
-                        Units = clearUnits
+                        Units = clearUnits,
                     },
-                }
+                },
             }
         );
 
@@ -126,7 +126,7 @@ public class TimeAttackService(
             {
                 ViewerId = playerIdentityService.ViewerId,
                 QuestId = questId,
-                RewardId = x.Id
+                RewardId = x.Id,
             })
         );
 
@@ -135,13 +135,12 @@ public class TimeAttackService(
 
     private DbTimeAttackClearUnit MapTimeAttackUnit(PartyUnitList x, string roomId)
     {
-        DbTimeAttackClearUnit unit =
-            new()
-            {
-                UnitNo = x.Position,
-                ViewerId = playerIdentityService.ViewerId,
-                GameId = roomId
-            };
+        DbTimeAttackClearUnit unit = new()
+        {
+            UnitNo = x.Position,
+            ViewerId = playerIdentityService.ViewerId,
+            GameId = roomId,
+        };
 
         if (x.CharaData is not null)
             unit.CharaId = x.CharaData.CharaId;
@@ -165,7 +164,7 @@ public class TimeAttackService(
             unit.TalismanAbility2 = x.TalismanData.TalismanAbilityId2;
         }
 
-        List<AbilityCrests> crests = x
+        List<AbilityCrestId> crests = x
             .CrestSlotType1CrestList.Concat(x.CrestSlotType2CrestList)
             .Concat(x.CrestSlotType3CrestList)
             .Select(x => x.AbilityCrestId)

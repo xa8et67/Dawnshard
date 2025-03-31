@@ -1,23 +1,32 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace DragaliaAPI.Database.Entities;
 
 /// <summary>
 /// Container class for all savefile data to enable foreign keys.
 /// </summary>
-[Index(nameof(AccountId))]
 public class DbPlayer
 {
-    [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public long ViewerId { get; set; }
 
-    [MaxLength(16)]
     public required string AccountId { get; set; }
 
+    public DateTimeOffset CreatedAt { get; set; }
+
     public int SavefileVersion { get; set; }
+
+    /// <summary>
+    /// The last time at which a savefile for this user was imported from BaaS.
+    /// </summary>
+    public DateTimeOffset? LastSavefileImportTime { get; set; }
+
+    public string? SavefileOrigin { get; set; }
+
+    public bool IsAdmin { get; set; }
 
     public DbPlayerUserData? UserData { get; set; }
 
@@ -92,4 +101,23 @@ public class DbPlayer
     public List<DbEmblem> Emblems { get; set; } = [];
 
     public DbWallRewardDate? WallRewardDate { get; set; }
+
+    public DbPlayerDiamondData? DiamondData { get; set; }
+
+    public DbPlayerHelper? Helper { get; set; }
+
+    public List<DbPlayerFriendship> Friendships { get; set; } = [];
+
+    private class Configuration : IEntityTypeConfiguration<DbPlayer>
+    {
+        public void Configure(EntityTypeBuilder<DbPlayer> builder)
+        {
+            builder.HasKey(e => e.ViewerId);
+
+            builder.HasIndex(e => e.AccountId);
+            builder.Property(e => e.AccountId).HasMaxLength(16);
+
+            builder.Property(e => e.SavefileOrigin).HasMaxLength(32);
+        }
+    }
 }

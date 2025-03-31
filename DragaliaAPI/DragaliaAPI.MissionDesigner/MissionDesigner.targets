@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project>
+  <PropertyGroup>
+    <_InvokeMissionDesignerCommand>&quot;$(MSBuildThisFileDirectory)bin/$(Configuration)/DragaliaAPI.MissionDesigner&quot;</_InvokeMissionDesignerCommand>
+    <!-- For Docker builds, where we pass /p:UseAppHost=false -->
+    <_InvokeMissionDesignerCommand Condition="$(UseAppHost) == 'false'">dotnet &quot;$(MSBuildThisFileDirectory)bin/$(Configuration)/DragaliaAPI.MissionDesigner.dll&quot;</_InvokeMissionDesignerCommand>
+  </PropertyGroup>
+  
+  <Target Name="MissionDesigner" AfterTargets="Build">
+    <Exec
+      Command="$(_InvokeMissionDesignerCommand) &quot;$(MasterAssetResources)&quot;"
+      ConsoleToMSBuild="true" />
+  </Target>
+</Project>  

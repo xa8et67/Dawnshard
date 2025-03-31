@@ -1,0 +1,12 @@
+name: "Update snapshots"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  playwright:
+    uses: ./.github/workflows/playwright-test.yaml
+    secrets: inherit
+    with:
+      ref: ${{ github.ref }}
+      update-snapshots: true

@@ -1,5 +1,6 @@
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Utils;
+using DragaliaAPI.Infrastructure.Results;
 using DragaliaAPI.Shared.Definitions.Enums.EventItemTypes;
 using Microsoft.EntityFrameworkCore;
 
@@ -39,7 +40,8 @@ public class EarnEventTest : TestFixture
 
         await this.Client.PostMsgpack<BuildEventEntryResponse>(
             "earn_event/entry",
-            new EarnEventEntryRequest(EventId)
+            new EarnEventEntryRequest(EventId),
+            cancellationToken: TestContext.Current.CancellationToken
         );
 
         this.ApiContext.PlayerEventData.Should()
@@ -53,15 +55,18 @@ public class EarnEventTest : TestFixture
                 opts => opts.Excluding(x => x.Owner)
             );
 
-        this.ApiContext.PlayerMissions.Should()
+        this.ApiContext.PlayerMissions.Where(x => x.ViewerId == this.ViewerId)
+            .Should()
             .HaveCount(8 + 25, because: "the event has 8 daily missions and 25 limited missions");
-        this.ApiContext.PlayerMissions.ToList()
+        this.ApiContext.PlayerMissions.Where(x => x.ViewerId == this.ViewerId)
+            .ToList()
             .Should()
             .AllSatisfy(x =>
             {
                 x.GroupId.Should().Be(EventId);
             });
-        this.ApiContext.PlayerMissions.Should()
+        this.ApiContext.PlayerMissions.Where(x => x.ViewerId == this.ViewerId)
+            .Should()
             .Contain(
                 x => x.Id == 11650101 && x.State == MissionState.Completed,
                 "this is the event participation mission"
@@ -74,7 +79,8 @@ public class EarnEventTest : TestFixture
         DragaliaResponse<EarnEventGetEventDataResponse> evtData =
             await Client.PostMsgpack<EarnEventGetEventDataResponse>(
                 "earn_event/get_event_data",
-                new EarnEventGetEventDataRequest(EventId)
+                new EarnEventGetEventDataRequest(EventId),
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         evtData
@@ -87,13 +93,15 @@ public class EarnEventTest : TestFixture
     {
         await this.Client.PostMsgpack<BuildEventEntryResponse>(
             "earn_event/entry",
-            new EarnEventEntryRequest(EventId)
+            new EarnEventEntryRequest(EventId),
+            cancellationToken: TestContext.Current.CancellationToken
         );
 
         DragaliaResponse<EarnEventGetEventDataResponse> evtData =
             await Client.PostMsgpack<EarnEventGetEventDataResponse>(
                 "earn_event/get_event_data",
-                new EarnEventGetEventDataRequest(EventId)
+                new EarnEventGetEventDataRequest(EventId),
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         evtData
@@ -105,7 +113,7 @@ public class EarnEventTest : TestFixture
                     EventPoint = 0,
                     ExchangeItem01 = 0,
                     ExchangeItem02 = 0,
-                    AdventItemQuantity01 = 0
+                    AdventItemQuantity01 = 0,
                 }
             );
         evtData.Data.EventRewardList.Should().BeEmpty();
@@ -117,13 +125,18 @@ public class EarnEventTest : TestFixture
     {
         await this.Client.PostMsgpack<BuildEventEntryResponse>(
             "earn_event/entry",
-            new EarnEventEntryRequest(EventId)
+            new EarnEventEntryRequest(EventId),
+            cancellationToken: TestContext.Current.CancellationToken
         );
 
         DbPlayerEventItem pointItem = await ApiContext
             .PlayerEventItems.AsTracking()
-            .SingleAsync(x =>
-                x.EventId == EventId && x.Type == (int)BuildEventItemType.BuildEventPoint
+            .SingleAsync(
+                x =>
+                    x.ViewerId == this.ViewerId
+                    && x.EventId == EventId
+                    && x.Type == (int)BuildEventItemType.BuildEventPoint,
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         pointItem.Quantity += 10;
@@ -132,12 +145,13 @@ public class EarnEventTest : TestFixture
             ApiContext.PlayerEventRewards.Where(x => x.EventId == EventId)
         );
 
-        await ApiContext.SaveChangesAsync();
+        await ApiContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         DragaliaResponse<EarnEventReceiveEventPointRewardResponse> evtResp =
             await Client.PostMsgpack<EarnEventReceiveEventPointRewardResponse>(
                 "earn_event/receive_event_point_reward",
-                new EarnEventReceiveEventPointRewardRequest(EventId)
+                new EarnEventReceiveEventPointRewardRequest(EventId),
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         evtResp

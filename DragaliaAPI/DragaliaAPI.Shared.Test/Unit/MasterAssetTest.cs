@@ -172,13 +172,13 @@ public class MasterAssetTest
     [Fact]
     public void DragonData_Get_ReturnsExpectedProperties()
     {
-        DragonData elysium = MasterAsset.MasterAsset.DragonData.Get(Dragons.GalaElysium);
+        DragonData elysium = MasterAsset.MasterAsset.DragonData.Get(DragonId.GalaElysium);
 
         elysium
             .Should()
             .BeEquivalentTo(
                 new DragonData(
-                    Id: Dragons.GalaElysium,
+                    Id: DragonId.GalaElysium,
                     Rarity: 5,
                     ElementalType: UnitElement.Light,
                     MaxLimitBreakCount: 4,
@@ -292,7 +292,7 @@ public class MasterAssetTest
                 new List<AreaInfo>()
                 {
                     new("Main/01/MAIN_01_0101_01", "MAIN_01_0101_01"),
-                    new("Boss/BG001_5001_00/BG001_5001_00_00", "MAIN_01_0101_02")
+                    new("Boss/BG001_5001_00/BG001_5001_00_00", "MAIN_01_0101_02"),
                 }
             );
     }
@@ -514,9 +514,12 @@ public class MasterAssetTest
     }
 
     [Theory]
-    [InlineData(Dragons.Garuda, 210036011, 210036012)]
-    [InlineData(Dragons.Liger, 210043011, 210043012)]
-    public void DragonStories_ReturnsExpectedStoryIds(Dragons dragon, params int[] expectedStoryIds)
+    [InlineData(DragonId.Garuda, 210036011, 210036012)]
+    [InlineData(DragonId.Liger, 210043011, 210043012)]
+    public void DragonStories_ReturnsExpectedStoryIds(
+        DragonId dragon,
+        params int[] expectedStoryIds
+    )
     {
         int key = MasterAsset.MasterAsset.DragonStories[(int)dragon].Id;
 
@@ -535,7 +538,7 @@ public class MasterAssetTest
             .BeEquivalentTo(
                 new UnitStory(
                     Id: 200010011,
-                    ReleaseTriggerId: (int)Dragons.Chthonius,
+                    ReleaseTriggerId: (int)DragonId.Chthonius,
                     UnlockQuestStoryId: 0,
                     UnlockTriggerStoryId: 0
                 )
@@ -561,9 +564,9 @@ public class MasterAssetTest
                 new
                 {
                     Id = 5101,
-                    AbilityCrestId = AbilityCrests.SweetSurprise,
+                    AbilityCrestId = AbilityCrestId.SweetSurprise,
                     NeedDewPoint = 4000,
-                    Priority = 5199
+                    Priority = 5199,
                 }
             );
     }
@@ -606,7 +609,7 @@ public class MasterAssetTest
                 new Dictionary<Materials, int>()
                 {
                     { Materials.AzureInsignia, 200 },
-                    { Materials.DyrenellAureus, 25 }
+                    { Materials.DyrenellAureus, 25 },
                 }
             );
     }
@@ -670,7 +673,7 @@ public class MasterAssetTest
                 new Dictionary<Materials, int>()
                 {
                     { Materials.HolyWater, 2 },
-                    { Materials.ConsecratedWater, 14 }
+                    { Materials.ConsecratedWater, 14 },
                 }
             );
     }
@@ -713,14 +716,14 @@ public class MasterAssetTest
     public void AbilityCrest_Get_ReturnsExpectedProperties()
     {
         AbilityCrest abilityCrest = MasterAsset.MasterAsset.AbilityCrest.Get(
-            AbilityCrests.TheGeniusTacticianBowsBoon
+            AbilityCrestId.TheGeniusTacticianBowsBoon
         );
 
         abilityCrest
             .Should()
             .BeEquivalentTo(
                 new AbilityCrest(
-                    Id: AbilityCrests.TheGeniusTacticianBowsBoon,
+                    Id: AbilityCrestId.TheGeniusTacticianBowsBoon,
                     AbilityCrestBuildupGroupId: 1101,
                     AbilityCrestLevelRarityGroupId: 901,
                     Rarity: 9,
@@ -749,7 +752,7 @@ public class MasterAssetTest
     public void AbilityCrest_GetBuildupGroupId_ReturnsExpectedId()
     {
         AbilityCrest abilityCrest = MasterAsset.MasterAsset.AbilityCrest.Get(
-            AbilityCrests.TheGeniusTacticianBowsBoon
+            AbilityCrestId.TheGeniusTacticianBowsBoon
         );
 
         int buildupGroupId = abilityCrest.GetBuildupGroupId(BuildupPieceTypes.Copies, 4);
@@ -760,7 +763,7 @@ public class MasterAssetTest
     public void AbilityCrest_GetBuildupLevelId_ReturnsExpectedId()
     {
         AbilityCrest abilityCrest = MasterAsset.MasterAsset.AbilityCrest.Get(
-            AbilityCrests.TheGeniusTacticianBowsBoon
+            AbilityCrestId.TheGeniusTacticianBowsBoon
         );
 
         int buildupLevelId = abilityCrest.GetBuildupLevelId(9);
@@ -771,7 +774,7 @@ public class MasterAssetTest
     public void AbilityCrest_DuplicateMaterialMap_ReturnsExpectedDictionary()
     {
         FrozenDictionary<Materials, int> map = MasterAsset
-            .MasterAsset.AbilityCrest.Get(AbilityCrests.TheGeniusTacticianBowsBoon)
+            .MasterAsset.AbilityCrest.Get(AbilityCrestId.TheGeniusTacticianBowsBoon)
             .DuplicateMaterialMap;
 
         map.Should()
@@ -783,7 +786,7 @@ public class MasterAssetTest
     [Fact]
     public void AbilityCrest_GetAbilities_ReturnsExpected()
     {
-        AbilityCrest crest = MasterAsset.MasterAsset.AbilityCrest[AbilityCrests.TotheExtreme];
+        AbilityCrest crest = MasterAsset.MasterAsset.AbilityCrest[AbilityCrestId.TotheExtreme];
 
         crest
             .GetAbilities(1)

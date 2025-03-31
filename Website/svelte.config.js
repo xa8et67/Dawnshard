@@ -1,21 +1,37 @@
-import adapter from '@sveltejs/adapter-auto';
+import adapter from '@sveltejs/adapter-node';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
   // Consult https://kit.svelte.dev/docs/integrations#preprocessors
   // for more information about preprocessors
-  preprocess: [vitePreprocess({})],
-
+  preprocess: [vitePreprocess()],
   kit: {
-    // adapter-auto only supports some environments, see https://kit.svelte.dev/docs/adapter-auto for a list.
-    // If your environment is not supported or you settled on a specific environment, switch out the adapter.
     // See https://kit.svelte.dev/docs/adapters for more information about adapters.
     adapter: adapter(),
     alias: {
       $shadcn: './src/lib/shadcn',
       $static: './static',
       $main: './src/routes/(main)'
+    },
+    csp: {
+      // An ideal script-src policy:
+      // - would remove unsafe-hashes:
+      //   https://github.com/sveltejs/svelte/issues/14014
+      // - would use strict-dynamic + unsafe-inline for backwards compatibility:
+      //   https://github.com/sveltejs/kit/issues/3558
+      // - would use trusted-types-for
+      //   https://github.com/sveltejs/svelte/issues/14438
+      directives: {
+        'script-src': [
+          'self',
+          'unsafe-hashes',
+          'sha256-7dQwUgLau1NFCCGjfn9FsYptB6ZtWxJin6VohGIu20I='
+        ],
+        'object-src': ['none'],
+        'base-uri': ['none']
+      },
+      mode: 'nonce'
     }
   }
 };

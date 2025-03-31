@@ -1,10 +1,10 @@
-﻿using DragaliaAPI.Controllers;
-using DragaliaAPI.Features.Dungeon.AutoRepeat;
+﻿using DragaliaAPI.Features.Dungeon.AutoRepeat;
+using DragaliaAPI.Features.Shared;
 using DragaliaAPI.Features.TimeAttack;
-using DragaliaAPI.Middleware;
-using DragaliaAPI.Models;
+using DragaliaAPI.Infrastructure;
+using DragaliaAPI.Infrastructure.Metrics;
+using DragaliaAPI.Infrastructure.Middleware;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
 using DragaliaAPI.Shared.Definitions.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,14 +12,16 @@ using Microsoft.AspNetCore.Mvc;
 namespace DragaliaAPI.Features.Dungeon.Record;
 
 [Route("dungeon_record")]
-public class DungeonRecordController(
+internal sealed class DungeonRecordController(
     IDungeonRecordService dungeonRecordService,
     IDungeonRecordDamageService dungeonRecordDamageService,
     IDungeonRecordHelperService dungeonRecordHelperService,
+    IDungeonRecordRewardService dungeonRecordRewardService,
     IDungeonService dungeonService,
     ITimeAttackService timeAttackService,
     IAutoRepeatService autoRepeatService,
-    IUpdateDataService updateDataService
+    IUpdateDataService updateDataService,
+    IDragaliaApiMetrics metrics
 ) : DragaliaControllerBase
 {
     [HttpPost("record")]
@@ -49,8 +51,11 @@ public class DungeonRecordController(
 
         UpdateDataList updateDataList = await updateDataService.SaveChangesAsync(cancellationToken);
 
-        DungeonRecordRecordResponse response =
-            new() { IngameResultData = ingameResultData, UpdateDataList = updateDataList };
+        DungeonRecordRecordResponse response = new()
+        {
+            IngameResultData = ingameResultData,
+            UpdateDataList = updateDataList,
+        };
 
         if (session.QuestData?.IsSumUpTotalDamage ?? false)
         {
@@ -70,6 +75,8 @@ public class DungeonRecordController(
         }
 
         await dungeonService.RemoveSession(request.DungeonKey, cancellationToken);
+
+        metrics.OnQuestCleared(session);
 
         return response;
     }
@@ -92,19 +99,33 @@ public class DungeonRecordController(
             session
         );
 
-        (
-            IEnumerable<UserSupportList> helperList,
-            IEnumerable<AtgenHelperDetailList> helperDetailList
-        ) = await dungeonRecordHelperService.ProcessHelperDataMulti();
+        if (request.ConnectingViewerIdList is not null)
+        {
+            ingameResultData.RewardRecord.FirstMeeting =
+                dungeonRecordRewardService.ProcessFirstMeetingRewards(
+                    request.ConnectingViewerIdList
+                );
 
-        ingameResultData.HelperList = helperList;
-        ingameResultData.HelperDetailList = helperDetailList;
+            (ingameResultData.HelperList, ingameResultData.HelperDetailList) =
+                await dungeonRecordHelperService.ProcessHelperDataMulti(
+                    request.ConnectingViewerIdList
+                );
+        }
+        else
+        {
+            (ingameResultData.HelperList, ingameResultData.HelperDetailList) =
+                await dungeonRecordHelperService.ProcessHelperDataMulti();
+        }
+
         ingameResultData.PlayType = QuestPlayType.Multi;
 
         UpdateDataList updateDataList = await updateDataService.SaveChangesAsync(cancellationToken);
 
-        DungeonRecordRecordMultiResponse response =
-            new() { IngameResultData = ingameResultData, UpdateDataList = updateDataList, };
+        DungeonRecordRecordMultiResponse response = new()
+        {
+            IngameResultData = ingameResultData,
+            UpdateDataList = updateDataList,
+        };
 
         if (session.QuestData?.IsSumUpTotalDamage ?? false)
         {
@@ -115,6 +136,8 @@ public class DungeonRecordController(
         }
 
         await dungeonService.RemoveSession(request.DungeonKey, cancellationToken);
+
+        metrics.OnQuestCleared(session);
 
         return response;
     }

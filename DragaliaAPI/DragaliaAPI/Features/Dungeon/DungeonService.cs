@@ -1,5 +1,4 @@
-﻿using DragaliaAPI.Models;
-using DragaliaAPI.Models.Options;
+﻿using DragaliaAPI.Features.Shared.Options;
 using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
@@ -19,7 +18,7 @@ public class DungeonService(
     private DistributedCacheEntryOptions CacheOptions =>
         new()
         {
-            SlidingExpiration = TimeSpan.FromMinutes(options.CurrentValue.DungeonExpiryTimeMinutes)
+            SlidingExpiration = TimeSpan.FromMinutes(options.CurrentValue.DungeonExpiryTimeMinutes),
         };
 
     private static class Schema

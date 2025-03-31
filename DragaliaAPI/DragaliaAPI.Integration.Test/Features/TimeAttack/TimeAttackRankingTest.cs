@@ -16,7 +16,8 @@ public class TimeAttackRankingTest : TestFixture
     {
         (
             await this.Client.PostMsgpack<TimeAttackRankingGetDataResponse>(
-                "/time_attack_ranking/get_data"
+                "/time_attack_ranking/get_data",
+                cancellationToken: TestContext.Current.CancellationToken
             )
         )
             .Data.RankingTierRewardList.Should()
@@ -28,25 +29,29 @@ public class TimeAttackRankingTest : TestFixture
     {
         DbPlayerUserData oldUserData = await this
             .ApiContext.PlayerUserData.AsNoTracking()
-            .FirstAsync(x => x.ViewerId == ViewerId);
+            .FirstAsync(
+                x => x.ViewerId == ViewerId,
+                cancellationToken: TestContext.Current.CancellationToken
+            );
 
-        int questId = 227010101; // First Volk TA quest
+        int questId = 227080101; // Battle in the Dornith Mountains: Beginner
 
         this.ApiContext.PlayerQuests.Add(
             new DbQuest()
             {
                 ViewerId = ViewerId,
                 BestClearTime = 200f,
-                QuestId = questId
+                QuestId = questId,
             }
         );
 
-        await this.ApiContext.SaveChangesAsync();
+        await this.ApiContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         TimeAttackRankingReceiveTierRewardResponse rewardResponse = (
             await this.Client.PostMsgpack<TimeAttackRankingReceiveTierRewardResponse>(
                 "/time_attack_ranking/receive_tier_reward",
-                new TimeAttackRankingReceiveTierRewardRequest() { QuestId = questId }
+                new TimeAttackRankingReceiveTierRewardRequest() { QuestId = questId },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -59,7 +64,7 @@ public class TimeAttackRankingTest : TestFixture
                 {
                     EntityId = 0,
                     EntityType = EntityTypes.Dew,
-                    EntityQuantity = 7000
+                    EntityQuantity = 7000,
                 }
             );
 
@@ -74,7 +79,8 @@ public class TimeAttackRankingTest : TestFixture
         TimeAttackRankingReceiveTierRewardResponse secondRewardResponse = (
             await this.Client.PostMsgpack<TimeAttackRankingReceiveTierRewardResponse>(
                 "/time_attack_ranking/receive_tier_reward",
-                new TimeAttackRankingReceiveTierRewardRequest() { QuestId = questId }
+                new TimeAttackRankingReceiveTierRewardRequest() { QuestId = questId },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 

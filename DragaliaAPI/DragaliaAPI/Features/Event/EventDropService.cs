@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 using DragaliaAPI.Database.Entities;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared.Reward;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Photon.Shared.Enums;
 using DragaliaAPI.Shared.Definitions.Enums;
@@ -139,7 +139,7 @@ public class EventDropService(IRewardService rewardService, IEventRepository eve
             EventKindType.Simple => throw new NotImplementedException(), // Only item is 'Pup Grub' lol
             EventKindType.BattleRoyal => throw new NotImplementedException(),
             EventKindType.Earn => ProcessEarnEventDrops(quest, evt, record),
-            _ => throw new UnreachableException()
+            _ => throw new UnreachableException(),
         };
 
         List<AtgenDropAll> dropList = new();

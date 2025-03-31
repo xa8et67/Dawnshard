@@ -1,14 +1,14 @@
 ﻿using System.Security.Claims;
 using AutoMapper;
-using DragaliaAPI.Controllers;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
+using DragaliaAPI.Infrastructure;
+using DragaliaAPI.Infrastructure.Results;
 using DragaliaAPI.Shared.PlayerDetails;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using MockQueryable.Moq;
+using MockQueryable;
 using Moq.Language.Flow;
-using Xunit.Abstractions;
 
 namespace DragaliaAPI.Test;
 
@@ -58,11 +58,11 @@ public static class UnitTestUtils
                         new List<Claim>()
                         {
                             new Claim(CustomClaimType.AccountId, AccountId),
-                            new Claim(CustomClaimType.ViewerId, ViewerId.ToString())
+                            new Claim(CustomClaimType.ViewerId, ViewerId.ToString()),
                         }
                     )
-                )
-            }
+                ),
+            },
         };
     }
 

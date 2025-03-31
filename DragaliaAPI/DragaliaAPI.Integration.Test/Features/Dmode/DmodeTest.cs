@@ -1,4 +1,5 @@
 ﻿using DragaliaAPI.Database.Entities;
+using DragaliaAPI.Infrastructure.Results;
 using Microsoft.EntityFrameworkCore;
 
 namespace DragaliaAPI.Integration.Test.Features.Dmode;
@@ -8,7 +9,6 @@ public class DmodeTest : TestFixture
     public DmodeTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
         : base(factory, outputHelper)
     {
-        CommonAssertionOptions.ApplyTimeOptions(toleranceSec: 2);
         this.MockTimeProvider.SetUtcNow(DateTimeOffset.UtcNow);
     }
 
@@ -16,7 +16,10 @@ public class DmodeTest : TestFixture
     public async Task GetData_ReturnsData()
     {
         DragaliaResponse<DmodeGetDataResponse> resp =
-            await Client.PostMsgpack<DmodeGetDataResponse>("dmode/get_data");
+            await Client.PostMsgpack<DmodeGetDataResponse>(
+                "dmode/get_data",
+                cancellationToken: TestContext.Current.CancellationToken
+            );
 
         resp.Data.DmodeInfo.IsEntry.Should().BeTrue();
         resp.Data.DmodeCharaList.Should().NotBeNull();
@@ -37,7 +40,8 @@ public class DmodeTest : TestFixture
         DragaliaResponse<DmodeReadStoryResponse> resp =
             await Client.PostMsgpack<DmodeReadStoryResponse>(
                 "dmode/read_story",
-                new DmodeReadStoryRequest() { DmodeStoryId = 1 }
+                new DmodeReadStoryRequest() { DmodeStoryId = 1 },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         resp.Data.DmodeStoryRewardList.Should()
@@ -48,7 +52,7 @@ public class DmodeTest : TestFixture
                     {
                         EntityType = EntityTypes.Wyrmite,
                         EntityId = 0,
-                        EntityQuantity = 25
+                        EntityQuantity = 25,
                     },
                     new()
                     {
@@ -61,7 +65,7 @@ public class DmodeTest : TestFixture
                         EntityType = EntityTypes.DmodePoint,
                         EntityId = (int)DmodePoint.Point2,
                         EntityQuantity = 1000,
-                    }
+                    },
                 }
             );
         resp.Data.UpdateDataList.UserData.Crystal.Should().Be(oldWyrmite + 25);
@@ -82,20 +86,21 @@ public class DmodeTest : TestFixture
                         new()
                         {
                             PassiveNo = DmodeServitorPassiveType.BurstDamage,
-                            PassiveLevel = 2
+                            PassiveLevel = 2,
                         },
                         new()
                         {
                             PassiveNo = DmodeServitorPassiveType.ResistUndead,
-                            PassiveLevel = 10
+                            PassiveLevel = 10,
                         },
                         new()
                         {
                             PassiveNo = DmodeServitorPassiveType.ResistNatural,
-                            PassiveLevel = 2
-                        }
-                    }
-                }
+                            PassiveLevel = 2,
+                        },
+                    },
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         resp.Data.DmodeServitorPassiveList.Should()
@@ -119,7 +124,7 @@ public class DmodeTest : TestFixture
                 {
                     ViewerId = ViewerId,
                     PassiveId = DmodeServitorPassiveType.ResistNatural,
-                    Level = 2
+                    Level = 2,
                 }
             );
         ApiContext
@@ -130,7 +135,7 @@ public class DmodeTest : TestFixture
                 {
                     ViewerId = ViewerId,
                     PassiveId = DmodeServitorPassiveType.ResistUndead,
-                    Level = 10
+                    Level = 10,
                 }
             );
         ApiContext
@@ -141,7 +146,7 @@ public class DmodeTest : TestFixture
                 {
                     ViewerId = ViewerId,
                     PassiveId = DmodeServitorPassiveType.BurstDamage,
-                    Level = 2
+                    Level = 2,
                 }
             );
     }
@@ -159,10 +164,11 @@ public class DmodeTest : TestFixture
                         Charas.HunterBerserker,
                         Charas.Empty,
                         Charas.Empty,
-                        Charas.Empty
+                        Charas.Empty,
                     },
-                    TargetFloorNum = 30
-                }
+                    TargetFloorNum = 30,
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         resp.Data.DmodeExpedition.Should()
@@ -175,13 +181,15 @@ public class DmodeTest : TestFixture
                     CharaId4 = Charas.Empty,
                     TargetFloorNum = 30,
                     State = ExpeditionState.Playing,
-                    StartTime = DateTimeOffset.UtcNow
-                }
+                    StartTime = DateTimeOffset.UtcNow,
+                },
+                opts => opts.WithDateTimeTolerance()
             );
 
         DragaliaResponse<DmodeExpeditionForceFinishResponse> finishResp =
             await this.Client.PostMsgpack<DmodeExpeditionForceFinishResponse>(
-                "dmode/expedition_force_finish"
+                "dmode/expedition_force_finish",
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         finishResp
@@ -195,7 +203,7 @@ public class DmodeTest : TestFixture
                     CharaId4 = Charas.Empty,
                     TargetFloorNum = 30,
                     State = ExpeditionState.Waiting,
-                    StartTime = resp.Data.DmodeExpedition.StartTime
+                    StartTime = resp.Data.DmodeExpedition.StartTime,
                 }
             );
         finishResp
@@ -223,10 +231,11 @@ public class DmodeTest : TestFixture
                         Charas.HunterBerserker,
                         Charas.Chrom,
                         Charas.Cassandra,
-                        Charas.GalaMym
+                        Charas.GalaMym,
                     },
-                    TargetFloorNum = 30
-                }
+                    TargetFloorNum = 30,
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
         resp.Data.DmodeExpedition.Should()
@@ -239,14 +248,18 @@ public class DmodeTest : TestFixture
                     CharaId4 = Charas.GalaMym,
                     TargetFloorNum = 30,
                     State = ExpeditionState.Playing,
-                    StartTime = startTime
-                }
+                    StartTime = startTime,
+                },
+                opts => opts.WithDateTimeTolerance()
             );
 
         this.MockTimeProvider.SetUtcNow(DateTimeOffset.UtcNow.AddDays(1));
 
         DragaliaResponse<DmodeExpeditionFinishResponse> finishResp =
-            await this.Client.PostMsgpack<DmodeExpeditionFinishResponse>("dmode/expedition_finish");
+            await this.Client.PostMsgpack<DmodeExpeditionFinishResponse>(
+                "dmode/expedition_finish",
+                cancellationToken: TestContext.Current.CancellationToken
+            );
 
         finishResp
             .Data.DmodeExpedition.Should()
@@ -259,8 +272,9 @@ public class DmodeTest : TestFixture
                     CharaId4 = Charas.GalaMym,
                     TargetFloorNum = 30,
                     State = ExpeditionState.Waiting,
-                    StartTime = startTime
-                }
+                    StartTime = startTime,
+                },
+                opts => opts.WithDateTimeTolerance()
             );
 
         finishResp.Data.DmodeIngameResult.TakeDmodePoint1.Should().BeGreaterThan(0);

@@ -1,8 +1,8 @@
 ﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared.Reward;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -44,7 +44,7 @@ public class TalismanService(
 
         return new DeleteDataList
         {
-            DeleteTalismanList = deletedTalismanIds.Select(x => new AtgenDeleteTalismanList(x))
+            DeleteTalismanList = deletedTalismanIds.Select(x => new AtgenDeleteTalismanList(x)),
         };
     }
 

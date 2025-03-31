@@ -1,9 +1,9 @@
 ﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Missions;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared.Reward;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.Definitions.Enums.EventItemTypes;
 using DragaliaAPI.Shared.MasterAsset;
@@ -105,8 +105,11 @@ public class EventService(
 
         foreach (IEventReward reward in availableRewards)
         {
-            Entity entity =
-                new(reward.RewardEntityType, reward.RewardEntityId, reward.RewardEntityQuantity);
+            Entity entity = new(
+                reward.RewardEntityType,
+                reward.RewardEntityId,
+                reward.RewardEntityQuantity
+            );
             await rewardService.GrantReward(entity);
 
             eventRepository.CreateEventReward(eventId, reward.Id);

@@ -1,11 +1,10 @@
-﻿using DragaliaAPI.Controllers;
-using DragaliaAPI.Database.Entities;
+﻿using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Features.ClearParty;
 using DragaliaAPI.Features.Dungeon;
-using DragaliaAPI.Features.Reward;
-using DragaliaAPI.Models;
+using DragaliaAPI.Features.Shared;
+using DragaliaAPI.Features.Shared.Reward;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
 using DragaliaAPI.Shared.Definitions.Enums;
 using Microsoft.AspNetCore.Mvc;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
@@ -45,7 +44,7 @@ public partial class WallController(
                     WallId = session.WallId,
                     WallLevel = session.WallLevel,
                     IsHost = true,
-                }
+                },
             }
         );
     }
@@ -53,7 +52,7 @@ public partial class WallController(
     [HttpPost("get_monthly_reward")]
     public async Task<DragaliaResult> GetMonthlyReward()
     {
-        if (!await wallService.CheckWallInitialized())
+        if (!await wallService.CheckWallLevelsInitialized())
         {
             Log.InvalidCheckAttempt(logger);
 
@@ -82,8 +81,11 @@ public partial class WallController(
 
         await updateDataService.SaveChangesAsync(cancellationToken); // Updated lost entities
 
-        WallGetWallClearPartyResponse data =
-            new() { WallClearPartySettingList = clearParty, LostUnitList = lostUnitList };
+        WallGetWallClearPartyResponse data = new()
+        {
+            WallClearPartySettingList = clearParty,
+            LostUnitList = lostUnitList,
+        };
         return Ok(data);
     }
 
@@ -92,7 +94,7 @@ public partial class WallController(
     {
         // Called when sending `monthly_wall_reward_list` from /login/index
 
-        if (!await wallService.CheckWallInitialized())
+        if (!await wallService.CheckWallLevelsInitialized())
         {
             Log.InvalidClaimAttempt(logger);
 
@@ -127,24 +129,22 @@ public partial class WallController(
 
         EntityResult entityResult = rewardService.GetEntityResult();
 
-        AtgenMonthlyWallReceiveList monthlyWallReceiveList =
-            new()
-            {
-                QuestGroupId = WallService.WallQuestGroupId,
-                IsReceiveReward = RewardStatus.Received
-            };
+        AtgenMonthlyWallReceiveList monthlyWallReceiveList = new()
+        {
+            QuestGroupId = WallService.WallQuestGroupId,
+            IsReceiveReward = RewardStatus.Received,
+        };
 
         UpdateDataList updateDataList = await updateDataService.SaveChangesAsync(cancellationToken);
 
-        WallReceiveMonthlyRewardResponse data =
-            new()
-            {
-                UpdateDataList = updateDataList,
-                EntityResult = entityResult,
-                WallMonthlyRewardList = rewardEntityList,
-                UserWallRewardList = [userWallRewardList],
-                MonthlyWallReceiveList = [monthlyWallReceiveList]
-            };
+        WallReceiveMonthlyRewardResponse data = new()
+        {
+            UpdateDataList = updateDataList,
+            EntityResult = entityResult,
+            WallMonthlyRewardList = rewardEntityList,
+            UserWallRewardList = [userWallRewardList],
+            MonthlyWallReceiveList = [monthlyWallReceiveList],
+        };
 
         return Ok(data);
     }

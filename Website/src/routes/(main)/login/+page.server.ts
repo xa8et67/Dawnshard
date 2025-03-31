@@ -1,9 +1,10 @@
 import { redirect } from '@sveltejs/kit';
 import { Buffer } from 'buffer';
-import type { PageServerLoad } from './$types';
-import { PUBLIC_BAAS_URL, PUBLIC_BAAS_CLIENT_ID, PUBLIC_DAWNSHARD_URL } from '$env/static/public';
 
-const redirectUri = new URL('oauth', PUBLIC_DAWNSHARD_URL);
+import { PUBLIC_BAAS_CLIENT_ID, PUBLIC_BAAS_URL } from '$env/static/public';
+import Cookies from '$lib/auth/cookies.ts';
+
+import type { PageServerLoad } from './$types';
 
 const getChallengeString = () => {
   const buffer = new Uint8Array(8);
@@ -18,11 +19,28 @@ const getUrlSafeBase64Hash = async (input: string) => {
   return base64.replace('+', '-').replace('/', '_').replace('=', '');
 };
 
-export const load: PageServerLoad = async ({ cookies, url }) => {
+export const load: PageServerLoad = async ({ cookies, locals, url }) => {
+  const { logger } = locals;
+
+  const redirectUri = new URL('oauth', url.origin);
+
   const originalPage = url.searchParams.get('originalPage') ?? '/';
 
-  const challengeStringValue = getChallengeString();
-  cookies.set('challengeString', challengeStringValue, { path: '/' });
+  // For reasons not fully understood, going back to /oauth can sometimes run this code.
+  // We don't want to overwrite the challenge string if we are about to send it to BaaS, because
+  // that will mean the hashes won't match.
+  let challengeStringValue = cookies.get(Cookies.ChallengeString);
+  if (!challengeStringValue) {
+    challengeStringValue = getChallengeString();
+    cookies.set(Cookies.ChallengeString, challengeStringValue, { path: '/' });
+  }
+
+  const challengeStringHash = await getUrlSafeBase64Hash(challengeStringValue);
+
+  logger.debug(
+    { challengeStringValue, challengeStringHash },
+    'Generated challenge string {challengeStringValue} with hash {challengeStringHash}'
+  );
 
   const queryParams = new URLSearchParams({
     client_id: PUBLIC_BAAS_CLIENT_ID,
@@ -30,7 +48,7 @@ export const load: PageServerLoad = async ({ cookies, url }) => {
     response_type: 'session_token_code',
     scope: 'user user.birthday openid',
     language: 'en-US',
-    session_token_code_challenge: await getUrlSafeBase64Hash(challengeStringValue),
+    session_token_code_challenge: challengeStringHash,
     session_token_code_challenge_method: 'S256',
     state: JSON.stringify({ originalPage })
   });

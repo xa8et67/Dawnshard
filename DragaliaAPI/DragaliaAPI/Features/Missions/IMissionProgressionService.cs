@@ -36,14 +36,14 @@ public interface IMissionProgressionService
     );
 
     void OnAbilityCrestBuildupPlusCount(
-        AbilityCrests crest,
+        AbilityCrestId crest,
         PlusCountType type,
         int count,
         int total
     );
 
-    void OnAbilityCrestTotalPlusCountUp(AbilityCrests crest, int count, int total);
-    void OnAbilityCrestLevelUp(AbilityCrests crest, int count, int totalLevel);
+    void OnAbilityCrestTotalPlusCountUp(AbilityCrestId crest, int count, int total);
+    void OnAbilityCrestLevelUp(AbilityCrestId crest, int count, int totalLevel);
 
     void OnCharacterBuildupPlusCount(
         Charas chara,
@@ -55,17 +55,17 @@ public interface IMissionProgressionService
 
     void OnCharacterLevelUp(Charas chara, UnitElement element, int count, int totalLevel);
     void OnCharacterManaNodeUnlock(Charas chara, UnitElement element, int count, int total);
-    void OnDragonLevelUp(Dragons dragon, UnitElement element, int count, int total);
+    void OnDragonLevelUp(DragonId dragon, UnitElement element, int count, int total);
 
     void OnDragonGiftSent(
-        Dragons dragon,
+        DragonId dragon,
         DragonGifts gift,
         UnitElement element,
         int count,
         int total
     );
 
-    void OnDragonBondLevelUp(Dragons dragon, UnitElement element, int levelDiff, int newLevel);
+    void OnDragonBondLevelUp(DragonId dragon, UnitElement element, int levelDiff, int newLevel);
     void OnItemSummon();
     void OnPartyOptimized(UnitElement element);
     void OnAbilityCrestTradeViewed();
@@ -74,7 +74,7 @@ public interface IMissionProgressionService
     void OnTreasureTrade(int tradeId, EntityTypes type, int id, int count, int total);
     void OnEventParticipation(int eventId);
     void OnEventRegularBattleCleared(int eventId, VariationTypes variationType);
-    void OnEventQuestClearedWithCrest(int eventId, AbilityCrests crest);
+    void OnEventQuestClearedWithCrest(int eventId, AbilityCrestId crest);
     void OnEventPointCollected(int eventId, VariationTypes variationType, int quantity);
     void OnEventChallengeBattleCleared(
         int eventId,

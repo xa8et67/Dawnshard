@@ -82,7 +82,7 @@ public class ClearPartyService : IClearPartyService
         IEnumerable<PartySettingList> party
     )
     {
-        Dictionary<long, Dragons> dragons = await this
+        Dictionary<long, DragonId> dragons = await this
             .unitRepository.Dragons.Where(x =>
                 party.Select(y => y.EquipDragonKeyId).Contains((ulong)x.DragonKeyId)
             )
@@ -107,7 +107,7 @@ public class ClearPartyService : IClearPartyService
 
                             dest.EquippedDragonEntityId = dragons.GetValueOrDefault(
                                 dest.EquipDragonKeyId,
-                                Dragons.Empty
+                                DragonId.Empty
                             );
                             dest.EquippedTalismanEntityId = talismans.GetValueOrDefault(
                                 dest.EquipTalismanKeyId,
@@ -342,9 +342,9 @@ public class ClearPartyService : IClearPartyService
 
 file static class Extensions
 {
-    public static bool IsMissingCrest(this IEnumerable<DbAbilityCrest?> source, AbilityCrests id)
+    public static bool IsMissingCrest(this IEnumerable<DbAbilityCrest?> source, AbilityCrestId id)
     {
-        if (id == AbilityCrests.Empty)
+        if (id == AbilityCrestId.Empty)
             return false;
 
         // ReSharper disable once SimplifyLinqExpressionUseAll

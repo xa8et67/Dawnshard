@@ -1,12 +1,10 @@
-﻿using DragaliaAPI.Features.Dungeon;
+﻿using DragaliaAPI.Features.CoOp;
+using DragaliaAPI.Features.Dungeon;
 using DragaliaAPI.Features.Dungeon.Record;
-using DragaliaAPI.Features.Dungeon.Start;
 using DragaliaAPI.Features.Quest;
-using DragaliaAPI.Features.Reward;
-using DragaliaAPI.Models;
+using DragaliaAPI.Features.Shared;
+using DragaliaAPI.Features.Shared.Reward;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
-using DragaliaAPI.Services.Photon;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -52,19 +50,20 @@ public class DungeonControllerTest
     {
         int questId = 227060105;
 
-        List<UserSupportList> userSupportList =
-            new() { new() { SupportChara = new() { CharaId = Charas.HalloweenLowen } } };
+        List<UserSupportList> userSupportList = new()
+        {
+            new() { SupportChara = new() { CharaId = Charas.HalloweenLowen } },
+        };
 
-        List<AtgenHelperDetailList> supportDetailList =
+        List<AtgenHelperDetailList> supportDetailList = new()
+        {
             new()
             {
-                new()
-                {
-                    IsFriend = false,
-                    ViewerId = 1,
-                    GetManaPoint = 50,
-                }
-            };
+                IsFriend = false,
+                ViewerId = 1,
+                GetManaPoint = 50,
+            },
+        };
 
         this.mockDungeonService.Setup(x => x.GetSession("my key", CancellationToken.None))
             .ReturnsAsync(
@@ -73,7 +72,7 @@ public class DungeonControllerTest
                     Party = [],
                     IsMulti = false,
                     SupportViewerId = 4,
-                    QuestData = MasterAsset.QuestData[questId]
+                    QuestData = MasterAsset.QuestData[questId],
                 }
             );
 
@@ -104,8 +103,8 @@ public class DungeonControllerTest
                         WallId = 0,
                         WallLevel = 0,
                         IsHost = true,
-                        QuestId = questId
-                    }
+                        QuestId = questId,
+                    },
                 }
             );
 
@@ -118,19 +117,20 @@ public class DungeonControllerTest
     {
         int questId = 227060105;
 
-        List<UserSupportList> userSupportList =
-            new() { new() { SupportChara = new() { CharaId = Charas.HalloweenLowen } } };
+        List<UserSupportList> userSupportList = new()
+        {
+            new() { SupportChara = new() { CharaId = Charas.HalloweenLowen } },
+        };
 
-        List<AtgenHelperDetailList> supportDetailList =
+        List<AtgenHelperDetailList> supportDetailList = new()
+        {
             new()
             {
-                new()
-                {
-                    IsFriend = false,
-                    ViewerId = 1,
-                    GetManaPoint = 50,
-                }
-            };
+                IsFriend = false,
+                ViewerId = 1,
+                GetManaPoint = 50,
+            },
+        };
 
         this.mockDungeonService.Setup(x => x.GetSession("my key", CancellationToken.None))
             .ReturnsAsync(
@@ -138,7 +138,7 @@ public class DungeonControllerTest
                 {
                     Party = [],
                     IsMulti = true,
-                    QuestData = MasterAsset.QuestData[questId]
+                    QuestData = MasterAsset.QuestData[questId],
                 }
             );
 
@@ -171,8 +171,8 @@ public class DungeonControllerTest
                         WallId = 0,
                         WallLevel = 0,
                         IsHost = false,
-                        QuestId = questId
-                    }
+                        QuestId = questId,
+                    },
                 }
             );
 

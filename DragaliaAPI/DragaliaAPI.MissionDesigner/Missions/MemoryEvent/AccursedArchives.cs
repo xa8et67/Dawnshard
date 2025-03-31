@@ -1,8 +1,9 @@
 using DragaliaAPI.MissionDesigner.Models;
 using DragaliaAPI.MissionDesigner.Models.Attributes;
 using DragaliaAPI.MissionDesigner.Models.EventMission;
+using DragaliaAPI.MissionDesigner.Models.RegularMission;
 
-namespace DragaliaAPI.MissionDesigner.Missions;
+namespace DragaliaAPI.MissionDesigner.Missions.MemoryEvent;
 
 [ContainsMissionList]
 public static class AccursedArchives
@@ -22,7 +23,7 @@ public static class AccursedArchives
             new EventQuestClearWithCrestMission()
             {
                 MissionId = 10100401,
-                Crest = AbilityCrests.HittingtheBooks
+                Crest = AbilityCrestId.HittingtheBooks,
             },
             // Collect 100 Forbidden Knowledge in One Go
             new EventPointCollectionRecordMission() { MissionId = 10100501 },

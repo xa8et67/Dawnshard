@@ -9,7 +9,7 @@ namespace DragaliaAPI.Database.Test.Repositories;
 public class QuestRepositoryTest : IClassFixture<DbTestFixture>
 {
     private readonly DbTestFixture fixture;
-    private readonly IQuestRepository questRepository;
+    private readonly QuestRepository questRepository;
 
     public QuestRepositoryTest(DbTestFixture fixture)
     {
@@ -19,8 +19,6 @@ public class QuestRepositoryTest : IClassFixture<DbTestFixture>
             fixture.ApiContext,
             IdentityTestUtils.MockPlayerDetailsService.Object
         );
-
-        CommonAssertionOptions.ApplyIgnoreOwnerOptions();
     }
 
     [Fact]
@@ -30,7 +28,7 @@ public class QuestRepositoryTest : IClassFixture<DbTestFixture>
             new List<DbQuest>()
             {
                 new() { ViewerId = ViewerId, QuestId = 1 },
-                new() { ViewerId = ViewerId + 1, QuestId = 2 }
+                new() { ViewerId = ViewerId + 1, QuestId = 2 },
             }
         );
 

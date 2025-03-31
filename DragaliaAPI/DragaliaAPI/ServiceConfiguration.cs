@@ -1,10 +1,11 @@
-﻿using DragaliaAPI.Authentication;
-using DragaliaAPI.Database;
-using DragaliaAPI.Features.Blazor;
+﻿using DragaliaAPI.Database;
 using DragaliaAPI.Features.Chara;
 using DragaliaAPI.Features.ClearParty;
+using DragaliaAPI.Features.CoOp;
+using DragaliaAPI.Features.CoOp.Stamps;
 using DragaliaAPI.Features.Dmode;
 using DragaliaAPI.Features.DmodeDungeon;
+using DragaliaAPI.Features.Dragons;
 using DragaliaAPI.Features.Dungeon;
 using DragaliaAPI.Features.Dungeon.AutoRepeat;
 using DragaliaAPI.Features.Dungeon.Record;
@@ -12,39 +13,40 @@ using DragaliaAPI.Features.Dungeon.Start;
 using DragaliaAPI.Features.Emblem;
 using DragaliaAPI.Features.Event;
 using DragaliaAPI.Features.Fort;
+using DragaliaAPI.Features.Friends;
 using DragaliaAPI.Features.Item;
-using DragaliaAPI.Features.Login.Actions;
+using DragaliaAPI.Features.Login.Auth;
+using DragaliaAPI.Features.Login.Savefile;
+using DragaliaAPI.Features.Login.SavefileUpdate;
 using DragaliaAPI.Features.Maintenance;
 using DragaliaAPI.Features.Missions;
-using DragaliaAPI.Features.PartyPower;
+using DragaliaAPI.Features.Parties;
 using DragaliaAPI.Features.Player;
-using DragaliaAPI.Features.Present;
-using DragaliaAPI.Features.Quest;
-using DragaliaAPI.Features.SavefileUpdate;
+using DragaliaAPI.Features.Shared;
 using DragaliaAPI.Features.Shared.Options;
 using DragaliaAPI.Features.Shop;
-using DragaliaAPI.Features.Stamp;
-using DragaliaAPI.Features.Story;
-using DragaliaAPI.Features.StorySkip;
+using DragaliaAPI.Features.Story.Skip;
 using DragaliaAPI.Features.Talisman;
 using DragaliaAPI.Features.TimeAttack;
 using DragaliaAPI.Features.Trade;
 using DragaliaAPI.Features.Version;
-using DragaliaAPI.Features.Zena;
-using DragaliaAPI.Middleware;
-using DragaliaAPI.Models.Options;
-using DragaliaAPI.Services;
-using DragaliaAPI.Services.Api;
-using DragaliaAPI.Services.Game;
-using DragaliaAPI.Services.Health;
-using DragaliaAPI.Services.Photon;
+using DragaliaAPI.Features.Weapons;
+using DragaliaAPI.Infrastructure;
+using DragaliaAPI.Infrastructure.Authentication;
+using DragaliaAPI.Infrastructure.Metrics;
+using DragaliaAPI.Infrastructure.Middleware;
+using DragaliaAPI.Models.Generated;
 using Hangfire;
 using Hangfire.PostgreSql;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
-using MudBlazor;
-using MudBlazor.Services;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using static DragaliaAPI.Infrastructure.Authentication.AuthConstants;
+using AuthService = DragaliaAPI.Features.Login.Auth.AuthService;
+using BaasApi = DragaliaAPI.Features.Shared.BaasApi;
+using DragonService = DragaliaAPI.Features.Dragons.DragonService;
 
 namespace DragaliaAPI;
 
@@ -57,25 +59,21 @@ public static class ServiceConfiguration
     {
         services
             .AddScoped<ISessionService, SessionService>()
-#pragma warning disable CS0618 // Type or member is obsolete
-            .AddScoped<IDeviceAccountService, DeviceAccountService>()
-#pragma warning restore CS0618 // Type or member is obsolete
             .AddScoped<IUpdateDataService, UpdateDataService>()
             .AddScoped<IDragonService, DragonService>()
             .AddScoped<ISavefileService, SavefileService>()
-            .AddScoped<IHelperService, HelperService>()
             .AddScoped<IAuthService, AuthService>()
             .AddScoped<IBonusService, BonusService>()
             .AddScoped<IWeaponService, WeaponService>()
             .AddScoped<IMatchingService, MatchingService>()
-            .AddScoped<IAbilityCrestService, AbilityCrestService>()
             .AddScoped<IHeroParamService, HeroParamService>()
-            .AddScoped<ITutorialService, TutorialService>()
             .AddScoped<ILoadService, LoadService>()
             .AddScoped<IStampService, StampService>()
             .AddScoped<IStampRepository, StampRepository>()
             .AddScoped<ISavefileUpdateService, SavefileUpdateService>()
-            .AddTransient<PlayerIdentityLoggingMiddleware>();
+            .AddTransient<IdentityLogContextMiddleware>()
+            .AddTransient<HeaderLogContextMiddleware>()
+            .AddTransient<ResultCodeLoggingMiddleware>();
 
         services
             .AddSummoningFeature()
@@ -85,7 +83,11 @@ public static class ServiceConfiguration
             .AddPresentFeature()
             .AddQuestFeature()
             .AddStoryFeature()
-            .AddWebFeature();
+            .AddWebFeature()
+            .AddAbilityCrestFeature()
+            .AddTutorialFeature()
+            .AddZenaFeature()
+            .AddFriendFeature();
 
         services
             .RegisterMissionServices()
@@ -137,7 +139,6 @@ public static class ServiceConfiguration
             .AddScoped<ITalismanService, TalismanService>()
             // Emblem feature
             .AddScoped<IEmblemRepository, EmblemRepository>()
-            // Quest feature
             // Party power feature
             .AddScoped<IPartyPowerService, PartyPowerService>()
             .AddScoped<IPartyPowerRepository, PartyPowerRepository>()
@@ -145,31 +146,40 @@ public static class ServiceConfiguration
             .AddScoped<ICharaService, CharaService>()
             .AddScoped<IResourceVersionService, ResourceVersionService>()
             .AddScoped<ICharaService, CharaService>()
-            // Zena feature
-            .AddScoped<IZenaService, ZenaService>()
             // Story skip feature
             .AddScoped<StorySkipService>()
             // Maintenance feature
             .AddScoped<MaintenanceService>();
 
-        services.AddScoped<IBlazorIdentityService, BlazorIdentityService>();
-
         services.AddAllOfType<ISavefileUpdate>();
 
-        services.AddHttpClient<IBaasApi, BaasApi>();
+        services.AddHttpClient<IBaasApi, BaasApi>(
+            (sp, client) =>
+            {
+                IOptionsMonitor<BaasOptions> options = sp.GetRequiredService<
+                    IOptionsMonitor<BaasOptions>
+                >();
 
-        services.AddHttpClient<IPhotonStateApi, PhotonStateApi>(client =>
-        {
-            PhotonOptions? options = configuration
-                .GetRequiredSection(nameof(PhotonOptions))
-                .Get<PhotonOptions>();
-            ArgumentNullException.ThrowIfNull(options);
+                client.BaseAddress = options.CurrentValue.BaasUrlParsed;
+            }
+        );
 
-            client.BaseAddress = new(options.StateManagerUrl);
-        });
+        services.AddHttpClient<IPhotonStateApi, PhotonStateApi>(
+            (sp, client) =>
+            {
+                IOptionsMonitor<PhotonOptions> options = sp.GetRequiredService<
+                    IOptionsMonitor<PhotonOptions>
+                >();
+
+                client.BaseAddress = new(options.CurrentValue.StateManagerUrl);
+            }
+        );
         services.AddScoped<IMatchingService, MatchingService>();
 
-        services.AddScoped<ResourceVersionActionFilter>().AddScoped<MaintenanceActionFilter>();
+        services
+            .AddScoped<ResourceVersionActionFilter>()
+            .AddScoped<MaintenanceActionFilter>()
+            .AddScoped<SetResultCodeActionFilter>();
 
         return services;
     }
@@ -181,7 +191,6 @@ public static class ServiceConfiguration
     {
         services
             .Configure<BaasOptions>(config.GetRequiredSection("Baas"))
-            .Configure<LoginOptions>(config.GetRequiredSection("Login"))
             .Configure<DragalipatchOptions>(config.GetRequiredSection("Dragalipatch"))
             .Configure<RedisCachingOptions>(config.GetRequiredSection(nameof(RedisCachingOptions)))
             .Configure<PhotonOptions>(config.GetRequiredSection(nameof(PhotonOptions)))
@@ -191,9 +200,10 @@ public static class ServiceConfiguration
             .Configure<ResourceVersionOptions>(
                 config.GetRequiredSection(nameof(ResourceVersionOptions))
             )
-            .Configure<WebOptions>(config.GetRequiredSection(nameof(WebOptions)))
             .Configure<EventOptions>(config.GetRequiredSection(nameof(EventOptions)))
             .Configure<MaintenanceOptions>(config.GetRequiredSection(nameof(MaintenanceOptions)));
+
+        services.AddTransient<IConfigureOptions<JwtBearerOptions>, ConfigureJwtBearerOptions>();
 
         services.AddSummoningOptions(config);
 
@@ -207,22 +217,6 @@ public static class ServiceConfiguration
             .AddOptions<DragonfruitConfig>()
             .Validate(x => x.FruitOdds.Values.All(y => y.Normal + y.Ripe + y.Succulent == 100))
             .ValidateOnStart();
-
-        return services;
-    }
-
-    public static IServiceCollection ConfigureBlazorFrontend(this IServiceCollection services)
-    {
-        services.AddServerSideBlazor();
-        services.AddMudServices(options =>
-        {
-            options.SnackbarConfiguration.PositionClass = Defaults.Classes.Position.BottomRight;
-            options.SnackbarConfiguration.VisibleStateDuration = 5000;
-            options.SnackbarConfiguration.ShowTransitionDuration = 500;
-            options.SnackbarConfiguration.HideTransitionDuration = 500;
-        });
-        services.AddRazorComponents().AddInteractiveServerComponents();
-        services.AddRazorPages();
 
         return services;
     }
@@ -242,21 +236,26 @@ public static class ServiceConfiguration
         services
             .AddAuthentication(opts =>
             {
-                opts.AddScheme<SessionAuthenticationHandler>(SchemeName.Session, null);
-                opts.AddScheme<DeveloperAuthenticationHandler>(SchemeName.Developer, null);
+                opts.AddScheme<SessionAuthenticationHandler>(SchemeNames.Session, null);
+                opts.AddScheme<DeveloperAuthenticationHandler>(SchemeNames.Developer, null);
                 opts.AddScheme<PhotonAuthenticationHandler>(
                     nameof(PhotonAuthenticationHandler),
                     null
                 );
-                opts.AddScheme<ZenaAuthenticationHandler>(SchemeName.Zena, null);
-
-                opts.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
             })
-            .AddCookie(opts =>
-            {
-                opts.ExpireTimeSpan = TimeSpan.FromMinutes(20);
-                opts.SlidingExpiration = true;
-            });
+            .AddJwtBearer(
+                SchemeNames.GameJwt,
+                options =>
+                {
+                    options.Events = new()
+                    {
+                        OnMessageReceived = GameJwtAuthenticationCallbacks.OnMessageReceived,
+                        OnTokenValidated = GameJwtAuthenticationCallbacks.OnTokenValidated,
+                        OnChallenge = GameJwtAuthenticationCallbacks.OnChallenge,
+                    };
+                    // Other options configured in ConfigureJwtBearerOptions.cs after the ServiceProvider is built.
+                }
+            );
 
         return services;
     }
@@ -266,15 +265,13 @@ public static class ServiceConfiguration
         serviceCollection.AddHangfire(
             (serviceProvider, cfg) =>
             {
-                PostgresOptions postgresOptions = serviceProvider
-                    .GetRequiredService<IOptions<PostgresOptions>>()
-                    .Value;
+                IConfiguration configuration = serviceProvider.GetRequiredService<IConfiguration>();
 
                 cfg.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
                     .UseSimpleAssemblyNameTypeSerializer()
                     .UseRecommendedSerializerSettings()
                     .UsePostgreSqlStorage(pgCfg =>
-                        pgCfg.UseNpgsqlConnection(postgresOptions.GetConnectionString("Hangfire"))
+                        pgCfg.UseNpgsqlConnection(configuration.GetConnectionString("postgres"))
                     );
             }
         );
@@ -282,5 +279,39 @@ public static class ServiceConfiguration
         serviceCollection.AddHangfireServer();
 
         return serviceCollection;
+    }
+
+    public static WebApplicationBuilder ConfigureObservability(this WebApplicationBuilder builder)
+    {
+        // Custom config on top of ServiceDefaults
+
+        bool isDevelopment = builder.Environment.IsDevelopment();
+
+        builder
+            .Services.AddOpenTelemetry()
+            .ConfigureResource(cfg =>
+            {
+                cfg.AddService(serviceName: "dragalia-api", autoGenerateServiceInstanceId: false);
+            });
+
+        if (builder.HasOtlpTracesEndpoint())
+        {
+            builder
+                .Services.AddOpenTelemetry()
+                .WithTracing(tracing =>
+                    tracing.AddEntityFrameworkCoreInstrumentation(options =>
+                        options.SetDbStatementForText = isDevelopment
+                    )
+                //  Not compatible with IDistributedCache as requires IConnectionMultiplexer
+                // .AddRedisInstrumentation()
+                );
+        }
+
+        builder.Services.AddSingleton<IDragaliaApiMetrics, DragaliaApiMetrics>();
+        builder
+            .Services.AddOpenTelemetry()
+            .WithMetrics(metrics => metrics.AddMeter(DragaliaApiMetrics.MeterName));
+
+        return builder;
     }
 }

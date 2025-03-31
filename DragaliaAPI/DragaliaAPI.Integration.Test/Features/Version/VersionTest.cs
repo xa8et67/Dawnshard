@@ -1,4 +1,5 @@
 ﻿using DragaliaAPI.Features.Version;
+using DragaliaAPI.Infrastructure.Results;
 
 namespace DragaliaAPI.Integration.Test.Features.Version;
 
@@ -21,7 +22,8 @@ public class VersionTest : TestFixture
         VersionGetResourceVersionResponse response = (
             await this.Client.PostMsgpack<VersionGetResourceVersionResponse>(
                 "version/get_resource_version",
-                new VersionGetResourceVersionRequest(platform, "whatever")
+                new VersionGetResourceVersionRequest(platform, "whatever"),
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -37,7 +39,8 @@ public class VersionTest : TestFixture
         (
             await this.Client.PostMsgpack<ResultCodeResponse>(
                 "fort/get_data",
-                ensureSuccessHeader: false
+                ensureSuccessHeader: false,
+                cancellationToken: TestContext.Current.CancellationToken
             )
         )
             .DataHeaders.ResultCode.Should()
@@ -53,7 +56,8 @@ public class VersionTest : TestFixture
         (
             await this.Client.PostMsgpack<ResultCodeResponse>(
                 "tool/get_service_status",
-                ensureSuccessHeader: false
+                ensureSuccessHeader: false,
+                cancellationToken: TestContext.Current.CancellationToken
             )
         )
             .DataHeaders.ResultCode.Should()

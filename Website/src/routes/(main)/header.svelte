@@ -1,10 +1,13 @@
 <script lang="ts">
-  import { Button } from '$shadcn/components/ui/button';
-  import * as Drawer from '$shadcn/components/ui/drawer';
   import Menu from 'lucide-svelte/icons/menu';
   import Close from 'lucide-svelte/icons/x';
-  import Routes from '$lib/routes/routes.svelte';
   import { onMount } from 'svelte';
+
+  import Routes from '$main/routes.svelte';
+  import { Button, buttonVariants } from '$shadcn/components/ui/button';
+  import * as Drawer from '$shadcn/components/ui/drawer';
+  import { cn } from '$shadcn/utils.js.ts';
+
   import HeaderContents from './headerContents.svelte';
 
   let enhance = false;
@@ -18,33 +21,34 @@
 
 {#if enhance}
   <Drawer.Root direction="left">
-    <header id="header" class="z-50 gap-1 bg-background px-1 md:gap-2 md:px-3">
-      <Drawer.Trigger class="md:hidden">
-        <Button variant="ghost" class="md:hidden">
-          <Menu />
-        </Button>
+    <header id="header" class="bg-background top-0 z-50 gap-1 px-2 md:gap-2 md:px-3">
+      <Drawer.Trigger
+        class={cn(buttonVariants({ variant: 'ghost', size: 'sm', className: 'md:hidden' }))}
+        aria-label="Open navigation">
+        <Menu aria-hidden={true} class="size-6" />
       </Drawer.Trigger>
       <HeaderContents {hasValidJwt} />
-
-      <Drawer.Portal class="md:hidden">
-        <Drawer.Content
-          id="drawer-content"
-          class="fixed bottom-0 left-0 top-0 mt-0 w-[75%] bg-background pl-6 pr-2 pt-2">
-          <div id="my-content" class="flex flex-col">
-            <Drawer.Close class="self-end">
-              <Button variant="ghost">
-                Close <Close class="ml-2 mt-0.5 h-5 w-5" />
-              </Button>
-            </Drawer.Close>
-            <Routes />
-          </div>
-        </Drawer.Content>
-      </Drawer.Portal>
+      <div class="md:hidden">
+        <Drawer.Portal>
+          <Drawer.Content
+            id="drawer-content"
+            class="bg-background fixed top-0 bottom-0 left-0 mt-0 w-[75%] pt-2 pr-2 pl-4">
+            <div id="my-content">
+              <Drawer.Close class="flex w-full flex-col pl-0">
+                <Button variant="ghost" class="w-[7rem] self-end">
+                  Close <Close class="mt-0.5 ml-2 h-5 w-5" />
+                </Button>
+              </Drawer.Close>
+              <Routes {hasValidJwt} drawer={true} />
+            </div>
+          </Drawer.Content>
+        </Drawer.Portal>
+      </div>
     </header>
   </Drawer.Root>
 {:else}
-  <header id="header" class="z-50 gap-1 bg-background px-1 md:gap-2 md:px-3">
-    <Button variant="ghost" class="md:hidden" href="/navigation">
+  <header id="header" class="bg-background z-50 gap-1 px-2 md:gap-2 md:px-3">
+    <Button variant="ghost" size="sm" class="md:hidden" href="/navigation">
       <Menu />
     </Button>
     <HeaderContents {hasValidJwt} />
@@ -67,5 +71,9 @@
   /* Prevent draggable bar from rendering */
   :global(#drawer-content > :not(#my-content)) {
     display: none;
+  }
+
+  #my-content {
+    width: 100%;
   }
 </style>

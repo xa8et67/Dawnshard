@@ -18,7 +18,7 @@ namespace DragaliaAPI.Photon.Plugin.Shared.Helpers
             {
                 ActorNr = actorNr,
                 ViewerId = actorProperties.GetInt(ActorPropertyKeys.PlayerId),
-                PartyNoList = (int[])actorProperties[ActorPropertyKeys.UsePartySlot]
+                PartyNoList = (int[])actorProperties[ActorPropertyKeys.UsePartySlot],
             };
         }
 
@@ -30,30 +30,35 @@ namespace DragaliaAPI.Photon.Plugin.Shared.Helpers
                 MatchingCompatibleId = gameProperties.GetInt(GamePropertyKeys.MatchingCompatibleId),
                 RoomId = gameProperties.GetInt(GamePropertyKeys.RoomId),
                 QuestId = gameProperties.GetInt(GamePropertyKeys.QuestId),
-                MatchingType = (MatchingTypes)gameProperties.GetInt(GamePropertyKeys.MatchingType)
+                MatchingType = (MatchingTypes)gameProperties.GetInt(GamePropertyKeys.MatchingType),
             };
 
-            EntryConditions conditions = CreateEntryConditions(gameProperties);
+            EntryConditions? conditions = CreateEntryConditions(gameProperties);
+
             if (conditions != null)
+            {
                 result.EntryConditions = conditions;
+            }
 
             return result;
         }
 
-        public static EntryConditions CreateEntryConditions(Hashtable gameProperties)
+        public static EntryConditions? CreateEntryConditions(Hashtable gameProperties)
         {
             if (
                 !gameProperties.TryGetValue(
                     GamePropertyKeys.EntryConditions,
-                    out object entryConditionObj
+                    out object? entryConditionObj
                 )
             )
             {
                 return null;
             }
 
-            if (!(entryConditionObj is byte[] entryConditionBlob))
+            if (entryConditionObj is not byte[] entryConditionBlob)
+            {
                 return null;
+            }
 
             RoomEntryCondition deserialized = MessagePackSerializer.Deserialize<RoomEntryCondition>(
                 entryConditionBlob,
@@ -67,7 +72,7 @@ namespace DragaliaAPI.Photon.Plugin.Shared.Helpers
                 UnacceptedElementTypeList = deserialized.UnacceptedElementals,
                 UnacceptedWeaponTypeList = deserialized.UnacceptedWeapons,
                 ObjectiveTextId = deserialized.Objective.TextId,
-                RequiredPartyPower = deserialized.RequiredPower
+                RequiredPartyPower = deserialized.RequiredPower,
             };
         }
     }

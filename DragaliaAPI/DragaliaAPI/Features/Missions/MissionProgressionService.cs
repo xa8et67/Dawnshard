@@ -97,7 +97,7 @@ public class MissionProgressionService(
     }
 
     public void OnAbilityCrestBuildupPlusCount(
-        AbilityCrests crest,
+        AbilityCrestId crest,
         PlusCountType type,
         int count,
         int total
@@ -112,12 +112,12 @@ public class MissionProgressionService(
         );
     }
 
-    public void OnAbilityCrestTotalPlusCountUp(AbilityCrests crest, int count, int total)
+    public void OnAbilityCrestTotalPlusCountUp(AbilityCrestId crest, int count, int total)
     {
         EnqueueEvent(MissionCompleteType.AbilityCrestTotalPlusCountUp, count, total, (int)crest);
     }
 
-    public void OnAbilityCrestLevelUp(AbilityCrests crest, int count, int totalLevel)
+    public void OnAbilityCrestLevelUp(AbilityCrestId crest, int count, int totalLevel)
     {
         EnqueueEvent(MissionCompleteType.AbilityCrestLevelUp, count, totalLevel, (int)crest);
     }
@@ -149,6 +149,10 @@ public class MissionProgressionService(
             (int)chara,
             (int)element
         );
+        for (int i = totalLevel - count; i <= totalLevel; i++)
+        {
+            EnqueueEvent(MissionCompleteType.CharacterLevelUpCount, 1, i, (int)element, (int)i);
+        }
     }
 
     public void OnCharacterManaNodeUnlock(Charas chara, UnitElement element, int count, int total)
@@ -162,13 +166,17 @@ public class MissionProgressionService(
         );
     }
 
-    public void OnDragonLevelUp(Dragons dragon, UnitElement element, int count, int total)
+    public void OnDragonLevelUp(DragonId dragon, UnitElement element, int count, int total)
     {
         EnqueueEvent(MissionCompleteType.DragonLevelUp, count, total, (int)dragon, (int)element);
+        for (int i = total - count; i <= total; i++)
+        {
+            EnqueueEvent(MissionCompleteType.DragonLevelUpCount, 1, i, (int)element, (int)i);
+        }
     }
 
     public void OnDragonGiftSent(
-        Dragons dragon,
+        DragonId dragon,
         DragonGifts gift,
         UnitElement element,
         int count,
@@ -186,7 +194,7 @@ public class MissionProgressionService(
     }
 
     public void OnDragonBondLevelUp(
-        Dragons dragon,
+        DragonId dragon,
         UnitElement element,
         int levelDiff,
         int newLevel
@@ -241,7 +249,7 @@ public class MissionProgressionService(
             (int)variationType
         );
 
-    public void OnEventQuestClearedWithCrest(int eventId, AbilityCrests crest) =>
+    public void OnEventQuestClearedWithCrest(int eventId, AbilityCrestId crest) =>
         EnqueueEvent(MissionCompleteType.EventQuestClearWithCrest, 1, 1, eventId, (int)crest);
 
     public void OnEventPointCollected(int eventId, VariationTypes variationType, int quantity) =>

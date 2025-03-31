@@ -23,9 +23,10 @@ public class AutoRepeatTest : TestFixture
                     {
                         RepeatCount = 45,
                         RepeatType = RepeatSettingType.Specified,
-                        UseItemList = [UseItem.Honey]
-                    }
-                }
+                        UseItemList = [UseItem.Honey],
+                    },
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -39,7 +40,8 @@ public class AutoRepeatTest : TestFixture
                     DungeonKey = startResponse.IngameData.DungeonKey,
                     PlayRecord = new() { TreasureRecord = [] },
                     RepeatState = 1,
-                }
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -56,7 +58,8 @@ public class AutoRepeatTest : TestFixture
                     QuestId = 100010103,
                     RepeatState = 1,
                     RepeatSetting = null,
-                }
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -70,7 +73,8 @@ public class AutoRepeatTest : TestFixture
                     DungeonKey = startResponse2.IngameData.DungeonKey,
                     PlayRecord = new() { TreasureRecord = [] },
                     RepeatState = 1,
-                }
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -93,9 +97,10 @@ public class AutoRepeatTest : TestFixture
                     {
                         RepeatCount = 45,
                         RepeatType = RepeatSettingType.Specified,
-                        UseItemList = [UseItem.Honey]
-                    }
-                }
+                        UseItemList = [UseItem.Honey],
+                    },
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -111,7 +116,8 @@ public class AutoRepeatTest : TestFixture
                     DungeonKey = startResponse.IngameData.DungeonKey,
                     PlayRecord = new() { TreasureRecord = [] },
                     RepeatState = 1,
-                }
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -138,9 +144,10 @@ public class AutoRepeatTest : TestFixture
                     {
                         RepeatCount = 45,
                         RepeatType = RepeatSettingType.Specified,
-                        UseItemList = [UseItem.Honey]
-                    }
-                }
+                        UseItemList = [UseItem.Honey],
+                    },
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -152,7 +159,8 @@ public class AutoRepeatTest : TestFixture
                     DungeonKey = startResponse.IngameData.DungeonKey,
                     PlayRecord = new() { TreasureRecord = [] },
                     RepeatState = 1,
-                }
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -165,7 +173,8 @@ public class AutoRepeatTest : TestFixture
                     QuestId = 100010103,
                     RepeatState = 1,
                     RepeatSetting = null,
-                }
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -177,12 +186,16 @@ public class AutoRepeatTest : TestFixture
                     DungeonKey = startResponse2.IngameData.DungeonKey,
                     PlayRecord = new() { TreasureRecord = [] },
                     RepeatState = 1,
-                }
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
         RepeatEndResponse repeatEndResponse = (
-            await Client.PostMsgpack<RepeatEndResponse>("repeat/end")
+            await Client.PostMsgpack<RepeatEndResponse>(
+                "repeat/end",
+                cancellationToken: TestContext.Current.CancellationToken
+            )
         ).Data;
 
         repeatEndResponse.RepeatData.Should().BeNull();
@@ -216,13 +229,14 @@ public class AutoRepeatTest : TestFixture
             {
                 QuestId = questId,
                 State = 0,
-                ViewerId = ViewerId
+                ViewerId = ViewerId,
             }
         );
 
         await Client.PostMsgpack<MemoryEventActivateResponse>(
             "/memory_event/activate",
-            new MemoryEventActivateRequest() { EventId = eventId }
+            new MemoryEventActivateRequest() { EventId = eventId },
+            cancellationToken: TestContext.Current.CancellationToken
         );
         DungeonStartStartResponse startResponse = (
             await Client.PostMsgpack<DungeonStartStartResponse>(
@@ -235,9 +249,10 @@ public class AutoRepeatTest : TestFixture
                     {
                         RepeatCount = 45,
                         RepeatType = RepeatSettingType.Specified,
-                        UseItemList = [UseItem.Honey]
-                    }
-                }
+                        UseItemList = [UseItem.Honey],
+                    },
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -249,7 +264,8 @@ public class AutoRepeatTest : TestFixture
                     DungeonKey = startResponse.IngameData.DungeonKey,
                     PlayRecord = new() { TreasureRecord = [], Wave = 5 },
                     RepeatState = 1,
-                }
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -262,7 +278,8 @@ public class AutoRepeatTest : TestFixture
                     QuestId = questId,
                     RepeatState = 1,
                     RepeatSetting = null,
-                }
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -274,12 +291,16 @@ public class AutoRepeatTest : TestFixture
                     DungeonKey = startResponse2.IngameData.DungeonKey,
                     PlayRecord = new() { TreasureRecord = [], Wave = 5 },
                     RepeatState = 1,
-                }
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
         RepeatEndResponse repeatEndResponse = (
-            await Client.PostMsgpack<RepeatEndResponse>("repeat/end")
+            await Client.PostMsgpack<RepeatEndResponse>(
+                "repeat/end",
+                cancellationToken: TestContext.Current.CancellationToken
+            )
         ).Data;
 
         int expectedPoints =
@@ -308,7 +329,7 @@ public class AutoRepeatTest : TestFixture
                 new AtgenUserBuildEventItemList()
                 {
                     UserBuildEventItem = (int)BuildEventItemType.BuildEventPoint,
-                    EventItemValue = expectedPoints + expectedBoostPoints
+                    EventItemValue = expectedPoints + expectedBoostPoints,
                 }
             );
     }
@@ -327,9 +348,10 @@ public class AutoRepeatTest : TestFixture
                     {
                         RepeatCount = 45,
                         RepeatType = RepeatSettingType.Specified,
-                        UseItemList = [UseItem.Honey]
-                    }
-                }
+                        UseItemList = [UseItem.Honey],
+                    },
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -341,12 +363,16 @@ public class AutoRepeatTest : TestFixture
                     DungeonKey = startResponse.IngameData.DungeonKey,
                     PlayRecord = new() { TreasureRecord = [] },
                     RepeatState = 1,
-                }
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
         MypageInfoResponse mypageResponse = (
-            await Client.PostMsgpack<MypageInfoResponse>("mypage/info")
+            await Client.PostMsgpack<MypageInfoResponse>(
+                "mypage/info",
+                cancellationToken: TestContext.Current.CancellationToken
+            )
         ).Data;
 
         mypageResponse.RepeatData.Should().BeEquivalentTo(recordResponse.RepeatData);

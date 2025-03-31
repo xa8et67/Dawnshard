@@ -22,9 +22,6 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
             IdentityTestUtils.MockPlayerDetailsService.Object,
             LoggerTestUtils.Create<WeaponRepository>()
         );
-
-        CommonAssertionOptions.ApplyIgnoreOwnerOptions();
-        CommonAssertionOptions.ApplyTimeOptions();
     }
 
     [Fact]
@@ -34,11 +31,15 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
             new List<DbWeaponBody>()
             {
                 new() { ViewerId = 2, WeaponBodyId = WeaponBodies.SoldiersBrand },
-                new() { ViewerId = 1, WeaponBodyId = WeaponBodies.AbsoluteAqua }
+                new() { ViewerId = 1, WeaponBodyId = WeaponBodies.AbsoluteAqua },
             }
         );
 
-        (await this.weaponRepository.WeaponBodies.ToListAsync())
+        (
+            await this.weaponRepository.WeaponBodies.ToListAsync(
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+        )
             .Should()
             .AllSatisfy(x => x.ViewerId.Should().Be(1));
     }
@@ -50,7 +51,7 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
             new List<DbWeaponPassiveAbility>()
             {
                 new() { ViewerId = 1, WeaponPassiveAbilityId = 1010107 },
-                new() { ViewerId = 1, WeaponPassiveAbilityId = 1010108 }
+                new() { ViewerId = 1, WeaponPassiveAbilityId = 1010108 },
             }
         );
 
@@ -63,7 +64,7 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
     public async Task Add_AddsToDatabase()
     {
         await this.weaponRepository.Add(WeaponBodies.Arondight);
-        await this.fixture.ApiContext.SaveChangesAsync();
+        await this.fixture.ApiContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.fixture.ApiContext.PlayerWeapons.Single(x =>
                 x.WeaponBodyId == WeaponBodies.Arondight && x.ViewerId == IdentityTestUtils.ViewerId
@@ -73,8 +74,9 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
                 new DbWeaponBody()
                 {
                     ViewerId = IdentityTestUtils.ViewerId,
-                    WeaponBodyId = WeaponBodies.Arondight
-                }
+                    WeaponBodyId = WeaponBodies.Arondight,
+                },
+                opts => opts.WithDateTimeTolerance()
             );
     }
 
@@ -86,11 +88,11 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
             {
                 WeaponBodies.Abyssbringer,
                 WeaponBodies.Blitzfang,
-                WeaponBodies.Camelot
+                WeaponBodies.Camelot,
             }.Select(x => new DbWeaponBody()
             {
                 ViewerId = IdentityTestUtils.ViewerId,
-                WeaponBodyId = x
+                WeaponBodyId = x,
             })
         );
 
@@ -112,7 +114,7 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
             new DbWeaponBody()
             {
                 ViewerId = IdentityTestUtils.ViewerId,
-                WeaponBodyId = WeaponBodies.Nothung
+                WeaponBodyId = WeaponBodies.Nothung,
             }
         );
 
@@ -134,7 +136,7 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
             new DbWeaponBody()
             {
                 ViewerId = IdentityTestUtils.ViewerId,
-                WeaponBodyId = WeaponBodies.InfernoApogee
+                WeaponBodyId = WeaponBodies.InfernoApogee,
             }
         );
 
@@ -144,7 +146,7 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
         WeaponPassiveAbility passiveAbility = MasterAsset.WeaponPassiveAbility.Get(passiveId);
 
         await this.weaponRepository.AddPassiveAbility(WeaponBodies.InfernoApogee, passiveAbility);
-        await this.fixture.ApiContext.SaveChangesAsync();
+        await this.fixture.ApiContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.fixture.ApiContext.PlayerWeapons.Single(x =>
                 x.WeaponBodyId == WeaponBodies.InfernoApogee
@@ -156,7 +158,7 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
                 new DbWeaponPassiveAbility()
                 {
                     ViewerId = IdentityTestUtils.ViewerId,
-                    WeaponPassiveAbilityId = passiveId
+                    WeaponPassiveAbilityId = passiveId,
                 }
             );
     }
@@ -168,7 +170,7 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
             new DbWeaponBody()
             {
                 ViewerId = IdentityTestUtils.ViewerId,
-                WeaponBodyId = WeaponBodies.RoaringWeald
+                WeaponBodyId = WeaponBodies.RoaringWeald,
             }
         );
 
@@ -189,7 +191,7 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
     public async Task AddSkin_AddsSkin()
     {
         await this.weaponRepository.AddSkin(4);
-        await this.fixture.ApiContext.SaveChangesAsync();
+        await this.fixture.ApiContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.fixture.ApiContext.PlayerWeaponSkins.Should()
             .ContainEquivalentOf(
@@ -198,8 +200,9 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
                     ViewerId = IdentityTestUtils.ViewerId,
                     WeaponSkinId = 4,
                     IsNew = false,
-                    GetTime = DateTimeOffset.UtcNow
-                }
+                    GetTime = DateTimeOffset.UtcNow,
+                },
+                opts => opts.WithDateTimeTolerance()
             );
     }
 
@@ -207,12 +210,12 @@ public class WeaponRepositoryTest : IClassFixture<DbTestFixture>
     public async Task AddSkin_DuplicateSkins_NoPkException()
     {
         await this.weaponRepository.AddSkin(6);
-        await this.fixture.ApiContext.SaveChangesAsync();
+        await this.fixture.ApiContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         Func<Task> act = async () =>
         {
             await this.weaponRepository.AddSkin(6);
-            await this.fixture.ApiContext.SaveChangesAsync();
+            await this.fixture.ApiContext.SaveChangesAsync(TestContext.Current.CancellationToken);
         };
 
         await act.Invoking(x => x.Invoke()).Should().NotThrowAsync();

@@ -1,6 +1,7 @@
-using DragaliaAPI.Controllers.Dragalia;
+using DragaliaAPI.Features.Shared;
+using DragaliaAPI.Features.Weapons;
+using DragaliaAPI.Infrastructure.Results;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Test.Utils;
@@ -34,21 +35,23 @@ public class WeaponBodyControllerTest
         this.mockWeaponService.Setup(x => x.Craft(WeaponBodies.Areadbhar))
             .Returns(Task.CompletedTask);
 
-        this.mockUpdateDataService.Setup(x => x.SaveChangesAsync(default))
+        this.mockUpdateDataService.Setup(x =>
+                x.SaveChangesAsync(TestContext.Current.CancellationToken)
+            )
             .ReturnsAsync(
                 new UpdateDataList()
                 {
                     WeaponBodyList = new List<WeaponBodyList>()
                     {
-                        new() { WeaponBodyId = WeaponBodies.Areadbhar }
-                    }
+                        new() { WeaponBodyId = WeaponBodies.Areadbhar },
+                    },
                 }
             );
 
         WeaponBodyCraftResponse data = (
             await this.weaponBodyController.Craft(
                 new WeaponBodyCraftRequest() { WeaponBodyId = WeaponBodies.Areadbhar },
-                default
+                TestContext.Current.CancellationToken
             )
         ).GetData<WeaponBodyCraftResponse>()!;
 
@@ -69,7 +72,7 @@ public class WeaponBodyControllerTest
         ResultCodeResponse response = (
             await this.weaponBodyController.Craft(
                 new WeaponBodyCraftRequest() { WeaponBodyId = WeaponBodies.Areadbhar },
-                default
+                TestContext.Current.CancellationToken
             )
         ).GetData<ResultCodeResponse>()!;
 
@@ -82,7 +85,7 @@ public class WeaponBodyControllerTest
         ResultCodeResponse response = (
             await this.weaponBodyController.BuildupPiece(
                 new WeaponBodyBuildupPieceRequest() { WeaponBodyId = (WeaponBodies)8 },
-                default
+                TestContext.Current.CancellationToken
             )
         ).GetData<ResultCodeResponse>()!;
 
@@ -97,7 +100,7 @@ public class WeaponBodyControllerTest
         ResultCodeResponse response = (
             await this.weaponBodyController.BuildupPiece(
                 new WeaponBodyBuildupPieceRequest() { WeaponBodyId = WeaponBodies.Caduceus },
-                default
+                TestContext.Current.CancellationToken
             )
         ).GetData<ResultCodeResponse>()!;
 
@@ -129,9 +132,9 @@ public class WeaponBodyControllerTest
                         new(),
                         new(),
                         new(),
-                    }
+                    },
                 },
-                default
+                TestContext.Current.CancellationToken
             )
         ).GetData<ResultCodeResponse>()!;
 
@@ -151,15 +154,17 @@ public class WeaponBodyControllerTest
             )
             .ReturnsAsync(ResultCode.Success);
 
-        UpdateDataList udl =
-            new()
+        UpdateDataList udl = new()
+        {
+            WeaponBodyList = new List<WeaponBodyList>()
             {
-                WeaponBodyList = new List<WeaponBodyList>()
-                {
-                    new() { WeaponBodyId = WeaponBodies.Caduceus }
-                }
-            };
-        this.mockUpdateDataService.Setup(x => x.SaveChangesAsync(default)).ReturnsAsync(udl);
+                new() { WeaponBodyId = WeaponBodies.Caduceus },
+            },
+        };
+        this.mockUpdateDataService.Setup(x =>
+                x.SaveChangesAsync(TestContext.Current.CancellationToken)
+            )
+            .ReturnsAsync(udl);
 
         WeaponBodyBuildupPieceResponse data = (
             await this.weaponBodyController.BuildupPiece(
@@ -170,10 +175,10 @@ public class WeaponBodyControllerTest
                     {
                         new(),
                         new(),
-                        new()
-                    }
+                        new(),
+                    },
                 },
-                default
+                TestContext.Current.CancellationToken
             )
         ).GetData<WeaponBodyBuildupPieceResponse>()!;
 

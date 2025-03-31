@@ -25,17 +25,17 @@ public static class StorySkipRewards
             Charas.Ranzal,
             Charas.Cleo,
             Charas.Luca,
-            Charas.Alex
+            Charas.Alex,
         }.ToFrozenSet();
 
-    public static FrozenSet<Dragons> DragonList { get; } =
-        new List<Dragons>()
+    public static FrozenSet<DragonId> DragonList { get; } =
+        new List<DragonId>()
         {
-            Dragons.Brunhilda,
-            Dragons.Mercury,
-            Dragons.Midgardsormr,
-            Dragons.Jupiter,
-            Dragons.Zodiark,
+            DragonId.Brunhilda,
+            DragonId.Mercury,
+            DragonId.Midgardsormr,
+            DragonId.Jupiter,
+            DragonId.Zodiark,
         }.ToFrozenSet();
 
     public static FrozenDictionary<FortPlants, FortConfig> FortConfigs { get; } =

@@ -2,11 +2,10 @@ using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Features.Dungeon;
 using DragaliaAPI.Features.Dungeon.Record;
 using DragaliaAPI.Features.Present;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared;
+using DragaliaAPI.Features.Shared.Reward;
 using DragaliaAPI.Features.Wall;
-using DragaliaAPI.Models;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
 using DragaliaAPI.Shared.MasterAsset;
 using Microsoft.Extensions.Logging;
 
@@ -56,30 +55,28 @@ public class WallRecordControllerTest
         List<UserSupportList> helperList = new();
         List<AtgenHelperDetailList> helperDetailList = new();
 
-        DungeonSession session =
-            new()
-            {
-                QuestData = MasterAsset.QuestData[0],
-                Party = party,
-                WallId = wallId,
-                WallLevel = wallLevel + 1, // Client passes (db wall level + 1)
-                SupportViewerId = supportViewerId
-            };
+        DungeonSession session = new()
+        {
+            QuestData = MasterAsset.QuestData[0],
+            Party = party,
+            WallId = wallId,
+            WallLevel = wallLevel + 1, // Client passes (db wall level + 1)
+            SupportViewerId = supportViewerId,
+        };
 
-        DbPlayerQuestWall playerQuestWall =
-            new()
-            {
-                ViewerId = 1,
-                IsStartNextLevel = true,
-                WallId = wallId,
-                WallLevel = wallLevel
-            };
+        DbPlayerQuestWall playerQuestWall = new()
+        {
+            ViewerId = 1,
+            IsStartNextLevel = true,
+            WallId = wallId,
+            WallLevel = wallLevel,
+        };
 
-        this.mockDungeonService.Setup(x => x.GetSession(dungeonKey, CancellationToken.None))
+        this.mockDungeonService.Setup(x => x.GetSession(dungeonKey, It.IsAny<CancellationToken>()))
             .ReturnsAsync(session);
 
         mockDungeonService
-            .Setup(x => x.RemoveSession(dungeonKey, CancellationToken.None))
+            .Setup(x => x.RemoveSession(dungeonKey, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         mockWallService.Setup(x => x.GetQuestWall(wallId)).ReturnsAsync(playerQuestWall);
@@ -106,38 +103,36 @@ public class WallRecordControllerTest
         mockRewardService.Setup(x => x.GetEntityResult()).Returns(new EntityResult());
 
         mockUpdateDataService
-            .Setup(x => x.SaveChangesAsync(default))
+            .Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new UpdateDataList());
 
         WallRecordRecordResponse data = (
             await wallRecordController.Record(
                 new WallRecordRecordRequest(wallId, dungeonKey),
-                default
+                TestContext.Current.CancellationToken
             )
         ).GetData<WallRecordRecordResponse>()!;
 
-        AtgenPlayWallDetail dataPlayWallDetail =
-            new()
-            {
-                WallId = wallId,
-                AfterWallLevel = wallLevel + 1,
-                BeforeWallLevel = wallLevel
-            };
+        AtgenPlayWallDetail dataPlayWallDetail = new()
+        {
+            WallId = wallId,
+            AfterWallLevel = wallLevel + 1,
+            BeforeWallLevel = wallLevel,
+        };
 
-        AtgenWallDropReward dataWallDropReward =
-            new()
+        AtgenWallDropReward dataWallDropReward = new()
+        {
+            RewardEntityList = new[]
             {
-                RewardEntityList = new[]
-                {
-                    WallRecordController.GoldCrystals.ToBuildEventRewardEntityList()
-                },
-                TakeCoin = WallRecordController.Rupies.Quantity,
-                TakeMana = WallRecordController.Mana.Quantity
-            };
+                WallRecordController.GoldCrystals.ToBuildEventRewardEntityList(),
+            },
+            TakeCoin = WallRecordController.Rupies.Quantity,
+            TakeMana = WallRecordController.Mana.Quantity,
+        };
 
         IEnumerable<AtgenBuildEventRewardEntityList> dataWallClearRewardList = new[]
         {
-            WallRecordController.Wyrmites.ToBuildEventRewardEntityList()
+            WallRecordController.Wyrmites.ToBuildEventRewardEntityList(),
         };
 
         data.PlayWallDetail.Should().BeEquivalentTo(dataPlayWallDetail);

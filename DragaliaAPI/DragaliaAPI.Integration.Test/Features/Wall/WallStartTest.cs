@@ -5,10 +5,7 @@ namespace DragaliaAPI.Integration.Test.Features.Wall;
 public class WallStartTest : TestFixture
 {
     public WallStartTest(CustomWebApplicationFactory factory, ITestOutputHelper outputHelper)
-        : base(factory, outputHelper)
-    {
-        CommonAssertionOptions.ApplyTimeOptions(toleranceSec: 2);
-    }
+        : base(factory, outputHelper) { }
 
     [Fact]
     public async Task Start_ReturnsExpectedResponse()
@@ -26,8 +23,8 @@ public class WallStartTest : TestFixture
                 {
                     ViewerId = ViewerId,
                     WallId = wallId,
-                    WallLevel = wallLevel
-                }
+                    WallLevel = wallLevel,
+                },
             }
         );
 
@@ -38,8 +35,9 @@ public class WallStartTest : TestFixture
                 {
                     WallId = wallId,
                     WallLevel = wallLevel,
-                    PartyNo = 1
-                }
+                    PartyNo = 1,
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 
@@ -66,8 +64,8 @@ public class WallStartTest : TestFixture
                 {
                     ViewerId = ViewerId,
                     WallId = wallId,
-                    WallLevel = wallLevel
-                }
+                    WallLevel = wallLevel,
+                },
             }
         );
 
@@ -78,8 +76,9 @@ public class WallStartTest : TestFixture
                 {
                     WallId = wallId,
                     WallLevel = wallLevel,
-                    RequestPartySettingList = new List<PartySettingList>()
-                }
+                    RequestPartySettingList = new List<PartySettingList>(),
+                },
+                cancellationToken: TestContext.Current.CancellationToken
             )
         ).Data;
 

@@ -17,7 +17,7 @@ public class DbQuestClearPartyUnit : DbPartyUnitBase, IDbPlayerData
 
     public required bool IsMulti { get; set; }
 
-    public Dragons EquippedDragonEntityId { get; set; }
+    public DragonId EquippedDragonEntityId { get; set; }
 
     public Talismans EquippedTalismanEntityId { get; set; }
 
@@ -33,18 +33,18 @@ public class DbQuestClearPartyUnit : DbPartyUnitBase, IDbPlayerData
 
         this.EquipDragonKeyId = 0;
         this.EquipTalismanKeyId = 0;
-        this.EquippedDragonEntityId = Dragons.Empty;
+        this.EquippedDragonEntityId = DragonId.Empty;
         this.EquippedTalismanEntityId = Talismans.Empty;
 
-        this.EquipCrestSlotType1CrestId1 = AbilityCrests.Empty;
-        this.EquipCrestSlotType1CrestId2 = AbilityCrests.Empty;
-        this.EquipCrestSlotType1CrestId3 = AbilityCrests.Empty;
+        this.EquipCrestSlotType1CrestId1 = AbilityCrestId.Empty;
+        this.EquipCrestSlotType1CrestId2 = AbilityCrestId.Empty;
+        this.EquipCrestSlotType1CrestId3 = AbilityCrestId.Empty;
 
-        this.EquipCrestSlotType2CrestId1 = AbilityCrests.Empty;
-        this.EquipCrestSlotType2CrestId2 = AbilityCrests.Empty;
+        this.EquipCrestSlotType2CrestId1 = AbilityCrestId.Empty;
+        this.EquipCrestSlotType2CrestId2 = AbilityCrestId.Empty;
 
-        this.EquipCrestSlotType3CrestId1 = AbilityCrests.Empty;
-        this.EquipCrestSlotType3CrestId2 = AbilityCrests.Empty;
+        this.EquipCrestSlotType3CrestId1 = AbilityCrestId.Empty;
+        this.EquipCrestSlotType3CrestId2 = AbilityCrestId.Empty;
 
         this.EditSkill1CharaId = Charas.Empty;
         this.EditSkill2CharaId = Charas.Empty;

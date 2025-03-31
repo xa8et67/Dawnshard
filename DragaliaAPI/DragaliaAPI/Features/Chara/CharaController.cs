@@ -1,16 +1,15 @@
 ﻿using System.Collections.Immutable;
-using DragaliaAPI.Controllers;
 using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Database.Utils;
 using DragaliaAPI.Features.Missions;
-using DragaliaAPI.Features.Reward;
+using DragaliaAPI.Features.Shared;
+using DragaliaAPI.Features.Shared.Reward;
 using DragaliaAPI.Features.Shop;
 using DragaliaAPI.Features.Story;
+using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Models.Generated;
-using DragaliaAPI.Services;
-using DragaliaAPI.Services.Exceptions;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models;
@@ -379,7 +378,7 @@ public class CharaController(
         resp.CharaUnitSetList = setUnitData.Select(x => new CharaUnitSetList
         {
             CharaId = x.Key,
-            CharaUnitSetDetailList = x.Value.Select(ToAtgenCharaUnitSetDetailList)
+            CharaUnitSetDetailList = x.Value.Select(ToAtgenCharaUnitSetDetailList),
         });
 
         return Ok(resp);
@@ -423,14 +422,13 @@ public class CharaController(
             .CrestSlotType3CrestId2;
         setUnitData.EquipTalismanKeyId = request.RequestCharaUnitSetData.TalismanKeyId;
 
-        CharaUnitSetList setList =
-            new()
-            {
-                CharaId = request.CharaId,
-                CharaUnitSetDetailList = unitRepository
-                    .GetCharaSets(request.CharaId)
-                    .Select(ToAtgenCharaUnitSetDetailList)
-            };
+        CharaUnitSetList setList = new()
+        {
+            CharaId = request.CharaId,
+            CharaUnitSetDetailList = unitRepository
+                .GetCharaSets(request.CharaId)
+                .Select(ToAtgenCharaUnitSetDetailList),
+        };
 
         resp.UpdateDataList = await updateDataService.SaveChangesAsync(cancellationToken);
         resp.UpdateDataList.CharaUnitSetList = new List<CharaUnitSetList> { setList };
@@ -558,7 +556,7 @@ public class CharaController(
             charaData.PlusHp2,
             charaData.PlusHp3,
             charaData.PlusHp4,
-            charaData.PlusHp5
+            charaData.PlusHp5,
         };
 
         int[] atkPerCircleTotals =
@@ -568,7 +566,7 @@ public class CharaController(
             charaData.PlusAtk2,
             charaData.PlusAtk3,
             charaData.PlusAtk4,
-            charaData.PlusAtk5
+            charaData.PlusAtk5,
         };
 
         SortedSet<int> nodes = playerCharData.ManaCirclePieceIdList;
@@ -832,7 +830,7 @@ public class CharaController(
             CrestSlotType2CrestId2 = unit.EquipCrestSlotType2CrestId2,
             CrestSlotType3CrestId1 = unit.EquipCrestSlotType3CrestId1,
             CrestSlotType3CrestId2 = unit.EquipCrestSlotType3CrestId2,
-            TalismanKeyId = unit.EquipTalismanKeyId
+            TalismanKeyId = unit.EquipTalismanKeyId,
         };
     }
 }

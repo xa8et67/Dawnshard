@@ -19,7 +19,7 @@ public class QuestEnemyService : IQuestEnemyService
         this.logger = logger;
     }
 
-    public IEnumerable<AtgenEnemy> BuildQuestEnemyList(int questId, int areaNum)
+    public IList<AtgenEnemy> BuildQuestEnemyList(int questId, int areaNum)
     {
         AtgenEnemy[] enemyList = this.GetEnemyList(questId, areaNum);
 
@@ -34,7 +34,7 @@ public class QuestEnemyService : IQuestEnemyService
             return enemyList;
         }
 
-        int areaCount = MasterAsset.QuestData[questId].AreaInfo.Count();
+        int areaCount = MasterAsset.QuestData[questId].AreaInfo.Count;
         int totalQuantity = (int)Math.Round(questDropInfo.Drops.Sum(x => x.Quantity) / areaCount);
 
         int totalRupies = AddVariance(questDropInfo.Rupies) / areaCount;
@@ -59,7 +59,7 @@ public class QuestEnemyService : IQuestEnemyService
                     {
                         Coin = 0,
                         Mana = 0,
-                        DropList = new List<AtgenDropList>()
+                        DropList = new List<AtgenDropList>(),
                     }
                 );
             }
@@ -74,7 +74,7 @@ public class QuestEnemyService : IQuestEnemyService
                     {
                         Id = drop.Id,
                         Type = drop.EntityType,
-                        Quantity = 1
+                        Quantity = 1,
                     }
                 );
         }
@@ -105,7 +105,7 @@ public class QuestEnemyService : IQuestEnemyService
     }
 
     // Mercurial Gauntlet
-    public IEnumerable<AtgenEnemy> BuildQuestWallEnemyList(int wallId, int wallLevel)
+    public IList<AtgenEnemy> BuildQuestWallEnemyList(int wallId, int wallLevel)
     {
         List<AtgenEnemy> enemyList = GetWallEnemyList(wallId, wallLevel).ToList();
         // should handle enemy drops but eh
@@ -208,7 +208,7 @@ public class QuestEnemyService : IQuestEnemyService
                         IsPop = true,
                         IsRare = false,
                         ParamId = x.Id,
-                        EnemyDropList = []
+                        EnemyDropList = [],
                     }
             )
             .ToArray();
@@ -226,8 +226,8 @@ public class QuestEnemyService : IQuestEnemyService
                 IsPop = true,
                 IsRare = false,
                 ParamId = questWallDetail.BossEnemyParamId,
-                EnemyDropList = new List<EnemyDropList>()
-            }
+                EnemyDropList = new List<EnemyDropList>(),
+            },
         };
     }
 
