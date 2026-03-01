@@ -1,9 +1,11 @@
 import { devices, expect, test } from '@playwright/test';
 
+import { gotoWithHydration } from './util.ts';
+
 test('displays correctly', async ({ page }) => {
   await page.goto('/');
 
-  const profileLink = page.getByRole('link', { name: 'Profile' });
+  const profileLink = page.getByRole('link', { name: 'Profile', exact: true });
   await expect(profileLink).toBeVisible();
   await profileLink.click();
 
@@ -18,7 +20,7 @@ test('displays correctly on mobile', async ({ page }) => {
   await page.goto('/');
 
   await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page.getByRole('link', { name: 'Profile' }).click();
+  await page.getByRole('link', { name: 'Profile', exact: true }).click();
 
   await expect(page.getByRole('heading', { name: 'Profile' })).toBeVisible();
 
@@ -28,7 +30,7 @@ test('displays correctly on mobile', async ({ page }) => {
 test('export save', async ({ page }) => {
   await page.goto('/');
 
-  const profileLink = page.getByRole('link', { name: 'Profile' });
+  const profileLink = page.getByRole('link', { name: 'Profile', exact: true });
   await expect(profileLink).toBeVisible();
   await profileLink.click();
 
@@ -43,4 +45,41 @@ test('export save', async ({ page }) => {
   const text = await new Response(await download.createReadStream()).text();
 
   expect(text).toBe('{"someData":"true"}');
+});
+
+test('change settings', async ({ page }) => {
+  await gotoWithHydration(page, '/account/profile');
+
+  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+  await expect(page.getByRole('form', { name: 'Settings' })).toBeVisible();
+
+  const form = page.getByRole('form', { name: 'Settings' });
+
+  const resetButton = page.getByRole('button', { name: 'Reset', exact: true });
+  const saveButton = page.getByRole('button', { name: 'Save', exact: true });
+
+  await expect(form.getByRole('switch', { name: 'Receive daily material gifts' })).toBeEnabled();
+  await expect(form.getByRole('switch', { name: 'Receive daily material gifts' })).toBeChecked(); // Default is enabled
+  await expect(resetButton).toBeDisabled();
+  await expect(saveButton).toBeDisabled();
+
+  // Submit
+  await form.getByRole('switch', { name: 'Receive daily material gifts' }).click();
+  await expect(
+    form.getByRole('switch', { name: 'Receive daily material gifts' })
+  ).not.toBeChecked();
+  await expect(saveButton).toBeEnabled();
+  await saveButton.click();
+  await expect(page.getByText('Successfully changed settings')).toBeVisible();
+
+  // Reset
+  await form.getByRole('switch', { name: 'Receive daily material gifts' }).click();
+  await expect(form.getByRole('switch', { name: 'Receive daily material gifts' })).toBeChecked();
+  await expect(resetButton).toBeEnabled();
+  await resetButton.click();
+  await expect(
+    form.getByRole('switch', { name: 'Receive daily material gifts' })
+  ).not.toBeChecked();
+  await expect(resetButton).toBeDisabled();
+  await expect(saveButton).toBeDisabled();
 });

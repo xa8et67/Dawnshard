@@ -4,17 +4,24 @@ using Microsoft.Extensions.Configuration;
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
+#pragma warning disable ASPIREPROXYENDPOINTS001
 IResourceBuilder<PostgresServerResource> postgres = builder
     .AddPostgres("postgres")
-    .WithImage("postgres", "16.4")
-    .WithDataVolume("dragalia-api-pgdata");
+    .WithImage("postgres", "17.5")
+    .WithDataVolume("dragalia-api-pgdata")
+    .WithLifetime(ContainerLifetime.Persistent)
+    .WithEndpointProxySupport(false);
+#pragma warning restore ASPIREPROXYENDPOINTS001
 
+#pragma warning disable ASPIRECERTIFICATES001
 IResourceBuilder<RedisResource> redis = builder
     .AddRedis("redis")
-    .WithImage("redis/redis-stack", "7.4.0-v0")
-    // Persistence isn't critical but is nice to avoid long session refreshes on every restart
-    .WithVolume("dragalia-api-redisdata", "/data")
-    .WithEnvironment("REDIS_ARGS", "--save 10 3"); // Save every 10 seconds if >= 3 keys changed
+    .WithImage("redis/redis-stack", "7.4.0-v8")
+    .WithoutHttpsCertificate()
+    .WithPassword(null)
+    .WithEntrypoint("/entrypoint.sh") // Default Aspire entrypoint doesn't load modules correctly
+    .WithLifetime(ContainerLifetime.Persistent);
+#pragma warning restore ASPIRECERTIFICATES001
 
 IResourceBuilder<ProjectResource> dragaliaApi = builder
     .AddProject<Projects.DragaliaAPI>("dragalia-api")
@@ -102,9 +109,10 @@ if (builder.Configuration.GetValue<bool>("EnablePhoton"))
 if (builder.Configuration.GetValue<bool>("EnableWebsite"))
 {
     builder
-        .AddNpmApp("website", workingDirectory: "../Website", scriptName: "dev")
+        .AddNpmApp("website", workingDirectory: "../../Website", scriptName: "dev")
         .WithEnvironment("PUBLIC_ENABLE_MSW", "false")
-        .WithEnvironment("DAWNSHARD_API_URL_SSR", dragaliaApi.GetEndpoint("http"));
+        .WithEnvironment("DAWNSHARD_API_URL_SSR", dragaliaApi.GetEndpoint("http"))
+        .WithHttpEndpoint(null, 3001, "http");
 }
 
 builder.Build().Run();

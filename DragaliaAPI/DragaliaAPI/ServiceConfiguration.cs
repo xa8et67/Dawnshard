@@ -87,7 +87,8 @@ public static class ServiceConfiguration
             .AddAbilityCrestFeature()
             .AddTutorialFeature()
             .AddZenaFeature()
-            .AddFriendFeature();
+            .AddFriendFeature()
+            .AddDungeonFeature();
 
         services
             .RegisterMissionServices()
@@ -102,23 +103,9 @@ public static class ServiceConfiguration
             // Fort Feature
             .AddScoped<IFortService, FortService>()
             .AddScoped<IFortRepository, FortRepository>()
-            // Dungeon Feature
-            .AddScoped<IDungeonService, DungeonService>()
-            .AddScoped<IDungeonStartService, DungeonStartService>()
-            .AddScoped<IDungeonRepository, DungeonRepository>()
-            .AddScoped<IQuestEnemyService, QuestEnemyService>()
-            .AddScoped<IOddsInfoService, OddsInfoService>()
-            .AddScoped<IDungeonRecordService, DungeonRecordService>()
-            .AddScoped<IDungeonRecordHelperService, DungeonRecordHelperService>()
-            .AddScoped<IDungeonRecordRewardService, DungeonRecordRewardService>()
-            .AddScoped<IDungeonRecordDamageService, DungeonRecordDamageService>()
-            .AddScoped<IQuestCompletionService, QuestCompletionService>()
-            .AddScoped<IAbilityCrestMultiplierService, AbilityCrestMultiplierService>()
-            .AddScoped<IAutoRepeatService, AutoRepeatService>()
             // Event Feature
             .AddScoped<IEventRepository, EventRepository>()
             .AddScoped<IEventService, EventService>()
-            .AddScoped<IEventDropService, EventDropService>()
             .AddScoped<ITimeAttackService, TimeAttackService>()
             .AddScoped<ITimeAttackRepository, TimeAttackRepository>()
             .AddScoped<ITimeAttackCacheService, TimeAttackCacheService>()
@@ -285,8 +272,6 @@ public static class ServiceConfiguration
     {
         // Custom config on top of ServiceDefaults
 
-        bool isDevelopment = builder.Environment.IsDevelopment();
-
         builder
             .Services.AddOpenTelemetry()
             .ConfigureResource(cfg =>
@@ -300,7 +285,7 @@ public static class ServiceConfiguration
                 .Services.AddOpenTelemetry()
                 .WithTracing(tracing =>
                     tracing.AddEntityFrameworkCoreInstrumentation(options =>
-                        options.SetDbStatementForText = isDevelopment
+                        options.SetDbStatementForText = true
                     )
                 //  Not compatible with IDistributedCache as requires IConnectionMultiplexer
                 // .AddRedisInstrumentation()

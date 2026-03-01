@@ -1,5 +1,4 @@
 ﻿using System.Security.Claims;
-using AutoMapper;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Infrastructure;
@@ -93,21 +92,12 @@ public static class UnitTestUtils
         );
     }
 
-    public static IMapper CreateMapper()
-    {
-        return new MapperConfiguration(cfg => cfg.AddMaps(typeof(Program).Assembly)).CreateMapper();
-    }
-
     public static IReturnsResult<IUserDataRepository> SetupUserData(
         this Mock<IUserDataRepository> mock,
         DbPlayerUserData returnValue
     ) =>
         mock.SetupGet(x => x.UserData)
-            .Returns(
-                new List<DbPlayerUserData>() { returnValue }
-                    .AsQueryable()
-                    .BuildMock()
-            );
+            .Returns(new List<DbPlayerUserData>() { returnValue }.BuildMock());
 
     public static bool IsEquivalent(this object input, object comparison, ITestOutputHelper? output)
     {

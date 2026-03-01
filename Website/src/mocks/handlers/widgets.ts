@@ -7,15 +7,15 @@ export const handlePresentData: HttpResponseResolver = () => {
     types: [
       {
         type: 'Material',
-        hasQuantity: true
+        maxQuantity: 999_999
       },
       {
         type: 'Chara',
-        hasQuantity: false
+        maxQuantity: 1
       },
       {
         type: 'DmodePoint',
-        hasQuantity: true
+        maxQuantity: 999_999
       }
     ],
     availableItems: {
@@ -36,7 +36,19 @@ export const handlePresentData: HttpResponseResolver = () => {
         {
           id: 10002
         }
-      ]
+      ],
+      Dragon: [],
+      Wyrmite: [],
+      Wyrmprint: [],
+      Rupies: [],
+      Item: [],
+      SkipTicket: [],
+      DragonGift: [],
+      FreeDiamantium: [],
+      HustleHammer: [],
+      Dew: [],
+      WeaponBody: [],
+      WeaponSkin: []
     }
   });
 };

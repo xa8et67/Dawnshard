@@ -1,25 +1,26 @@
 <script lang="ts">
+  import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import { Image } from '@unpic/svelte';
-  import ChevronLeft from 'lucide-svelte/icons/chevron-left';
 
   import { afterNavigate } from '$app/navigation';
-  import { getImageSrc } from '$main/news/news.ts';
+  import { formatDescription, getImageSrc } from '$main/news/news.ts';
   import { Button } from '$shadcn/components/ui/button';
 
-  import type { PageData } from './$types';
+  import type { PageProps } from './$types';
 
-  let previousPage: string = '/webview/news';
+  let previousPage: string = $state('/webview/news');
 
   afterNavigate(({ from }) => {
     previousPage = from ? from.url.pathname + from.url.search : previousPage;
   });
 
-  export let data: PageData;
+  let { data }: PageProps = $props();
 
-  let item = data.newsItem;
+  let item = $derived(data.newsItem);
 
-  $: headerImageSrc = getImageSrc(item.headerImagePath);
-  $: bodyImageSrc = getImageSrc(item.bodyImagePath);
+  let headerImageSrc = $derived(getImageSrc(item.headerImagePath));
+  let bodyImageSrc = $derived(getImageSrc(item.bodyImagePath));
+  let description = $derived(formatDescription(item.description));
 </script>
 
 <div class="p-4">
@@ -52,7 +53,7 @@
       <br />
       <!-- Trusted input from API server - XSS is unlikely without server being compromised -->
       <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-      <p>{@html item.description}</p>
+      <p>{@html description}</p>
       <br />
       {#if bodyImageSrc}
         <Image src={bodyImageSrc} layout="fullWidth" class="w-full" alt={item.bodyImageAltText} />

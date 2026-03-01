@@ -7,6 +7,7 @@
     type PaginationState
   } from '@tanstack/table-core';
   import { onMount, tick } from 'svelte';
+  import { SvelteURLSearchParams } from 'svelte/reactivity';
   import { slide } from 'svelte/transition';
 
   import { goto } from '$app/navigation';
@@ -44,7 +45,7 @@
     },
     {
       accessorKey: 'players',
-      header: coop ? 'Players' : 'Player',
+      header: () => (coop ? 'Players' : 'Player'),
       cell: ({ getValue }) => {
         return getValue<TimeAttackPlayer[]>()
           .map((p) => p.name)
@@ -80,41 +81,43 @@
     }
   ];
 
-  const table = createSvelteTable({
-    get data() {
-      return data;
-    },
-    columns,
-    state: {
-      get pagination() {
-        return pagination;
+  const table = $derived(
+    createSvelteTable({
+      get data() {
+        return data;
       },
-      get expanded() {
-        return expanded;
-      }
-    },
-    onPaginationChange: (updaterOrValue) => {
-      if (typeof updaterOrValue === 'function') {
-        pagination = updaterOrValue(pagination);
-      } else {
-        pagination = updaterOrValue;
-      }
+      columns,
+      state: {
+        get pagination() {
+          return pagination;
+        },
+        get expanded() {
+          return expanded;
+        }
+      },
+      onPaginationChange: (updaterOrValue) => {
+        if (typeof updaterOrValue === 'function') {
+          pagination = updaterOrValue(pagination);
+        } else {
+          pagination = updaterOrValue;
+        }
 
-      handlePageChange(pagination.pageIndex);
-    },
-    onExpandedChange: (updaterOrValue) => {
-      if (typeof updaterOrValue === 'function') {
-        expanded = updaterOrValue(expanded);
-      } else {
-        expanded = expanded;
-      }
-    },
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: true,
-    rowCount: itemCount,
-    enableExpanding: true
-  });
+        handlePageChange(pagination.pageIndex);
+      },
+      onExpandedChange: (updaterOrValue) => {
+        if (typeof updaterOrValue === 'function') {
+          expanded = updaterOrValue(expanded);
+        } else {
+          expanded = expanded;
+        }
+      },
+      getCoreRowModel: getCoreRowModel(),
+      getPaginationRowModel: getPaginationRowModel(),
+      manualPagination: true,
+      rowCount: itemCount,
+      enableExpanding: true
+    })
+  );
 
   let initialized = $state(false);
   let showExpanded = $state(true);
@@ -128,9 +131,11 @@
     // table.toggleAllRowsExpanded doesn't seem to do anything
     expanded = {};
 
-    const params = new URLSearchParams(page.url.searchParams);
+    const params = new SvelteURLSearchParams(page.url.searchParams);
     params.set('page', (newPage + 1).toString());
 
+    // https://github.com/sveltejs/eslint-plugin-svelte/issues/1327
+    // eslint-disable-next-line svelte/no-navigation-without-resolve
     await goto(`?${params.toString()}`, { noScroll: true });
 
     const el = document.querySelector('#time-attack-table-title');
@@ -153,7 +158,7 @@
   });
 </script>
 
-<div class="rounded-md border">
+<div class="bg-card text-card-foreground rounded-xl border shadow-sm">
   <Table.Root id="time-attack-table" aria-labelledby="time-attack-table-title">
     <Table.Header id="time-attack-table-header" class="hidden md:[display:revert]">
       {#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
@@ -210,7 +215,7 @@
       {/each}
     </Table.Body>
   </Table.Root>
-  <div class="flex items-center justify-center space-x-4 border-t py-2.5">
+  <div class="flex items-center justify-center space-x-4 py-2.5">
     <Button
       variant="outline"
       size="sm"

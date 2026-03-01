@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using DragaliaAPI.Database;
+﻿using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Entities.Abstract;
 using DragaliaAPI.Extensions;
@@ -63,7 +62,6 @@ public class TestFixture
 
         this.Services = factory.Services.CreateScope().ServiceProvider;
 
-        this.Mapper = this.Services.GetRequiredService<IMapper>();
         this.LastDailyReset = TimeProvider.System.GetLastDailyReset();
 
         this.SeedDatabase().Wait();
@@ -105,8 +103,6 @@ public class TestFixture
     protected long ViewerId { get; private set; }
 
     protected HttpClient Client { get; set; }
-
-    protected IMapper Mapper { get; }
 
     protected IDungeonService DungeonService { get; }
 
@@ -306,8 +302,8 @@ public class TestFixture
         userData.Crystal = 1_200_000;
         userData.DewPoint = 100_000_000;
         userData.ManaPoint = 100_000_000;
-        userData.Level = 250;
-        userData.Exp = 28253490;
+        userData.Level = 100; // Tests expect to receive XP but you won't get any at level 250
+        userData.Exp = 423490;
         userData.StaminaSingle = 999;
         userData.QuestSkipPoint = 300;
 

@@ -80,16 +80,6 @@ public class DungeonRecordServiceTest
             },
         };
 
-        List<AtgenDropAll> eventDrops = new()
-        {
-            new()
-            {
-                Id = (int)Materials.WoodlandHerbs,
-                Quantity = 20,
-                Type = EntityTypes.Material,
-            },
-        };
-
         List<AtgenScoreMissionSuccessList> scoreMissionSuccessLists = new()
         {
             new()
@@ -157,7 +147,7 @@ public class DungeonRecordServiceTest
         this.mockUserService.Setup(x => x.RemoveStamina(StaminaType.Single, 40))
             .Returns(Task.CompletedTask);
         this.mockUserService.Setup(x => x.AddExperience(400))
-            .ReturnsAsync(new PlayerLevelResult(true, 100, 50));
+            .ReturnsAsync(new PlayerLevelResult(true, 100, 400, 50));
 
         this.mockDungeonRewardService.Setup(x =>
                 x.ProcessQuestMissionCompletion(playRecord, session)
@@ -172,8 +162,7 @@ public class DungeonRecordServiceTest
                     enemyScoring,
                     takeAccumulatePoint,
                     takeBoostAccumulatePoint,
-                    passiveUpLists,
-                    eventDrops
+                    passiveUpLists
                 )
             );
         this.mockDungeonRewardService.Setup(x => x.ProcessDraconicEssenceDrops(session))
@@ -210,7 +199,7 @@ public class DungeonRecordServiceTest
                     CurrentPlayCount = 1,
                     RewardRecord = new()
                     {
-                        DropAll = dropList.Concat(eventDrops).ToList(),
+                        DropAll = dropList,
                         TakeBoostAccumulatePoint = takeBoostAccumulatePoint,
                         TakeAccumulatePoint = takeAccumulatePoint,
                         TakeCoin = takeCoin,

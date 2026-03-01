@@ -18,34 +18,49 @@ internal sealed class DungeonRecordHelperService(
 {
     public async Task<(
         IEnumerable<UserSupportList> HelperList,
-        IEnumerable<AtgenHelperDetailList> HelperDetailList
+        IEnumerable<AtgenHelperDetailList> HelperDetailList,
+        int RewardMana
     )> ProcessHelperDataSolo(ulong? supportViewerId)
     {
         List<UserSupportList> helperList = new();
         List<AtgenHelperDetailList> helperDetailList = new();
 
-        if (supportViewerId is null)
-            return (helperList, helperDetailList);
+        if (supportViewerId is null or 0)
+        {
+            return (helperList, helperDetailList, 0);
+        }
 
-        UserSupportList? supportList = await helperService.GetLegacyHelper(supportViewerId.Value);
+        AtgenSupportUserDataDetail? supportList = await helperService.GetHelperDetail(
+            (long)supportViewerId.Value
+        );
+
+        int rewardMana = 25;
 
         if (supportList is not null)
         {
-            helperList.Add(supportList);
+            await helperService.UseHelper((long)supportViewerId.Value);
 
-            // TODO: Replace with friends system once fully added
+            helperList.Add(supportList.UserSupportData);
+
             helperDetailList.Add(
                 new AtgenHelperDetailList()
                 {
-                    ViewerId = supportList.ViewerId,
-                    IsFriend = true,
-                    ApplySendStatus = 1,
-                    GetManaPoint = 50,
+                    ViewerId = supportList.UserSupportData.ViewerId,
+                    IsFriend = supportList.IsFriend,
+                    ApplySendStatus = supportList.ApplySendStatus,
+                    GetManaPoint = supportList.IsFriend
+                        ? HelperConstants.HelperFriendRewardMana
+                        : HelperConstants.HelperRewardMana,
                 }
             );
+
+            if (supportList.IsFriend)
+            {
+                rewardMana = 50;
+            }
         }
 
-        return (helperList, helperDetailList);
+        return (helperList, helperDetailList, rewardMana);
     }
 
     public async Task<(
@@ -70,17 +85,20 @@ internal sealed class DungeonRecordHelperService(
             connectingViewerIdList
         );
 
-        List<long> friendsList = await friendService.CheckFriendStatus(connectingViewerIdList);
+        List<(long ViewerId, bool IsFriend, bool HasFriendRequest)> friendCheckList =
+            await friendService.CheckFriendStatus(connectingViewerIdList);
 
         logger.LogDebug("Retrieved teammate support list {@supportList}", teammateSupportLists);
 
-        IEnumerable<AtgenHelperDetailList> teammateDetailLists = connectingViewerIdList.Select(
+        IEnumerable<AtgenHelperDetailList> teammateDetailLists = friendCheckList.Select(
             x => new AtgenHelperDetailList()
             {
-                IsFriend = friendsList.Contains(x),
-                ViewerId = (ulong)x,
-                GetManaPoint = 50,
-                ApplySendStatus = 0,
+                IsFriend = x.IsFriend,
+                ViewerId = (ulong)x.ViewerId,
+                GetManaPoint = x.IsFriend
+                    ? HelperConstants.HelperFriendRewardMana
+                    : HelperConstants.HelperRewardMana,
+                ApplySendStatus = x.HasFriendRequest ? 1 : 0,
             }
         );
 

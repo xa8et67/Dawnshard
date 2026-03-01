@@ -21,7 +21,6 @@ public class MissionInitialProgressionService(
     FortDataService fortDataService,
     IMissionRepository missionRepository,
     IAbilityCrestRepository abilityCrestRepository,
-    IQuestRepository questRepository,
     IUnitRepository unitRepository,
     IWeaponRepository weaponRepository,
     IStoryRepository storyRepository,
@@ -137,7 +136,8 @@ public class MissionInitialProgressionService(
                         .ToListAsync()
                 )
                     .Select(x => (int?)Math.Min(x.AttackPlusCount, x.HpPlusCount))
-                    .Max() ?? 0,
+                    .Max()
+                    ?? 0,
                 MissionCompleteType.AbilityCrestLevelUp => (
                     await abilityCrestRepository
                         .AbilityCrests.Where(x =>
@@ -286,7 +286,8 @@ public class MissionInitialProgressionService(
                 )
                     .Where(x => MasterAsset.CharaData[x.CharaId].ElementalType == element)
                     .Select(x => (int?)x.Level)
-                    .Max() ?? 0;
+                    .Max()
+                ?? 0;
         }
 
         return await apiContext.PlayerCharaData.MaxAsync(x => x.Level);
@@ -312,6 +313,7 @@ public class MissionInitialProgressionService(
 
     private async Task<int> GetCharacterManaNodeCount(Charas? charaId, UnitElement? element)
     {
+        // FIXME: This should not be using ManaNodeUnlockCount as that's a bit mask, not a literal count of unlocked nodes
         if (charaId != null)
         {
             return (await unitRepository.FindCharaAsync(charaId.Value))?.ManaNodeUnlockCount ?? 0;
@@ -326,7 +328,8 @@ public class MissionInitialProgressionService(
                 )
                     .Where(x => MasterAsset.CharaData[x.CharaId].ElementalType == element)
                     .Select(x => (int?)x.ManaNodeUnlockCount)
-                    .Max() ?? 0;
+                    .Max()
+                ?? 0;
         }
 
         return await apiContext.PlayerCharaData.Select(x => (int?)x.ManaNodeUnlockCount).MaxAsync()
@@ -340,7 +343,8 @@ public class MissionInitialProgressionService(
             return await unitRepository
                     .Dragons.Where(x => x.DragonId == dragonId)
                     .Select(x => (int?)x.Level)
-                    .MaxAsync() ?? 0;
+                    .MaxAsync()
+                ?? 0;
         }
 
         if (element != null)
@@ -352,7 +356,8 @@ public class MissionInitialProgressionService(
                 )
                     .Where(x => MasterAsset.DragonData[x.DragonId].ElementalType == element)
                     .Select(x => (int?)x.Level)
-                    .Max() ?? 0;
+                    .Max()
+                ?? 0;
         }
 
         return await unitRepository.Dragons.MaxAsync(x => (int?)x.Level) ?? 0;
@@ -395,7 +400,8 @@ public class MissionInitialProgressionService(
                 )
                     .Where(x => MasterAsset.DragonData[x.DragonId].ElementalType == element)
                     .Select(x => (int?)x.Level)
-                    .Max() ?? 0;
+                    .Max()
+                ?? 0;
         }
 
         return await unitRepository.DragonReliabilities.MaxAsync(x => (int?)x.Level) ?? 0;
@@ -409,8 +415,8 @@ public class MissionInitialProgressionService(
     {
         if (questId != null)
         {
-            return await questRepository
-                .Quests.Where(x => x.QuestId == questId)
+            return await apiContext
+                .PlayerQuests.Where(x => x.QuestId == questId)
                 .Select(x => x.PlayCount)
                 .FirstOrDefaultAsync();
         }
@@ -422,9 +428,10 @@ public class MissionInitialProgressionService(
             .Select(x => x.Id)
             .ToList();
 
-        return await questRepository
-                .Quests.Where(x => validQuests.Contains(x.QuestId))
-                .SumAsync(x => (int?)x.PlayCount) ?? 0;
+        return await apiContext
+                .PlayerQuests.Where(x => validQuests.Contains(x.QuestId))
+                .SumAsync(x => (int?)x.PlayCount)
+            ?? 0;
     }
 
     private async Task<int> GetCharacterBuildupCount(
@@ -507,10 +514,12 @@ public class MissionInitialProgressionService(
         {
             PlusCountType.Hp => await abilityCrestRepository
                 .AbilityCrests.Select(x => (int?)x.HpPlusCount)
-                .MaxAsync() ?? 0,
+                .MaxAsync()
+                ?? 0,
             PlusCountType.Atk => await abilityCrestRepository
                 .AbilityCrests.Select(x => (int?)x.AttackPlusCount)
-                .MaxAsync() ?? 0,
+                .MaxAsync()
+                ?? 0,
             _ => throw new DragaliaException(
                 ResultCode.CommonInvalidArgument,
                 $"Invalid PlusCountType for wyrmprint in mission requirement, parameter: {type}"
@@ -567,7 +576,8 @@ public class MissionInitialProgressionService(
 
         return await weaponRepository
                 .WeaponBodies.Where(x => validWeaponBodies.Contains(x.WeaponBodyId))
-                .SumAsync(x => (int?)x.LimitOverCount) ?? 0;
+                .SumAsync(x => (int?)x.LimitOverCount)
+            ?? 0;
     }
 
     private async Task<int> GetQuestGroupClearedCount(
@@ -592,9 +602,10 @@ public class MissionInitialProgressionService(
             .Select(x => x.Id)
             .ToList();
 
-        return await questRepository
-                .Quests.Where(x => questPool.Contains(x.QuestId))
-                .SumAsync(x => (int?)x.PlayCount) ?? 0;
+        return await apiContext
+                .PlayerQuests.Where(x => questPool.Contains(x.QuestId))
+                .SumAsync(x => (int?)x.PlayCount)
+            ?? 0;
     }
 
     private async Task<int> GetEventParticipationProgress(int? eventId)

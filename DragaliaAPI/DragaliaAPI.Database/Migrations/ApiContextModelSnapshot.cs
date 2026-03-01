@@ -17,7 +17,7 @@ namespace DragaliaAPI.Database.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.2")
+                .HasAnnotation("ProductVersion", "9.0.3")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -1056,6 +1056,12 @@ namespace DragaliaAPI.Database.Migrations
                     b.Property<int?>("EquipWeaponBodyId")
                         .HasColumnType("integer");
 
+                    b.Property<int>("HelperFriendRewardCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("HelperRewardCount")
+                        .HasColumnType("integer");
+
                     b.HasKey("ViewerId");
 
                     b.HasIndex("EquipDragonKeyId")
@@ -1092,6 +1098,24 @@ namespace DragaliaAPI.Database.Migrations
                         .IsUnique();
 
                     b.ToTable("PlayerHelpers");
+                });
+
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerHelperUseDate", b =>
+                {
+                    b.Property<long>("HelperViewerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("PlayerViewerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("UseDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("HelperViewerId", "PlayerViewerId");
+
+                    b.HasIndex("PlayerViewerId");
+
+                    b.ToTable("PlayerHelperUseDates");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerMaterial", b =>
@@ -1835,6 +1859,16 @@ namespace DragaliaAPI.Database.Migrations
                     b.ToTable("PlayerSetUnit");
                 });
 
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbSettings", b =>
+                {
+                    b.Property<long>("ViewerId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("ViewerId");
+
+                    b.ToTable("PlayerSettings");
+                });
+
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbSummonTicket", b =>
                 {
                     b.Property<long>("KeyId")
@@ -2551,6 +2585,25 @@ namespace DragaliaAPI.Database.Migrations
                     b.Navigation("Owner");
                 });
 
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerHelperUseDate", b =>
+                {
+                    b.HasOne("DragaliaAPI.Database.Entities.DbPlayerHelper", "Helper")
+                        .WithMany("UseDates")
+                        .HasForeignKey("HelperViewerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Player")
+                        .WithMany()
+                        .HasForeignKey("PlayerViewerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Helper");
+
+                    b.Navigation("Player");
+                });
+
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerMaterial", b =>
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
@@ -2749,6 +2802,41 @@ namespace DragaliaAPI.Database.Migrations
                     b.Navigation("Owner");
                 });
 
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbSettings", b =>
+                {
+                    b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Player")
+                        .WithOne("Settings")
+                        .HasForeignKey("DragaliaAPI.Database.Entities.DbSettings", "ViewerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsOne("DragaliaAPI.Database.Entities.Owned.PlayerSettings", "SettingsJson", b1 =>
+                        {
+                            b1.Property<long>("DbSettingsViewerId")
+                                .HasColumnType("bigint");
+
+                            b1.Property<bool>("DailyGifts")
+                                .HasColumnType("boolean");
+
+                            b1.Property<bool>("UseLegacyHelpers")
+                                .HasColumnType("boolean");
+
+                            b1.HasKey("DbSettingsViewerId");
+
+                            b1.ToTable("PlayerSettings");
+
+                            b1.ToJson("SettingsJson");
+
+                            b1.WithOwner()
+                                .HasForeignKey("DbSettingsViewerId");
+                        });
+
+                    b.Navigation("Player");
+
+                    b.Navigation("SettingsJson")
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbSummonTicket", b =>
                 {
                     b.HasOne("DragaliaAPI.Database.Entities.DbPlayer", "Owner")
@@ -2906,6 +2994,8 @@ namespace DragaliaAPI.Database.Migrations
 
                     b.Navigation("QuestWalls");
 
+                    b.Navigation("Settings");
+
                     b.Navigation("ShopInfo");
 
                     b.Navigation("StoryStates");
@@ -2934,6 +3024,11 @@ namespace DragaliaAPI.Database.Migrations
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerFriendship", b =>
                 {
                     b.Navigation("PlayerFriendshipPlayers");
+                });
+
+            modelBuilder.Entity("DragaliaAPI.Database.Entities.DbPlayerHelper", b =>
+                {
+                    b.Navigation("UseDates");
                 });
 
             modelBuilder.Entity("DragaliaAPI.Database.Entities.DbTimeAttackClear", b =>

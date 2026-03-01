@@ -133,6 +133,15 @@ public class SupportCharaTest : TestFixture
     [Fact]
     public async Task GetSupportCharaDetail_StaticCharacter_GetsCorrectCharacter()
     {
+        this.ApiContext.PlayerSettings.Add(
+            new()
+            {
+                ViewerId = this.ViewerId,
+                SettingsJson = new() { UseLegacyHelpers = true },
+            }
+        );
+        await this.ApiContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
         FriendGetSupportCharaDetailResponse response = (
             await this.Client.PostMsgpack<FriendGetSupportCharaDetailResponse>(
                 "/friend/get_support_chara_detail",
@@ -283,6 +292,32 @@ public class SupportCharaTest : TestFixture
     }
 
     [Fact]
+    public async Task GetSupportCharaDetail_StaticEnabled_SendsRealViewerId_GetsCorrectCharacter()
+    {
+        // See comment in StaticHelperDataService explaining why this is a valid scenario
+
+        this.ApiContext.PlayerSettings.Add(
+            new()
+            {
+                ViewerId = this.ViewerId,
+                SettingsJson = new() { UseLegacyHelpers = true },
+            }
+        );
+        await this.ApiContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        DragaliaResponse<FriendGetSupportCharaDetailResponse> response = (
+            await this.Client.PostMsgpack<FriendGetSupportCharaDetailResponse>(
+                "/friend/get_support_chara_detail",
+                new FriendGetSupportCharaDetailRequest() { SupportViewerId = (ulong)this.ViewerId },
+                cancellationToken: TestContext.Current.CancellationToken,
+                ensureSuccessHeader: false
+            )
+        );
+
+        response.DataHeaders.ResultCode.Should().Be(ResultCode.Success);
+    }
+
+    [Fact]
     public async Task GetSupportCharaDetail_RealViewerId_GetsSupportCharaDetail()
     {
         await this.AddSupportCharaEquipment();
@@ -336,7 +371,7 @@ public class SupportCharaTest : TestFixture
                 {
                     ViewerId = (ulong)this.ViewerId,
                     Name = "Euden",
-                    Level = 250,
+                    Level = 100,
                     EmblemId = Emblems.DragonbloodPrince,
                     MaxPartyPower = 444,
                     SupportChara = new()
@@ -512,7 +547,7 @@ public class SupportCharaTest : TestFixture
                 {
                     ViewerId = (ulong)this.ViewerId,
                     Name = "Euden",
-                    Level = 250,
+                    Level = 100,
                     EmblemId = Emblems.DragonbloodPrince,
                     MaxPartyPower = 444,
                     SupportChara = new()
@@ -563,102 +598,100 @@ public class SupportCharaTest : TestFixture
 
     private async Task AddSupportCharaEquipment()
     {
-        await this.AddRangeToDatabase(
-            [
-                new DbPlayerCharaData(this.ViewerId, Charas.Valerio),
-                new DbPlayerDragonData(this.ViewerId, DragonId.Nimis),
-                new DbPlayerDragonReliability(this.ViewerId, DragonId.Nimis) { Level = 30 },
-                new DbPartyPower() { ViewerId = this.ViewerId, MaxPartyPower = 444 },
-                new DbWeaponBody()
-                {
-                    ViewerId = this.ViewerId,
-                    WeaponBodyId = WeaponBodies.AmenoHabakiri,
-                    BuildupCount = 80,
-                    LimitBreakCount = 8,
-                    LimitOverCount = 1,
-                    EquipableCount = 2,
-                    AdditionalCrestSlotType1Count = 1,
-                    AdditionalCrestSlotType2Count = 0,
-                },
-                new DbAbilityCrest()
-                {
-                    ViewerId = this.ViewerId,
-                    AbilityCrestId = AbilityCrestId.AManUnchanging,
-                    BuildupCount = 50,
-                    LimitBreakCount = 4,
-                    EquipableCount = 2,
-                    HpPlusCount = 50,
-                    AttackPlusCount = 50,
-                },
-                new DbAbilityCrest()
-                {
-                    ViewerId = this.ViewerId,
-                    AbilityCrestId = AbilityCrestId.ValiantCrown,
-                    BuildupCount = 50,
-                    LimitBreakCount = 4,
-                    EquipableCount = 2,
-                    HpPlusCount = 50,
-                    AttackPlusCount = 50,
-                },
-                new DbAbilityCrest()
-                {
-                    ViewerId = this.ViewerId,
-                    AbilityCrestId = AbilityCrestId.EveningofLuxury,
-                    BuildupCount = 50,
-                    LimitBreakCount = 4,
-                    EquipableCount = 2,
-                    HpPlusCount = 50,
-                    AttackPlusCount = 50,
-                },
-                new DbAbilityCrest()
-                {
-                    ViewerId = this.ViewerId,
-                    AbilityCrestId = AbilityCrestId.BeautifulNothingness,
-                    BuildupCount = 40,
-                    LimitBreakCount = 4,
-                    EquipableCount = 2,
-                    HpPlusCount = 50,
-                    AttackPlusCount = 50,
-                },
-                new DbAbilityCrest()
-                {
-                    ViewerId = this.ViewerId,
-                    AbilityCrestId = AbilityCrestId.TaikoTandem,
-                    BuildupCount = 40,
-                    LimitBreakCount = 4,
-                    EquipableCount = 2,
-                    HpPlusCount = 50,
-                    AttackPlusCount = 50,
-                },
-                new DbAbilityCrest()
-                {
-                    ViewerId = this.ViewerId,
-                    AbilityCrestId = AbilityCrestId.TutelarysDestinyWolfsBoon,
-                    BuildupCount = 30,
-                    LimitBreakCount = 4,
-                    EquipableCount = 2,
-                    HpPlusCount = 50,
-                    AttackPlusCount = 50,
-                },
-                new DbAbilityCrest()
-                {
-                    ViewerId = this.ViewerId,
-                    AbilityCrestId = AbilityCrestId.CrownofLightSerpentsBoon,
-                    BuildupCount = 30,
-                    LimitBreakCount = 4,
-                    EquipableCount = 2,
-                    HpPlusCount = 50,
-                    AttackPlusCount = 50,
-                },
-                new DbTalisman()
-                {
-                    TalismanId = Talismans.GalaMym,
-                    TalismanAbilityId1 = 340000029,
-                    TalismanAbilityId2 = 340000077,
-                    AdditionalAttack = 50,
-                    AdditionalHp = 50,
-                },
-            ]
-        );
+        await this.AddRangeToDatabase([
+            new DbPlayerCharaData(this.ViewerId, Charas.Valerio),
+            new DbPlayerDragonData(this.ViewerId, DragonId.Nimis),
+            new DbPlayerDragonReliability(this.ViewerId, DragonId.Nimis) { Level = 30 },
+            new DbPartyPower() { ViewerId = this.ViewerId, MaxPartyPower = 444 },
+            new DbWeaponBody()
+            {
+                ViewerId = this.ViewerId,
+                WeaponBodyId = WeaponBodies.AmenoHabakiri,
+                BuildupCount = 80,
+                LimitBreakCount = 8,
+                LimitOverCount = 1,
+                EquipableCount = 2,
+                AdditionalCrestSlotType1Count = 1,
+                AdditionalCrestSlotType2Count = 0,
+            },
+            new DbAbilityCrest()
+            {
+                ViewerId = this.ViewerId,
+                AbilityCrestId = AbilityCrestId.AManUnchanging,
+                BuildupCount = 50,
+                LimitBreakCount = 4,
+                EquipableCount = 2,
+                HpPlusCount = 50,
+                AttackPlusCount = 50,
+            },
+            new DbAbilityCrest()
+            {
+                ViewerId = this.ViewerId,
+                AbilityCrestId = AbilityCrestId.ValiantCrown,
+                BuildupCount = 50,
+                LimitBreakCount = 4,
+                EquipableCount = 2,
+                HpPlusCount = 50,
+                AttackPlusCount = 50,
+            },
+            new DbAbilityCrest()
+            {
+                ViewerId = this.ViewerId,
+                AbilityCrestId = AbilityCrestId.EveningofLuxury,
+                BuildupCount = 50,
+                LimitBreakCount = 4,
+                EquipableCount = 2,
+                HpPlusCount = 50,
+                AttackPlusCount = 50,
+            },
+            new DbAbilityCrest()
+            {
+                ViewerId = this.ViewerId,
+                AbilityCrestId = AbilityCrestId.BeautifulNothingness,
+                BuildupCount = 40,
+                LimitBreakCount = 4,
+                EquipableCount = 2,
+                HpPlusCount = 50,
+                AttackPlusCount = 50,
+            },
+            new DbAbilityCrest()
+            {
+                ViewerId = this.ViewerId,
+                AbilityCrestId = AbilityCrestId.TaikoTandem,
+                BuildupCount = 40,
+                LimitBreakCount = 4,
+                EquipableCount = 2,
+                HpPlusCount = 50,
+                AttackPlusCount = 50,
+            },
+            new DbAbilityCrest()
+            {
+                ViewerId = this.ViewerId,
+                AbilityCrestId = AbilityCrestId.TutelarysDestinyWolfsBoon,
+                BuildupCount = 30,
+                LimitBreakCount = 4,
+                EquipableCount = 2,
+                HpPlusCount = 50,
+                AttackPlusCount = 50,
+            },
+            new DbAbilityCrest()
+            {
+                ViewerId = this.ViewerId,
+                AbilityCrestId = AbilityCrestId.CrownofLightSerpentsBoon,
+                BuildupCount = 30,
+                LimitBreakCount = 4,
+                EquipableCount = 2,
+                HpPlusCount = 50,
+                AttackPlusCount = 50,
+            },
+            new DbTalisman()
+            {
+                TalismanId = Talismans.GalaMym,
+                TalismanAbilityId1 = 340000029,
+                TalismanAbilityId2 = 340000077,
+                AdditionalAttack = 50,
+                AdditionalHp = 50,
+            },
+        ]);
     }
 }

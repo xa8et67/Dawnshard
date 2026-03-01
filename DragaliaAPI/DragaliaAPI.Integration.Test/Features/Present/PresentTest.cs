@@ -615,16 +615,10 @@ public class PresentTest : TestFixture
             cancellationToken: TestContext.Current.CancellationToken
         );
 
-        await this.AddRangeToDatabase(
-            [
-                new DbPlayerDragonGift()
-                {
-                    DragonGiftId = DragonGifts.FourLeafClover,
-                    Quantity = 4,
-                },
-                .. presents,
-            ]
-        );
+        await this.AddRangeToDatabase([
+            new DbPlayerDragonGift() { DragonGiftId = DragonGifts.FourLeafClover, Quantity = 4 },
+            .. presents,
+        ]);
 
         IEnumerable<ulong> presentIdList = presents.Select(x => (ulong)x.PresentId);
 
@@ -637,30 +631,26 @@ public class PresentTest : TestFixture
 
         response
             .Data.UpdateDataList.DragonGiftList.Should()
-            .BeEquivalentTo<DragonGiftList>(
-                [
-                    new() { DragonGiftId = DragonGifts.FourLeafClover, Quantity = 6 },
-                    new() { DragonGiftId = DragonGifts.DragonyuleCake, Quantity = 2 },
-                ]
-            );
+            .BeEquivalentTo<DragonGiftList>([
+                new() { DragonGiftId = DragonGifts.FourLeafClover, Quantity = 6 },
+                new() { DragonGiftId = DragonGifts.DragonyuleCake, Quantity = 2 },
+            ]);
 
         this.ApiContext.PlayerDragonGifts.Should()
-            .BeEquivalentTo<DbPlayerDragonGift>(
-                [
-                    new DbPlayerDragonGift()
-                    {
-                        ViewerId = this.ViewerId,
-                        DragonGiftId = DragonGifts.FourLeafClover,
-                        Quantity = 6,
-                    },
-                    new DbPlayerDragonGift()
-                    {
-                        ViewerId = this.ViewerId,
-                        DragonGiftId = DragonGifts.DragonyuleCake,
-                        Quantity = 2,
-                    },
-                ]
-            );
+            .BeEquivalentTo<DbPlayerDragonGift>([
+                new DbPlayerDragonGift()
+                {
+                    ViewerId = this.ViewerId,
+                    DragonGiftId = DragonGifts.FourLeafClover,
+                    Quantity = 6,
+                },
+                new DbPlayerDragonGift()
+                {
+                    ViewerId = this.ViewerId,
+                    DragonGiftId = DragonGifts.DragonyuleCake,
+                    Quantity = 2,
+                },
+            ]);
     }
 
     [Fact]
@@ -752,6 +742,55 @@ public class PresentTest : TestFixture
 
         response.Data.UpdateDataList.DmodeInfo.DmodePoint1.Should().Be(200);
         response.Data.UpdateDataList.DmodeInfo.DmodePoint2.Should().Be(200);
+    }
+
+    [Fact]
+    public async Task Receive_DuplicateWeapons_HandlesCorrectly()
+    {
+        List<DbPlayerPresent> presents =
+        [
+            new DbPlayerPresent()
+            {
+                EntityType = EntityTypes.WeaponBody,
+                EntityId = (int)WeaponBodies.AbsoluteAqua,
+                EntityQuantity = 1,
+            },
+            new DbPlayerPresent()
+            {
+                EntityType = EntityTypes.WeaponBody,
+                EntityId = (int)WeaponBodies.AbsoluteAqua,
+                EntityQuantity = 1,
+            },
+        ];
+
+        await this
+            .ApiContext.PlayerWeapons.Where(x => x.ViewerId == this.ViewerId)
+            .ExecuteDeleteAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        await this.AddRangeToDatabase(presents);
+
+        IEnumerable<ulong> presentIdList = presents.Select(x => (ulong)x.PresentId);
+
+        DragaliaResponse<PresentReceiveResponse> response =
+            await this.Client.PostMsgpack<PresentReceiveResponse>(
+                $"{Controller}/receive",
+                new PresentReceiveRequest() { PresentIdList = presentIdList },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+        response
+            .Data.DeletePresentIdList.Should()
+            .ContainSingle()
+            .Which.Should()
+            .Be((ulong)presents[1].PresentId);
+
+        response
+            .Data.UpdateDataList.WeaponBodyList.Should()
+            .ContainSingle(x => x.WeaponBodyId == WeaponBodies.AbsoluteAqua);
+
+        this.ApiContext.PlayerWeapons.Where(x => x.ViewerId == this.ViewerId)
+            .Should()
+            .ContainSingle(x => x.WeaponBodyId == WeaponBodies.AbsoluteAqua);
     }
 
     [Fact]

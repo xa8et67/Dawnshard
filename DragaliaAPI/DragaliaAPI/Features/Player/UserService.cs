@@ -1,7 +1,10 @@
 ﻿using System.Diagnostics;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
+using DragaliaAPI.Features.Present;
 using DragaliaAPI.Infrastructure;
+using DragaliaAPI.Shared.Definitions.Enums;
+using DragaliaAPI.Shared.Features.Presents;
 using DragaliaAPI.Shared.MasterAsset;
 using DragaliaAPI.Shared.MasterAsset.Models.User;
 
@@ -9,8 +12,9 @@ namespace DragaliaAPI.Features.Player;
 
 public class UserService(
     IUserDataRepository userDataRepository,
-    ILogger<UserService> logger,
-    TimeProvider dateTimeProvider
+    TimeProvider dateTimeProvider,
+    IPresentService presentService,
+    ILogger<UserService> logger
 ) : IUserService
 {
     private const int MaxSingleStamina = 999;
@@ -21,6 +25,10 @@ public class UserService(
 
     private const int WyrmiteLevelUpReward = 50;
 
+    private const int MaxLevel = 250;
+
+    private static readonly int MaxTotalExp = MasterAsset.UserLevel[MaxLevel].TotalExp;
+
     public int QuestSkipPointMax => MaxQuestSkipPoint;
     public int StaminaMultiMax => MaxMultiStamina;
 
@@ -29,10 +37,14 @@ public class UserService(
         ArgumentOutOfRangeException.ThrowIfNegative(amount);
 
         if (amount == 0)
+        {
             return;
+        }
 
         if (type == StaminaType.None)
+        {
             throw new ArgumentOutOfRangeException(nameof(type));
+        }
 
         logger.LogDebug("Adding {staminaAmount}x {staminaType}", amount, type);
 
@@ -64,10 +76,14 @@ public class UserService(
         ArgumentOutOfRangeException.ThrowIfNegative(amount);
 
         if (amount == 0)
+        {
             return;
+        }
 
         if (type == StaminaType.None)
+        {
             throw new ArgumentOutOfRangeException(nameof(type));
+        }
 
         logger.LogDebug("Removing {staminaAmount}x {staminaType}", amount, type);
 
@@ -107,7 +123,9 @@ public class UserService(
     public async Task<int> GetAndUpdateStamina(StaminaType type)
     {
         if (type is not (StaminaType.Single or StaminaType.Multi))
+        {
             throw new ArgumentOutOfRangeException(nameof(type));
+        }
 
         DbPlayerUserData data = await userDataRepository.GetUserDataAsync();
 
@@ -181,7 +199,9 @@ public class UserService(
         ArgumentOutOfRangeException.ThrowIfNegative(amount);
 
         if (amount == 0)
+        {
             return;
+        }
 
         DbPlayerUserData data = await userDataRepository.GetUserDataAsync();
 
@@ -193,11 +213,15 @@ public class UserService(
         ArgumentOutOfRangeException.ThrowIfNegative(experience);
 
         if (experience == 0)
+        {
             return new PlayerLevelResult();
+        }
 
         DbPlayerUserData data = await userDataRepository.GetUserDataAsync();
 
-        data.Exp += experience;
+        int oldExp = data.Exp;
+        data.Exp = Math.Min(data.Exp + experience, MaxTotalExp);
+        int expGained = data.Exp - oldExp;
 
         UserLevel current = MasterAsset.UserLevel[data.Level];
 
@@ -206,20 +230,37 @@ public class UserService(
         while (true)
         {
             if (!MasterAsset.UserLevel.TryGetValue(data.Level + 1, out UserLevel? next))
+            {
                 break;
+            }
 
             if (current.TotalExp + current.NecessaryExp > data.Exp)
+            {
                 break;
+            }
 
             data.Level++;
             totalReward += WyrmiteLevelUpReward;
 
             await AddStamina(StaminaType.Single, next.StaminaSingle);
             await AddStamina(StaminaType.Multi, MaxMultiStaminaRegen);
+
+            presentService.AddPresent(
+                new Present.Present(
+                    MessageId: PresentMessage.PlayerLevelUp,
+                    EntityType: EntityTypes.Wyrmite,
+                    EntityId: 0,
+                    EntityQuantity: WyrmiteLevelUpReward
+                )
+                {
+                    MessageParamValues = [data.Level],
+                }
+            );
+
             logger.LogDebug("Player leveled up to level {level}", data.Level);
             current = next;
         }
 
-        return new PlayerLevelResult(totalReward > 0, data.Level, totalReward);
+        return new PlayerLevelResult(totalReward > 0, data.Level, expGained, totalReward);
     }
 }

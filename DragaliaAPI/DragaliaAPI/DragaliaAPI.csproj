@@ -1,7 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
-
   <Import Project="..\DragaliaAPI.MasterAssetConverter\MasterAssetConverter.targets" />
-  
   <PropertyGroup>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerComposeProjectPath>..\docker-compose.dcproj</DockerComposeProjectPath>
@@ -9,11 +7,7 @@
     <UserSecretsId>f95759aa-167b-4511-aeb2-ea87d3c0798c</UserSecretsId>
     <DockerfileContext>..\..</DockerfileContext>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="AutoMapper" />
-    <PackageReference Include="EntityGraphQL" />
-    <PackageReference Include="EntityGraphQL.AspNet" />
     <PackageReference Include="FluentRandomPicker" />
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="Hangfire.AspNetCore" />
@@ -32,13 +26,8 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
-    <PackageReference Include="Microsoft.Extensions.Logging" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
@@ -57,37 +46,37 @@
     <PackageReference Include="Serilog.Sinks.Async" />
     <PackageReference Include="Serilog.Sinks.OpenTelemetry" />
     <PackageReference Include="Serilog.Sinks.Seq" />
-    <PackageReference Include="System.Text.Json" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Serilog.Sinks.Console" />
     <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
-
   <ItemGroup>
     <InternalsVisibleTo Include="DragaliaAPI.Test" />
     <InternalsVisibleTo Include="DragaliaAPI.Database.Test" />
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
     <InternalsVisibleTo Include="DragaliaAPI.Integration.Test" />
   </ItemGroup>
-
   <ItemGroup>
     <Using Include="System.Text.Json" />
     <Using Include="DragaliaAPI.Infrastructure.Results" />
     <Using Include="DragaliaAPI.Extensions" />
   </ItemGroup>
-
   <ItemGroup>
     <AdditionalFiles Include="BannedSymbols.txt" />
   </ItemGroup>
-  
   <ItemGroup>
     <ProjectReference Include="..\..\Aspire\Dawnshard.ServiceDefaults\Dawnshard.ServiceDefaults.csproj" />
     <ProjectReference Include="..\..\Shared\DragaliaAPI.Photon.Shared\DragaliaAPI.Photon.Shared.csproj" />
     <ProjectReference Include="..\DragaliaAPI.Database\DragaliaAPI.Database.csproj" />
     <ProjectReference Include="..\DragaliaAPI.Shared\DragaliaAPI.Shared.csproj" />
-    <ProjectReference Include="..\DragaliaAPI.MissionDesigner\DragaliaAPI.MissionDesigner.csproj" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\DragaliaAPI.MasterAssetConverter\DragaliaAPI.MasterAssetConverter.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference
+      Include="..\DragaliaAPI.MissionDesigner\DragaliaAPI.MissionDesigner.csproj"
+      ReferenceOutputAssembly="false"
+    />
+    <ProjectReference
+      Include="..\DragaliaAPI.MasterAssetConverter\DragaliaAPI.MasterAssetConverter.csproj"
+      ReferenceOutputAssembly="false"
+    />
   </ItemGroup>
-
 </Project>

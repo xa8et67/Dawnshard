@@ -141,6 +141,10 @@ public class ApiContext : DbContext, IDataProtectionKeyContext
 
     public DbSet<DbPlayerFriendRequest> PlayerFriendRequests { get; set; }
 
+    public DbSet<DbSettings> PlayerSettings { get; set; }
+
+    public DbSet<DbPlayerHelperUseDate> PlayerHelperUseDates { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApiContext).Assembly);
@@ -223,6 +227,10 @@ public class ApiContext : DbContext, IDataProtectionKeyContext
 
         modelBuilder
             .Entity<DbPlayerHelper>()
+            .HasQueryFilter(e => e.ViewerId == this.playerIdentityService.ViewerId);
+
+        modelBuilder
+            .Entity<DbSettings>()
             .HasQueryFilter(e => e.ViewerId == this.playerIdentityService.ViewerId);
     }
 }

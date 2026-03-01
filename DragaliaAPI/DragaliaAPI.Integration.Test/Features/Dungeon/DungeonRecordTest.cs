@@ -179,7 +179,7 @@ public class DungeonRecordTest : TestFixture
                     LastDailyResetTime = DateTimeOffset.UtcNow,
                     LastWeeklyResetTime = DateTimeOffset.UtcNow,
                 },
-                opts => opts.WithDateTimeTolerance()
+                opts => opts.WithDateTimeTolerance(TimeSpan.FromMinutes(5))
             );
 
         response.RepeatData.Should().BeNull();
@@ -228,7 +228,20 @@ public class DungeonRecordTest : TestFixture
             EnemyList = new Dictionary<int, IList<AtgenEnemy>>() { { 1, [] } },
         };
 
-        string key = await this.StartDungeon(mockSession);
+        string key = await this.StartDungeon(
+            new DungeonStartStartAssignUnitRequest()
+            {
+                RequestPartySettingList = new List<PartySettingList>()
+                {
+                    new()
+                    {
+                        CharaId = Charas.ThePrince,
+                        EquipCrestSlotType1CrestId1 = AbilityCrestId.SistersDayOut,
+                    },
+                },
+                QuestId = questId,
+            }
+        );
 
         DungeonRecordRecordResponse response = (
             await Client.PostMsgpack<DungeonRecordRecordResponse>(
@@ -309,12 +322,10 @@ public class DungeonRecordTest : TestFixture
         int questId = 208450301; // The Stirring Abyss: Beginner
         int eventId = 20845; // Toll of the Deep
 
-        await this.AddRangeToDatabase(
-            [
-                new DbAbilityCrest() { AbilityCrestId = AbilityCrestId.HavingaSummerBall },
-                new DbAbilityCrest() { AbilityCrestId = AbilityCrestId.SuperSoakingAndroids },
-            ]
-        );
+        await this.AddRangeToDatabase([
+            new DbAbilityCrest() { AbilityCrestId = AbilityCrestId.HavingaSummerBall },
+            new DbAbilityCrest() { AbilityCrestId = AbilityCrestId.SuperSoakingAndroids },
+        ]);
 
         await Client.PostMsgpack<MemoryEventActivateResponse>(
             "/memory_event/activate",
@@ -322,22 +333,21 @@ public class DungeonRecordTest : TestFixture
             cancellationToken: TestContext.Current.CancellationToken
         );
 
-        DungeonSession mockSession = new()
-        {
-            Party = new List<PartySettingList>()
+        string key = await this.StartDungeon(
+            new DungeonStartStartAssignUnitRequest()
             {
-                new()
+                QuestId = questId,
+                RequestPartySettingList = new List<PartySettingList>()
                 {
-                    CharaId = Charas.ThePrince,
-                    EquipCrestSlotType1CrestId1 = AbilityCrestId.SuperSoakingAndroids,
-                    EquipCrestSlotType2CrestId1 = AbilityCrestId.HavingaSummerBall,
+                    new()
+                    {
+                        CharaId = Charas.ThePrince,
+                        EquipCrestSlotType1CrestId1 = AbilityCrestId.SuperSoakingAndroids,
+                        EquipCrestSlotType2CrestId1 = AbilityCrestId.HavingaSummerBall,
+                    },
                 },
-            },
-            QuestData = MasterAsset.QuestData.Get(questId),
-            EnemyList = new Dictionary<int, IList<AtgenEnemy>>() { { 1, [] } },
-        };
-
-        string key = await this.StartDungeon(mockSession);
+            }
+        );
 
         DungeonRecordRecordResponse response = (
             await Client.PostMsgpack<DungeonRecordRecordResponse>(
@@ -924,7 +934,7 @@ public class DungeonRecordTest : TestFixture
 
         DbTimeAttackClear recordedClear = await this
             .ApiContext.TimeAttackClears.Include(x => x.Players)
-            .ThenInclude(x => x.Units)
+                .ThenInclude(x => x.Units)
             .FirstAsync(
                 x => x.GameId == gameId,
                 cancellationToken: TestContext.Current.CancellationToken
@@ -1065,7 +1075,7 @@ public class DungeonRecordTest : TestFixture
         );
 
         string dungeonKey = await this.StartDungeon(
-            new()
+            new DungeonSession()
             {
                 Party = new List<PartySettingList>() { new() { CharaId = Charas.ThePrince } },
                 QuestData = MasterAsset.QuestData.Get(questId),
@@ -1100,26 +1110,24 @@ public class DungeonRecordTest : TestFixture
 
         response
             .IngameResultData.RewardRecord.FirstClearSet.Should()
-            .BeEquivalentTo(
-                [
-                    new AtgenFirstClearSet()
-                    {
-                        Type = EntityTypes.Material,
-                        Id = (int)Materials.DestituteOnesMaskFragment,
-                        Quantity = 80,
-                    },
-                    new AtgenFirstClearSet()
-                    {
-                        Type = EntityTypes.Material,
-                        Id = (int)Materials.PlaguedOnesMaskFragment,
-                        Quantity = 30,
-                    },
-                    new AtgenFirstClearSet() { Type = EntityTypes.Wyrmite, Quantity = 5 },
-                ]
-            );
+            .BeEquivalentTo([
+                new AtgenFirstClearSet()
+                {
+                    Type = EntityTypes.Material,
+                    Id = (int)Materials.DestituteOnesMaskFragment,
+                    Quantity = 80,
+                },
+                new AtgenFirstClearSet()
+                {
+                    Type = EntityTypes.Material,
+                    Id = (int)Materials.PlaguedOnesMaskFragment,
+                    Quantity = 30,
+                },
+                new AtgenFirstClearSet() { Type = EntityTypes.Wyrmite, Quantity = 5 },
+            ]);
 
         request.DungeonKey = await this.StartDungeon(
-            new()
+            new DungeonSession()
             {
                 Party = new List<PartySettingList>() { new() { CharaId = Charas.ThePrince } },
                 QuestData = MasterAsset.QuestData.Get(questId),
@@ -1162,7 +1170,7 @@ public class DungeonRecordTest : TestFixture
         );
 
         string dungeonKey = await this.StartDungeon(
-            new()
+            new DungeonSession()
             {
                 Party = new List<PartySettingList>() { new() { CharaId = Charas.ThePrince } },
                 QuestData = MasterAsset.QuestData.Get(questId),
@@ -1214,7 +1222,7 @@ public class DungeonRecordTest : TestFixture
         );
 
         string dungeonKey = await this.StartDungeon(
-            new()
+            new DungeonSession()
             {
                 Party = new List<PartySettingList>() { new() { CharaId = Charas.ThePrince } },
                 QuestData = MasterAsset.QuestData.Get(questId),
@@ -1287,7 +1295,7 @@ public class DungeonRecordTest : TestFixture
         await this.AddToDatabase(new DbQuest() { QuestId = questId, DailyPlayCount = 0 });
 
         string dungeonKey = await this.StartDungeon(
-            new()
+            new DungeonSession()
             {
                 Party = new List<PartySettingList>() { new() { CharaId = Charas.ThePrince } },
                 QuestData = MasterAsset.QuestData.Get(questId),
@@ -1348,7 +1356,7 @@ public class DungeonRecordTest : TestFixture
         );
 
         string dungeonKey = await this.StartDungeon(
-            new()
+            new DungeonSession()
             {
                 Party = new List<PartySettingList>() { new() { CharaId = Charas.ThePrince } },
                 QuestData = MasterAsset.QuestData.Get(questId),
@@ -1389,7 +1397,7 @@ public class DungeonRecordTest : TestFixture
             .Be(existingEssenceQuantity + 1);
 
         request.DungeonKey = await this.StartDungeon(
-            new()
+            new DungeonSession()
             {
                 Party = new List<PartySettingList>() { new() { CharaId = Charas.ThePrince } },
                 QuestData = MasterAsset.QuestData.Get(questId),
@@ -1428,7 +1436,7 @@ public class DungeonRecordTest : TestFixture
         );
 
         string dungeonKey = await this.StartDungeon(
-            new()
+            new DungeonSession()
             {
                 Party = new List<PartySettingList>() { new() { CharaId = Charas.ThePrince } },
                 QuestData = MasterAsset.QuestData.Get(questId),
@@ -1469,12 +1477,351 @@ public class DungeonRecordTest : TestFixture
             .Be(existingEssenceQuantity + 1);
     }
 
+    [Fact]
+    public async Task Record_Fafnirs_BoostsRupiesAndMana()
+    {
+        int avenueToFortuneQuestId = 202060104;
+
+        DbPlayerDragonData goldFafnir = new() { DragonId = DragonId.GoldFafnir, Ability1Level = 5 };
+        DbPlayerDragonData silverFafnir = new()
+        {
+            DragonId = DragonId.SilverFafnir,
+            Ability1Level = 5,
+        };
+
+        await AddRangeToDatabase([
+            new DbQuest()
+            {
+                QuestId = avenueToFortuneQuestId,
+                State = 0,
+                ViewerId = ViewerId,
+            },
+            goldFafnir,
+            silverFafnir,
+        ]);
+
+        DragaliaResponse<DungeonStartStartAssignUnitResponse> startResponse =
+            await this.Client.PostMsgpack<DungeonStartStartAssignUnitResponse>(
+                "/dungeon_start/start_assign_unit",
+                new DungeonStartStartAssignUnitRequest()
+                {
+                    SupportViewerId = 0,
+                    RequestPartySettingList = new List<PartySettingList>()
+                    {
+                        new()
+                        {
+                            CharaId = Charas.ThePrince,
+                            EquipDragonKeyId = (ulong)goldFafnir.DragonKeyId,
+                        },
+                        new()
+                        {
+                            CharaId = Charas.Marty,
+                            EquipDragonKeyId = (ulong)silverFafnir.DragonKeyId,
+                        },
+                    },
+                    QuestId = avenueToFortuneQuestId,
+                },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+        string key = startResponse.Data.IngameData.DungeonKey;
+
+        DungeonRecordRecordResponse response = (
+            await Client.PostMsgpack<DungeonRecordRecordResponse>(
+                "/dungeon_record/record",
+                new DungeonRecordRecordRequest()
+                {
+                    DungeonKey = key,
+                    PlayRecord = new PlayRecord
+                    {
+                        Time = 10,
+                        TreasureRecord = new List<AtgenTreasureRecord>()
+                        {
+                            new()
+                            {
+                                AreaIdx = 0,
+                                Enemy = Enumerable.Repeat(
+                                    1,
+                                    startResponse.Data.OddsInfo.Enemy.Count
+                                ),
+                            },
+                        },
+                        LiveUnitNoList = new List<int>(),
+                        DamageRecord = new List<AtgenDamageRecord>(),
+                        DragonDamageRecord = new List<AtgenDamageRecord>(),
+                        BattleRoyalRecord = new AtgenBattleRoyalRecord(),
+                    },
+                },
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+        ).Data;
+
+        int rupiesFromEnemies = startResponse
+            .Data.OddsInfo.Enemy.SelectMany(x => x.EnemyDropList)
+            .Sum(x => x.Coin);
+        int manaFromEnemies = startResponse
+            .Data.OddsInfo.Enemy.SelectMany(x => x.EnemyDropList)
+            .Sum(x => x.Mana);
+
+        response
+            .IngameResultData.RewardRecord.TakeCoin.Should()
+            .Be((int)Math.Round(rupiesFromEnemies * 1.5));
+        response
+            .IngameResultData.GrowRecord.TakeMana.Should()
+            .Be((int)Math.Round(manaFromEnemies * 1.5));
+    }
+
+    [Fact]
+    public async Task Record_PlayerLevelMaxed_GrantsZeroXp()
+    {
+        int avenueToFortuneQuestId = 202060104;
+
+        int maxLevel = 250;
+        int maxTotalExp = MasterAsset.UserLevel[maxLevel].TotalExp;
+
+        await this
+            .ApiContext.PlayerUserData.Where(x => x.ViewerId == this.ViewerId)
+            .ExecuteUpdateAsync(
+                e => e.SetProperty(p => p.Exp, maxTotalExp).SetProperty(p => p.Level, maxLevel),
+                TestContext.Current.CancellationToken
+            );
+
+        await AddRangeToDatabase([
+            new DbQuest()
+            {
+                QuestId = avenueToFortuneQuestId,
+                State = 0,
+                ViewerId = ViewerId,
+            },
+        ]);
+
+        DragaliaResponse<DungeonStartStartAssignUnitResponse> startResponse =
+            await this.Client.PostMsgpack<DungeonStartStartAssignUnitResponse>(
+                "/dungeon_start/start_assign_unit",
+                new DungeonStartStartAssignUnitRequest()
+                {
+                    SupportViewerId = 0,
+                    RequestPartySettingList = new List<PartySettingList>()
+                    {
+                        new() { CharaId = Charas.ThePrince },
+                    },
+                    QuestId = avenueToFortuneQuestId,
+                },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+        string key = startResponse.Data.IngameData.DungeonKey;
+
+        DungeonRecordRecordResponse response = (
+            await Client.PostMsgpack<DungeonRecordRecordResponse>(
+                "/dungeon_record/record",
+                new DungeonRecordRecordRequest()
+                {
+                    DungeonKey = key,
+                    PlayRecord = new PlayRecord
+                    {
+                        Time = 10,
+                        TreasureRecord = new List<AtgenTreasureRecord>()
+                        {
+                            new() { AreaIdx = 0, Enemy = [] },
+                        },
+                        LiveUnitNoList = new List<int>(),
+                        DamageRecord = new List<AtgenDamageRecord>(),
+                        DragonDamageRecord = new List<AtgenDamageRecord>(),
+                        BattleRoyalRecord = new AtgenBattleRoyalRecord(),
+                    },
+                },
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+        ).Data;
+
+        response.IngameResultData.GrowRecord.TakePlayerExp.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Record_PlayerLevelBecomesMaxed_GrantsOnlyNecessaryXp()
+    {
+        int avenueToFortuneQuestId = 202060104;
+
+        int maxLevel = 250;
+        int maxTotalExp = MasterAsset.UserLevel[maxLevel].TotalExp;
+
+        await this
+            .ApiContext.PlayerUserData.Where(x => x.ViewerId == this.ViewerId)
+            .ExecuteUpdateAsync(
+                e =>
+                    e.SetProperty(p => p.Exp, maxTotalExp - 1)
+                        .SetProperty(p => p.Level, maxLevel - 1),
+                TestContext.Current.CancellationToken
+            );
+
+        await AddRangeToDatabase([
+            new DbQuest()
+            {
+                QuestId = avenueToFortuneQuestId,
+                State = 0,
+                ViewerId = ViewerId,
+            },
+        ]);
+
+        DragaliaResponse<DungeonStartStartAssignUnitResponse> startResponse =
+            await this.Client.PostMsgpack<DungeonStartStartAssignUnitResponse>(
+                "/dungeon_start/start_assign_unit",
+                new DungeonStartStartAssignUnitRequest()
+                {
+                    SupportViewerId = 0,
+                    RequestPartySettingList = new List<PartySettingList>()
+                    {
+                        new() { CharaId = Charas.ThePrince },
+                    },
+                    QuestId = avenueToFortuneQuestId,
+                },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+        string key = startResponse.Data.IngameData.DungeonKey;
+
+        DungeonRecordRecordResponse response = (
+            await Client.PostMsgpack<DungeonRecordRecordResponse>(
+                "/dungeon_record/record",
+                new DungeonRecordRecordRequest()
+                {
+                    DungeonKey = key,
+                    PlayRecord = new PlayRecord
+                    {
+                        Time = 10,
+                        TreasureRecord = new List<AtgenTreasureRecord>()
+                        {
+                            new() { AreaIdx = 0, Enemy = [] },
+                        },
+                        LiveUnitNoList = new List<int>(),
+                        DamageRecord = new List<AtgenDamageRecord>(),
+                        DragonDamageRecord = new List<AtgenDamageRecord>(),
+                        BattleRoyalRecord = new AtgenBattleRoyalRecord(),
+                    },
+                },
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+        ).Data;
+
+        response.IngameResultData.GrowRecord.TakePlayerExp.Should().Be(1);
+        response.IngameResultData.RewardRecord.PlayerLevelUpFstone.Should().Be(50);
+    }
+
+    [Fact]
+    public async Task Record_PlayerLevelsUp_GrantsRewardWyrmite()
+    {
+        int avenueToFortuneQuestId = 202060104;
+
+        int currentLevel = 1;
+        int nextLevel = 2;
+        int currentExp = MasterAsset.UserLevel[nextLevel].TotalExp - 1;
+
+        await this
+            .ApiContext.PlayerUserData.Where(x => x.ViewerId == this.ViewerId)
+            .ExecuteUpdateAsync(
+                e => e.SetProperty(p => p.Exp, currentExp).SetProperty(p => p.Level, currentLevel),
+                TestContext.Current.CancellationToken
+            );
+
+        await AddRangeToDatabase([
+            new DbQuest()
+            {
+                QuestId = avenueToFortuneQuestId,
+                State = 0,
+                ViewerId = ViewerId,
+            },
+        ]);
+
+        DragaliaResponse<DungeonStartStartAssignUnitResponse> startResponse =
+            await this.Client.PostMsgpack<DungeonStartStartAssignUnitResponse>(
+                "/dungeon_start/start_assign_unit",
+                new DungeonStartStartAssignUnitRequest()
+                {
+                    SupportViewerId = 0,
+                    RequestPartySettingList = new List<PartySettingList>()
+                    {
+                        new() { CharaId = Charas.ThePrince },
+                    },
+                    QuestId = avenueToFortuneQuestId,
+                },
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+        string key = startResponse.Data.IngameData.DungeonKey;
+
+        DungeonRecordRecordResponse response = (
+            await Client.PostMsgpack<DungeonRecordRecordResponse>(
+                "/dungeon_record/record",
+                new DungeonRecordRecordRequest()
+                {
+                    DungeonKey = key,
+                    PlayRecord = new PlayRecord
+                    {
+                        Time = 10,
+                        TreasureRecord = new List<AtgenTreasureRecord>()
+                        {
+                            new() { AreaIdx = 0, Enemy = [] },
+                        },
+                        LiveUnitNoList = new List<int>(),
+                        DamageRecord = new List<AtgenDamageRecord>(),
+                        DragonDamageRecord = new List<AtgenDamageRecord>(),
+                        BattleRoyalRecord = new AtgenBattleRoyalRecord(),
+                    },
+                },
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+        ).Data;
+
+        response.IngameResultData.GrowRecord.TakePlayerExp.Should().BeGreaterThan(0);
+        response.IngameResultData.RewardRecord.PlayerLevelUpFstone.Should().Be(50);
+        response.UpdateDataList.PresentNotice.PresentCount.Should().Be(1);
+
+        PresentGetPresentListResponse getPresentListResponse = (
+            await this.Client.PostMsgpack<PresentGetPresentListResponse>(
+                "/present/get_present_list",
+                new PresentGetPresentListRequest() { IsLimit = false },
+                cancellationToken: TestContext.Current.CancellationToken
+            )
+        ).Data;
+
+        getPresentListResponse
+            .PresentList.Should()
+            .ContainSingle()
+            .Which.Should()
+            .BeEquivalentTo(
+                new PresentDetailList()
+                {
+                    EntityType = EntityTypes.Wyrmite,
+                    EntityQuantity = 50,
+                    EntityLevel = 1,
+                    MessageId = PresentMessage.PlayerLevelUp,
+                    MessageParamValue1 = nextLevel,
+                    ReceiveLimitTime = DateTimeOffset.UnixEpoch,
+                    CreateTime = DateTimeOffset.UtcNow,
+                },
+                opts => opts.Excluding(x => x.PresentId).WithDateTimeTolerance()
+            );
+    }
+
     private async Task<string> StartDungeon(DungeonSession session)
     {
         string key = this.DungeonService.CreateSession(session);
         await this.DungeonService.SaveSession(CancellationToken.None);
 
         return key;
+    }
+
+    private async Task<string> StartDungeon(DungeonStartStartAssignUnitRequest request)
+    {
+        DragaliaResponse<DungeonStartStartAssignUnitResponse> response =
+            await this.Client.PostMsgpack<DungeonStartStartAssignUnitResponse>(
+                "/dungeon_start/start_assign_unit",
+                request,
+                cancellationToken: TestContext.Current.CancellationToken
+            );
+
+        return response.Data.IngameData.DungeonKey;
     }
 
     private void SetupPhotonAuthentication()

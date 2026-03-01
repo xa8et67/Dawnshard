@@ -26,7 +26,7 @@ internal sealed class FriendController(
     )
     {
         SettingSupport playerSupportChara =
-            await helperService.GetPlayerHelper(cancellationToken)
+            await helperService.GetOwnHelper(cancellationToken)
             ?? throw new InvalidOperationException("Failed to find current player's helper");
 
         return new FriendGetSupportCharaResponse(0, playerSupportChara);
@@ -39,32 +39,17 @@ internal sealed class FriendController(
         CancellationToken cancellationToken
     )
     {
-        QuestGetSupportUserListResponse helperList = await helperService.GetHelpers();
-
-        UserSupportList? staticHelperInfo = helperList.SupportUserList.FirstOrDefault(helper =>
-            helper.ViewerId == request.SupportViewerId
+        AtgenSupportUserDataDetail? helperDetail = await helperService.GetHelperDetail(
+            (long)request.SupportViewerId,
+            cancellationToken
         );
 
-        if (staticHelperInfo is not null)
+        if (helperDetail is null)
         {
-            return new FriendGetSupportCharaDetailResponse()
-            {
-                SupportUserDataDetail = await helperService.BuildStaticSupportUserDataDetail(
-                    staticHelperInfo
-                ),
-            };
+            return this.Code(ResultCode.EntityNotFoundError);
         }
 
-        AtgenSupportUserDataDetail otherPlayerSupportDetail =
-            await helperService.GetSupportUserDataDetail(
-                (long)request.SupportViewerId,
-                cancellationToken
-            );
-
-        return new FriendGetSupportCharaDetailResponse()
-        {
-            SupportUserDataDetail = otherPlayerSupportDetail,
-        };
+        return new FriendGetSupportCharaDetailResponse() { SupportUserDataDetail = helperDetail };
     }
 
     [HttpPost("set_support_chara")]
@@ -73,7 +58,7 @@ internal sealed class FriendController(
         CancellationToken cancellationToken
     )
     {
-        SettingSupport settingSupport = await helperService.SetPlayerHelper(
+        SettingSupport settingSupport = await helperService.SetOwnHelper(
             request,
             cancellationToken
         );
@@ -176,6 +161,16 @@ internal sealed class FriendController(
             return this.Code(ResultCode.FriendIdsearchError);
         }
 
+        bool requestAlreadySent = await friendService.CheckIfFriendRequestExists(
+            searchId,
+            cancellationToken
+        );
+
+        if (requestAlreadySent)
+        {
+            return this.Code(ResultCode.FriendApplyExists);
+        }
+
         bool alreadyFriends = await friendService.CheckIfFriendshipExists(
             searchId,
             cancellationToken
@@ -186,10 +181,7 @@ internal sealed class FriendController(
             return this.Code(ResultCode.FriendTargetAlready);
         }
 
-        UserSupportList? result = await helperService.GetUserSupportList(
-            searchId,
-            cancellationToken
-        );
+        UserSupportList? result = await helperService.GetHelper(searchId, cancellationToken);
 
         if (result is null)
         {
@@ -253,18 +245,16 @@ internal sealed class FriendController(
         }
         catch (DbUpdateException ex) when (ex.IsUniqueViolation())
         {
-            throw new DragaliaException(
+            return this.Code(
                 ResultCode.FriendApplyExists,
-                "Cannot send friend request - one already exists",
-                ex
+                "Cannot send friend request - one already exists"
             );
         }
         catch (DbUpdateException ex) when (ex.IsForeignKeyViolation())
         {
-            throw new DragaliaException(
+            return this.Code(
                 ResultCode.FriendApplyError,
-                "Cannot send friend request - foreign key violation",
-                ex
+                "Cannot send friend request - player not found"
             );
         }
 

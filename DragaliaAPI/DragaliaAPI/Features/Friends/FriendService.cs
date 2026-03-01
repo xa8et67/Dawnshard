@@ -37,14 +37,29 @@ internal sealed partial class FriendService(
             .AnyAsync(x => x.ViewerId == otherPlayerId, cancellationToken);
     }
 
-    public async Task<List<UserSupportList>> GetFriendList()
+    public async Task<bool> CheckIfFriendRequestExists(
+        long otherPlayerId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await apiContext.PlayerFriendRequests.AnyAsync(
+            x =>
+                x.FromPlayerViewerId == playerIdentityService.ViewerId
+                && x.ToPlayerViewerId == otherPlayerId,
+            cancellationToken
+        );
+    }
+
+    public async Task<List<UserSupportList>> GetFriendList(
+        CancellationToken cancellationToken = default
+    )
     {
         IQueryable<HelperProjection> helperQuery = this.GetFriendsQuery()
             .Select(x => x.Helper!)
             .ProjectToHelperProjection()
             .AsSplitQuery();
 
-        List<HelperProjection> mergedHelpers = await helperQuery.ToListAsync();
+        List<HelperProjection> mergedHelpers = await helperQuery.ToListAsync(cancellationToken);
 
         return mergedHelpers.Select(x => x.MapToUserSupportList()).ToList();
     }
@@ -161,9 +176,10 @@ internal sealed partial class FriendService(
                 .PlayerFriendRequests.Where(x =>
                     x.FromPlayerViewerId == playerIdentityService.ViewerId
                 )
-                .IgnoreQueryFilters()
                 .Select(x => x.ToPlayer!.Helper!)
                 .ProjectToHelperProjection()
+                .IgnoreQueryFilters()
+                .AsSplitQuery()
                 .ToListAsync()
         )
             .Select(x => x.MapToUserSupportList())
@@ -177,9 +193,10 @@ internal sealed partial class FriendService(
                 .PlayerFriendRequests.Where(x =>
                     x.ToPlayerViewerId == playerIdentityService.ViewerId
                 )
-                .IgnoreQueryFilters()
                 .Select(x => x.FromPlayer!.Helper!)
                 .ProjectToHelperProjection()
+                .IgnoreQueryFilters()
+                .AsSplitQuery()
                 .ToListAsync()
         )
             .Select(x => x.MapToUserSupportList())
@@ -218,8 +235,7 @@ internal sealed partial class FriendService(
         // It is also a good heuristic as active players are more likely to accept a friend
         // request.
         IQueryable<HelperProjection> eligibleUsers = apiContext
-            .Players.IgnoreQueryFilters()
-            .Where(x => x.ViewerId != playerIdentityService.ViewerId)
+            .Players.Where(x => x.ViewerId != playerIdentityService.ViewerId)
             .Where(x =>
                 // Don't suggest people you have already sent a friend request to
                 !apiContext.PlayerFriendRequests.Any(y =>
@@ -238,7 +254,9 @@ internal sealed partial class FriendService(
             .OrderByDescending(x => x.UserData!.LastLoginTime)
             .Where(x => x.Helper != null)
             .Select(x => x.Helper!)
-            .ProjectToHelperProjection();
+            .ProjectToHelperProjection()
+            .IgnoreQueryFilters()
+            .AsSplitQuery();
 
         List<HelperProjection> selectedUsers = await eligibleUsers
             .Take(10)
@@ -319,12 +337,31 @@ internal sealed partial class FriendService(
     /// </summary>
     /// <param name="filterIds">The IDs to filter by.</param>
     /// <returns>A subset of <param name="filterIds"/> containing friends.</returns>
-    public async Task<List<long>> CheckFriendStatus(IEnumerable<long> filterIds)
+    public async Task<
+        List<(long ViewerId, bool IsFriend, bool HasFriendRequest)>
+    > CheckFriendStatus(IEnumerable<long> filterIds)
     {
-        return await this.GetFriendsQuery()
+        IQueryable<(long, bool, bool)> query = apiContext
+            .Players.IgnoreQueryFilters()
             .Where(x => filterIds.Contains(x.ViewerId))
-            .Select(x => x.ViewerId)
-            .ToListAsync();
+            .Select(x => new
+            {
+                x.ViewerId,
+                IsFriend = x.Friendships.Any(y =>
+                    y.Players.Any(z => z.ViewerId == playerIdentityService.ViewerId)
+                ),
+                HasFriendRequest = apiContext.PlayerFriendRequests.Any(y =>
+                    y.FromPlayerViewerId == playerIdentityService.ViewerId
+                    && y.ToPlayerViewerId == x.ViewerId
+                ),
+            })
+            .Select(x => new ValueTuple<long, bool, bool>(
+                x.ViewerId,
+                x.IsFriend,
+                x.HasFriendRequest
+            ));
+
+        return await query.ToListAsync();
     }
 
     public async Task<FriendLimitCheckResult> CheckIfFriendLimitExceeded() =>
@@ -402,7 +439,7 @@ internal sealed partial class FriendService(
         return friendLimit;
     }
 
-    private IQueryable<DbPlayer> GetFriendsQuery()
+    public IQueryable<DbPlayer> GetFriendsQuery()
     {
         IQueryable<DbPlayer> currentPlayer = apiContext.Players.Where(x =>
             x.ViewerId == playerIdentityService.ViewerId

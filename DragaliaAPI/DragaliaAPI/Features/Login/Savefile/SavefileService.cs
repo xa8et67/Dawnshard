@@ -1,12 +1,12 @@
 ﻿using System.Collections.Immutable;
 using System.Diagnostics;
-using AutoMapper;
 using DragaliaAPI.Database;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Entities.Abstract;
 using DragaliaAPI.Features.CoOp.Stamps;
 using DragaliaAPI.Features.Login.SavefileUpdate;
 using DragaliaAPI.Infrastructure.Metrics;
+using DragaliaAPI.Mapping.Mapperly;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.MasterAsset;
@@ -21,7 +21,6 @@ namespace DragaliaAPI.Features.Login.Savefile;
 internal sealed class SavefileService(
     ApiContext apiContext,
     IDistributedCache cache,
-    IMapper mapper,
     ILogger<SavefileService> logger,
     IPlayerIdentityService playerIdentityService,
     IEnumerable<ISavefileUpdate> savefileUpdates,
@@ -35,6 +34,9 @@ internal sealed class SavefileService(
         .Select(x => x.SavefileVersion)
         .DefaultIfEmpty()
         .Max();
+
+    private const int MaxLevel = 250;
+    private static readonly int MaxTotalExp = MasterAsset.UserLevel[MaxLevel].TotalExp;
 
     private static class RedisSchema
     {
@@ -71,12 +73,18 @@ internal sealed class SavefileService(
 
         try
         {
+            // Place a lock preventing any concurrent save imports
+            await cache.SetStringAsync(
+                RedisSchema.PendingImport(playerIdentityService.AccountId),
+                "true",
+                RedisOptions
+            );
+
             await Import(savefile);
         }
-        catch (Exception)
+        finally
         {
             await cache.RemoveAsync(RedisSchema.PendingImport(playerIdentityService.AccountId));
-            throw;
         }
     }
 
@@ -88,19 +96,22 @@ internal sealed class SavefileService(
     /// <remarks>Not thread safe if called for the same account id from two different threads.</remarks>
     public async Task Import(LoadIndexResponse savefile)
     {
-        string deviceAccountId = playerIdentityService.AccountId;
         Stopwatch stopwatch = Stopwatch.StartNew();
 
-        // Place a lock preventing any concurrent save imports
-        await cache.SetStringAsync(
-            RedisSchema.PendingImport(deviceAccountId),
-            "true",
-            RedisOptions
+        logger.LogInformation(
+            "Beginning savefile import for account {AccountId}",
+            playerIdentityService.AccountId
         );
 
-        logger.LogInformation(
-            "Beginning savefile import for account {accountId}",
-            playerIdentityService.AccountId
+        if (!Validate(savefile))
+        {
+            logger.LogInformation("Savefile to be imported is invalid");
+            return;
+        }
+
+        logger.LogDebug(
+            "Validating save file step done after {t} ms",
+            stopwatch.Elapsed.TotalMilliseconds
         );
 
         try
@@ -129,27 +140,38 @@ internal sealed class SavefileService(
             // This has JsonRequired so this should never be triggered
             ArgumentNullException.ThrowIfNull(savefile.UserData);
 
-            player.UserData = mapper.Map<DbPlayerUserData>(savefile.UserData);
-            player.UserData.ViewerId = playerIdentityService.ViewerId;
+            player.UserData = savefile.UserData.MapToDbPlayerUserData(
+                playerIdentityService.ViewerId
+            );
 
             // TODO: What was the actual maximum dragon storage you could get?
             int cappedDragonStorage = Math.Min(savefile.UserData.MaxDragonQuantity, 500);
             player.UserData.MaxDragonQuantity = cappedDragonStorage;
+
+            // You can run into softlocks if your XP gets too high
+            int cappedExp = Math.Min(savefile.UserData.Exp, MaxTotalExp);
+            player.UserData.Exp = cappedExp;
 
             logger.LogDebug(
                 "Mapping DbPlayerUserData step done after {t} ms",
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.CharaList = savefile.CharaList.Map<DbPlayerCharaData>(mapper);
+            player.CharaList = savefile
+                .CharaList.ParallelMap(playerIdentityService.ViewerId, CharaMapper.ToDbPlayerChara)
+                .ToList();
 
             logger.LogDebug(
                 "Mapping DbPlayerCharaData step done after {t} ms",
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.DragonReliabilityList =
-                savefile.DragonReliabilityList.Map<DbPlayerDragonReliability>(mapper);
+            player.DragonReliabilityList = savefile
+                .DragonReliabilityList.ParallelMap(
+                    playerIdentityService.ViewerId,
+                    DragonReliabilityMapper.ToDbPlayerDragonReliability
+                )
+                .ToList();
 
             logger.LogDebug(
                 "Mapping DbPlayerDragonReliability step done after {t} ms",
@@ -162,7 +184,10 @@ internal sealed class SavefileService(
             foreach (DragonList d in savefile.DragonList?.Take(cappedDragonStorage) ?? [])
             {
                 ulong oldKeyId = d.DragonKeyId;
-                DbPlayerDragonData dbEntry = d.Map<DbPlayerDragonData>(mapper);
+                DbPlayerDragonData dbEntry = d.MapToDbPlayerDragonData(
+                    playerIdentityService.ViewerId
+                );
+                dbEntry.DragonKeyId = 0; // Prevent EF from thinking this is an update
                 player.DragonList.Add(dbEntry);
 
                 dragonKeyIds.TryAdd((long)oldKeyId, dbEntry);
@@ -178,7 +203,8 @@ internal sealed class SavefileService(
             foreach (TalismanList t in savefile.TalismanList ?? new List<TalismanList>())
             {
                 ulong oldKeyId = t.TalismanKeyId;
-                DbTalisman dbEntry = t.Map<DbTalisman>(mapper);
+                DbTalisman dbEntry = t.MapToDbTalisman(playerIdentityService.ViewerId);
+                dbEntry.TalismanKeyId = 0;
                 player.TalismanList.Add(dbEntry);
 
                 talismanKeyIds.TryAdd((long)oldKeyId, dbEntry);
@@ -207,7 +233,9 @@ internal sealed class SavefileService(
             if (savefile.PartyList is not null)
             {
                 // Update key ids in parties
-                List<DbParty> parties = savefile.PartyList.Map<DbParty>(mapper);
+                List<DbParty> parties = savefile
+                    .PartyList.ParallelMap(playerIdentityService.ViewerId, PartyMapper.MapToDbParty)
+                    .ToList();
 
                 foreach (DbParty party in parties)
                 {
@@ -241,63 +269,111 @@ internal sealed class SavefileService(
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.AbilityCrestList.AddRange(savefile.AbilityCrestList.Map<DbAbilityCrest>(mapper));
+            player.AbilityCrestList.AddRange(
+                savefile.AbilityCrestList.Select(x =>
+                    x.MapToDbAbilityCrest(playerIdentityService.ViewerId)
+                )
+            );
 
             logger.LogDebug(
                 "Mapping DbAbilityCrest step done after {t} ms",
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.WeaponBodyList.AddRange(savefile.WeaponBodyList.Map<DbWeaponBody>(mapper));
+            player.WeaponBodyList.AddRange(
+                savefile.WeaponBodyList.Select(x =>
+                    x.MapToDbWeaponBody(playerIdentityService.ViewerId)
+                )
+            );
 
             logger.LogDebug(
                 "Mapping DbWeaponBody step done after {t} ms",
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.QuestList.AddRange(savefile.QuestList.Map<DbQuest>(mapper));
+            player.QuestList.AddRange(
+                savefile.QuestList.ParallelMap(
+                    playerIdentityService.ViewerId,
+                    QuestMapper.MapToDbQuest
+                )
+            );
 
             logger.LogDebug(
                 "Mapping DbQuest step done after {t} ms",
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.StoryStates.AddRange(savefile.QuestStoryList.Map<DbPlayerStoryState>(mapper));
+            player.StoryStates.AddRange(
+                savefile.QuestStoryList.ParallelMap(
+                    playerIdentityService.ViewerId,
+                    StoryMapper.MapToDbPlayerStoryState
+                )
+            );
 
             logger.LogDebug(
                 "Mapping DbPlayerStoryState (QuestStoryList) step done after {t} ms",
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.StoryStates.AddRange(savefile.UnitStoryList.Map<DbPlayerStoryState>(mapper));
+            player.StoryStates.AddRange(
+                savefile.UnitStoryList.ParallelMap(
+                    playerIdentityService.ViewerId,
+                    StoryMapper.MapToDbPlayerStoryState
+                )
+            );
 
             logger.LogDebug(
                 "Mapping DbPlayerStoryState (UnitStoryList) step done after {t} ms",
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.StoryStates.AddRange(savefile.CastleStoryList.Map<DbPlayerStoryState>(mapper));
+            player.StoryStates.AddRange(
+                savefile.CastleStoryList.ParallelMap(
+                    playerIdentityService.ViewerId,
+                    StoryMapper.MapToDbPlayerStoryState
+                )
+            );
 
             logger.LogDebug(
                 "Mapping DbPlayerStoryState (CastleStoryList) step done after {t} ms",
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.MaterialList.AddRange(savefile.MaterialList.Map<DbPlayerMaterial>(mapper));
+            player.MaterialList.AddRange(
+                savefile.MaterialList.ParallelMap(
+                    playerIdentityService.ViewerId,
+                    MaterialMapper.MapToDbPlayerMaterial
+                )
+            );
 
             logger.LogDebug(
                 "Mapping DbPlayerMaterial step done after {t} ms",
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.BuildList.AddRange(savefile.BuildList.Map<DbFortBuild>(mapper));
+            player.BuildList.AddRange(
+                savefile.BuildList.ParallelMap(
+                    playerIdentityService.ViewerId,
+                    FortBuildMapper.MapToDbFortBuild
+                )
+            );
+
+            foreach (DbFortBuild fortBuild in player.BuildList)
+            {
+                fortBuild.BuildId = 0;
+            }
 
             logger.LogDebug(
                 "Mapping DbFortBuild step done after {t} ms",
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.WeaponSkinList.AddRange(savefile.WeaponSkinList.Map<DbWeaponSkin>(mapper));
+            player.WeaponSkinList.AddRange(
+                savefile.WeaponSkinList.ParallelMap(
+                    playerIdentityService.ViewerId,
+                    WeaponSkinMapper.MapToDbWeaponSkin
+                )
+            );
 
             logger.LogDebug(
                 "Mapping DbWeaponSkin step done after {t} ms",
@@ -305,7 +381,10 @@ internal sealed class SavefileService(
             );
 
             player.WeaponPassiveAbilityList.AddRange(
-                savefile.WeaponPassiveAbilityList.Map<DbWeaponPassiveAbility>(mapper)
+                savefile.WeaponPassiveAbilityList.ParallelMap(
+                    playerIdentityService.ViewerId,
+                    WeaponPassiveAbilityMapper.MapToDbWeaponPassiveAbility
+                )
             );
 
             logger.LogDebug(
@@ -313,28 +392,53 @@ internal sealed class SavefileService(
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.DragonGiftList.AddRange(savefile.DragonGiftList.Map<DbPlayerDragonGift>(mapper));
+            player.DragonGiftList.AddRange(
+                savefile.DragonGiftList.ParallelMap(
+                    playerIdentityService.ViewerId,
+                    DragonGiftMapper.MapToDbPlayerDragonGift
+                )
+            );
 
             logger.LogDebug(
                 "Mapping DbPlayerDragonGift step done after {t} ms",
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.EquippedStampList.AddRange(savefile.EquipStampList.Map<DbEquippedStamp>(mapper));
+            player.EquippedStampList.AddRange(
+                savefile.EquipStampList.ParallelMap(
+                    playerIdentityService.ViewerId,
+                    StampMapper.MapToDbEquippedStamp
+                )
+            );
 
             logger.LogDebug(
                 "Mapping DbEquippedStamp step done after {t} ms",
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.Trades.AddRange(savefile.UserTreasureTradeList.Map<DbPlayerTrade>(mapper));
+            player.Trades.AddRange(
+                savefile.UserTreasureTradeList.ParallelMap(
+                    playerIdentityService.ViewerId,
+                    TreasureTradeMapper.MapToDbPlayerTrade
+                )
+            );
 
             logger.LogDebug(
                 "Mapping DbPlayerTrade step done after {t} ms",
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.SummonTickets.AddRange(savefile.SummonTicketList.Map<DbSummonTicket>(mapper));
+            player.SummonTickets.AddRange(
+                savefile.SummonTicketList.ParallelMap(
+                    playerIdentityService.ViewerId,
+                    SummonMapper.MapToDbSummonTicket
+                )
+            );
+
+            foreach (DbSummonTicket ticket in player.SummonTickets)
+            {
+                ticket.KeyId = 0;
+            }
 
             logger.LogDebug(
                 "Mapping DbSummonTicket step done after {t} ms",
@@ -362,28 +466,45 @@ internal sealed class SavefileService(
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.PartyPower = savefile.PartyPowerData.Map<DbPartyPower>(mapper);
+            player.PartyPower = savefile.PartyPowerData.MapToDbPartyPower(
+                playerIdentityService.ViewerId
+            );
 
             logger.LogDebug(
                 "Mapping DbPartyPower step done after {t} ms",
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.QuestEvents = savefile.QuestEventList.Map<DbQuestEvent>(mapper);
+            player.QuestEvents = savefile
+                .QuestEventList.ParallelMap(
+                    playerIdentityService.ViewerId,
+                    QuestEventMapper.MapToDbQuestEvent
+                )
+                .ToList();
 
             logger.LogDebug(
                 "Mapping DbQuestEvent step done after {t} ms",
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.QuestTreasureList = savefile.QuestTreasureList.Map<DbQuestTreasureList>(mapper);
+            player.QuestTreasureList = savefile
+                .QuestTreasureList.ParallelMap(
+                    playerIdentityService.ViewerId,
+                    QuestTreasureMapper.MapToDbQuestTreasureList
+                )
+                .ToList();
 
             logger.LogDebug(
                 "Mapping DbQuestTreasureList step done after {t} ms",
                 stopwatch.Elapsed.TotalMilliseconds
             );
 
-            player.QuestWalls = savefile.QuestWallList.Map<DbPlayerQuestWall>(mapper);
+            player.QuestWalls = savefile
+                .QuestWallList.ParallelMap(
+                    playerIdentityService.ViewerId,
+                    WallMapper.MapToDbPlayerQuestWall
+                )
+                .ToList();
 
             logger.LogDebug(
                 "Mapping DbPlayerQuestWall step done after {t} ms",
@@ -398,11 +519,12 @@ internal sealed class SavefileService(
             player.LastSavefileImportTime = DateTimeOffset.UtcNow;
             player.SavefileOrigin = savefile.Origin;
 
+            // Set helper to default. This will break if you try and delete Euden from your save, but we protect
+            // against this in Validate()
+            player.Helper = new() { CharaId = Charas.ThePrince };
+
             await apiContext.SaveChangesAsync();
             await transaction.CommitAsync();
-
-            // Remove lock
-            await cache.RemoveAsync(RedisSchema.PendingImport(deviceAccountId));
 
             metrics.OnSaveImport(savefile);
 
@@ -416,6 +538,46 @@ internal sealed class SavefileService(
             apiContext.ChangeTracker.Clear();
             throw;
         }
+    }
+
+    private bool Validate(LoadIndexResponse savefile)
+    {
+        // Ensure the save does not contain any invalid IDs for dragons and other entities - the server frequently
+        // does dict[key] lookups in the master asset which throw errors for out-of-range IDs. Such invalid data should
+        // be rejected outright rather than allowed to break later.
+
+        bool hasEuden = false;
+
+        foreach (CharaList chara in savefile.CharaList)
+        {
+            if (!MasterAsset.CharaData.ContainsKey(chara.CharaId))
+            {
+                logger.LogDebug("Invalid character ID: {CharaId}", chara.CharaId);
+                return false;
+            }
+
+            if (chara.CharaId == Charas.ThePrince)
+            {
+                hasEuden = true;
+            }
+        }
+
+        if (!hasEuden)
+        {
+            logger.LogDebug("Savefile does not have ThePrince");
+            return false;
+        }
+
+        foreach (DragonList dragon in savefile.DragonList)
+        {
+            if (!MasterAsset.DragonData.ContainsKey(dragon.DragonId))
+            {
+                logger.LogDebug("Invalid dragon ID: {DragonId}", dragon.DragonId);
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private async Task Delete()
@@ -432,6 +594,9 @@ internal sealed class SavefileService(
         // Options commented out have been excluded from save import deletion process.
         // They will still be deleted by cascade delete when a player is actually deleted
         // without being re-added as they are in save imports.
+        await apiContext
+            .PlayerHelperUseDates.Where(x => x.HelperViewerId == viewerId)
+            .ExecuteDeleteAsync();
         await apiContext.PlayerHelpers.Where(x => x.ViewerId == viewerId).ExecuteDeleteAsync();
         await apiContext.PlayerUserData.Where(x => x.ViewerId == viewerId).ExecuteDeleteAsync();
         await apiContext.PlayerCharaData.Where(x => x.ViewerId == viewerId).ExecuteDeleteAsync();
@@ -663,17 +828,21 @@ internal sealed class SavefileService(
 
 file static class Extensions
 {
-    public static List<TDest> Map<TDest>(this IEnumerable<object>? source, IMapper mapper)
-        where TDest : IDbPlayerData =>
-        (source ?? new List<object>())
-            .AsParallel()
-            .WithMergeOptions(ParallelMergeOptions.NotBuffered)
-            .Select(mapper.Map<TDest>)
-            .ToList();
-
-    public static TDest Map<TDest>(this object? source, IMapper mapper)
+    public static IEnumerable<TDest> ParallelMap<TSource, TDest>(
+        this IEnumerable<TSource>? source,
+        long viewerId,
+        Func<TSource, long, TDest> mapper
+    )
         where TDest : IDbPlayerData
     {
-        return mapper.Map<TDest>(source);
+        if (source == null)
+        {
+            return [];
+        }
+
+        return source
+            .AsParallel()
+            .WithMergeOptions(ParallelMergeOptions.NotBuffered)
+            .Select(x => mapper(x, viewerId));
     }
 }

@@ -1,21 +1,23 @@
-import { type Icon } from 'lucide-svelte';
-import ChartBarIncreasing from 'lucide-svelte/icons/chart-bar-increasing';
-import House from 'lucide-svelte/icons/house';
-import Newspaper from 'lucide-svelte/icons/newspaper';
-import Pencil from 'lucide-svelte/icons/pencil';
-import User from 'lucide-svelte/icons/user';
-import type { ComponentType } from 'svelte';
+import { type IconProps } from '@lucide/svelte';
+import ChartBarIncreasing from '@lucide/svelte/icons/chart-bar-increasing';
+import House from '@lucide/svelte/icons/house';
+import Newspaper from '@lucide/svelte/icons/newspaper';
+import Pencil from '@lucide/svelte/icons/pencil';
+import User from '@lucide/svelte/icons/user';
+import VenetianMask from '@lucide/svelte/icons/venetian-mask';
+import type { Component } from 'svelte';
 
 export type RouteGroup = {
   title: string;
   routes: Route[];
   requireAuth?: boolean;
+  requireAdmin?: boolean;
 };
 
 export type Route = {
   title: string;
   href: string;
-  icon: ComponentType<Icon>;
+  icon: Component<IconProps>;
 };
 
 export const routeGroups: RouteGroup[] = [
@@ -48,5 +50,10 @@ export const routeGroups: RouteGroup[] = [
         icon: Pencil
       }
     ]
+  },
+  {
+    title: 'Administration',
+    requireAdmin: true,
+    routes: [{ title: 'User Impersonation', href: '/admin/impersonation', icon: VenetianMask }]
   }
 ];

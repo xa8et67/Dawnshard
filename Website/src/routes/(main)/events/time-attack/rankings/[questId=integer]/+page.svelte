@@ -1,15 +1,15 @@
 <script lang="ts">
-  import { page } from '$app/stores';
+  import { resolve } from '$app/paths';
   import Page from '$lib/components/page.svelte';
   import Typography from '$lib/components/typography.svelte';
   import { t } from '$lib/translations';
 
-  import type { PageData } from './$types';
+  import type { PageProps } from './$types';
   import DataTable from './dataTable.svelte';
 
-  export let data: PageData;
+  let { data, params }: PageProps = $props();
 
-  $: currentQuest = data.questList.find((q) => q.id === parseInt($page.params.questId));
+  let currentQuest = $derived(data.questList.find((q) => q.id === parseInt(params.questId)));
 </script>
 
 <Page title="Time Attack Rankings">
@@ -17,12 +17,14 @@
     <div>
       <p class="mb-2">Select a quest to view rankings:</p>
       <ul class="pl-4">
-        {#each data.questList as { id: questId }}
+        {#each data.questList as { id: questId } (questId)}
           <li>
             <a
               class="hover:underline"
               aria-current={questId === currentQuest?.id ? 'page' : undefined}
-              href="/events/time-attack/rankings/{questId}">
+              href={resolve('/(main)/events/time-attack/rankings/[questId=integer]', {
+                questId: questId.toString()
+              })}>
               {$t(`timeAttack.quest.${questId}`)}
             </a>
           </li>
@@ -35,12 +37,10 @@
       alt="Promotional banner for selected time attack quest" />
   </div>
   <Typography typography="h2" id="time-attack-table-title">Clears</Typography>
-  {#key currentQuest?.id}
-    <DataTable
-      data={data.clearData.data}
-      itemCount={data.clearData.pagination.totalCount}
-      coop={currentQuest?.isCoop ?? false} />
-  {/key}
+  <DataTable
+    data={data.clearData.data}
+    itemCount={data.clearData.pagination.totalCount}
+    coop={currentQuest?.isCoop ?? false} />
 </Page>
 
 <style>

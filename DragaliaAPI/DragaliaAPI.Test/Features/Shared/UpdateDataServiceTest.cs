@@ -1,5 +1,5 @@
-﻿using System.Text.Json;
-using AutoMapper;
+﻿using System.Diagnostics;
+using System.Text.Json;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Entities.Abstract;
 using DragaliaAPI.Features.Dmode;
@@ -8,6 +8,7 @@ using DragaliaAPI.Features.Friends;
 using DragaliaAPI.Features.Missions;
 using DragaliaAPI.Features.Present;
 using DragaliaAPI.Features.Shared;
+using DragaliaAPI.Mapping.Mapperly;
 using DragaliaAPI.Models.Generated;
 using DragaliaAPI.Shared.Definitions.Enums;
 using DragaliaAPI.Shared.PlayerDetails;
@@ -18,7 +19,6 @@ namespace DragaliaAPI.Test.Features.Shared;
 public class UpdateDataServiceTest : RepositoryTestFixture
 {
     private readonly ITestOutputHelper output;
-    private readonly IMapper mapper;
     private readonly IUpdateDataService updateDataService;
 
     private readonly Mock<IPlayerIdentityService> mockPlayerIdentityService;
@@ -28,6 +28,7 @@ public class UpdateDataServiceTest : RepositoryTestFixture
     private readonly Mock<IEventService> mockEventService;
     private readonly Mock<IDmodeService> mockDmodeService;
     private readonly Mock<IFriendNotificationService> mockFriendNotificationService;
+    private readonly ActivitySource mockActivitySource;
 
     public UpdateDataServiceTest(ITestOutputHelper output)
     {
@@ -39,7 +40,7 @@ public class UpdateDataServiceTest : RepositoryTestFixture
         this.mockEventService = new(MockBehavior.Strict);
         this.mockDmodeService = new(MockBehavior.Strict);
         this.mockFriendNotificationService = new(MockBehavior.Strict);
-        this.mapper = UnitTestUtils.CreateMapper();
+        this.mockActivitySource = new ActivitySource("TestSource");
 
         this.mockFriendNotificationService.Setup(x =>
                 x.GetFriendNotice(It.IsAny<CancellationToken>())
@@ -54,7 +55,8 @@ public class UpdateDataServiceTest : RepositoryTestFixture
             this.mockPresentService.Object,
             this.mockEventService.Object,
             this.mockDmodeService.Object,
-            this.mockFriendNotificationService.Object
+            this.mockFriendNotificationService.Object,
+            this.mockActivitySource
         );
     }
 
@@ -173,29 +175,37 @@ public class UpdateDataServiceTest : RepositoryTestFixture
 
         UpdateDataList list = await this.updateDataService.SaveChangesAsync(cts.Token);
 
-        list.UserData.Should().BeEquivalentTo(this.mapper.Map<UserData>(userData));
+        list.UserData.Should().BeEquivalentTo(userData.MapToUserData());
 
-        this.AssertOnlyContains<CharaList>(list.CharaList, charaData);
+        AssertOnlyContains(list.CharaList, charaData, CharaMapper.ToCharaList);
 
-        this.AssertOnlyContains<DragonList>(list.DragonList, dragonData);
+        AssertOnlyContains(list.DragonList, dragonData, DragonMapper.ToDragonList);
 
-        this.AssertOnlyContains<DragonReliabilityList>(list.DragonReliabilityList, reliabilityData);
+        AssertOnlyContains(
+            list.DragonReliabilityList,
+            reliabilityData,
+            DragonReliabilityMapper.ToDragonReliabilityList
+        );
 
-        this.AssertOnlyContains<PartyList>(list.PartyList, partyData);
+        AssertOnlyContains(list.PartyList, partyData, PartyMapper.MapToPartyList);
 
-        this.AssertOnlyContains<QuestStoryList>(list.QuestStoryList, questStoryState);
+        AssertOnlyContains(list.QuestStoryList, questStoryState, StoryMapper.MapToQuestStoryList);
 
         list.UnitStoryList.Should()
-            .ContainEquivalentOf(this.mapper.Map<UnitStoryList>(charaStoryState))
-            .And.ContainEquivalentOf(this.mapper.Map<UnitStoryList>(dragonStoryState));
+            .ContainEquivalentOf(charaStoryState.MapToUnitStoryList())
+            .And.ContainEquivalentOf(dragonStoryState.MapToUnitStoryList());
 
-        this.AssertOnlyContains<CastleStoryList>(list.CastleStoryList, castleStoryState);
+        AssertOnlyContains(
+            list.CastleStoryList,
+            castleStoryState,
+            StoryMapper.MapToCastleStoryList
+        );
 
-        this.AssertOnlyContains<QuestList>(list.QuestList, questData);
+        AssertOnlyContains(list.QuestList, questData, QuestMapper.MapToQuestList);
 
-        this.AssertOnlyContains<MaterialList>(list.MaterialList, materialData);
+        AssertOnlyContains(list.MaterialList, materialData, MaterialMapper.MapToMaterialList);
 
-        this.AssertOnlyContains<BuildList>(list.BuildList, buildData);
+        AssertOnlyContains(list.BuildList, buildData, FortBuildMapper.MapToBuildList);
 
         list.DragonGiftList.Should().BeNull();
 
@@ -274,13 +284,17 @@ public class UpdateDataServiceTest : RepositoryTestFixture
         (await this.updateDataService.SaveChangesAsync(cts.Token)).CharaList.Should().BeNull();
     }
 
-    private void AssertOnlyContains<TNetwork>(IEnumerable<TNetwork>? member, IDbPlayerData dbEntity)
+    private static void AssertOnlyContains<TNetwork, TDatabase>(
+        IEnumerable<TNetwork>? member,
+        TDatabase dbEntity,
+        Func<TDatabase, TNetwork> mapper
+    )
     {
         member
             .Should()
             .ContainSingle()
             .And.ContainEquivalentOf(
-                this.mapper.Map<TNetwork>(dbEntity),
+                mapper(dbEntity),
                 opts => opts.WithTimeSpanTolerance(TimeSpan.FromSeconds(1))
             );
     }

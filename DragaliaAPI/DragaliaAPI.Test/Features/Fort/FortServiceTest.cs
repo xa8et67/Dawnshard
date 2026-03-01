@@ -1,4 +1,3 @@
-using AutoMapper;
 using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Fort;
@@ -27,7 +26,6 @@ public class FortServiceTest
     private readonly Mock<IUserDataRepository> mockUserDataRepository;
     private readonly Mock<ILogger<FortService>> mockLogger;
     private readonly Mock<IPlayerIdentityService> mockPlayerIdentityService;
-    private readonly IMapper mapper;
     private readonly Mock<IFortMissionProgressionService> mockFortMissionProgressionService;
     private readonly Mock<IPaymentService> mockPaymentService;
     private readonly Mock<IRewardService> mockRewardService;
@@ -46,7 +44,6 @@ public class FortServiceTest
         this.mockUserDataRepository = new(MockBehavior.Strict);
         this.mockLogger = new(MockBehavior.Loose);
         this.mockPlayerIdentityService = new(MockBehavior.Strict);
-        this.mapper = UnitTestUtils.CreateMapper();
         this.mockFortMissionProgressionService = new(MockBehavior.Strict);
         this.mockPaymentService = new(MockBehavior.Strict);
         this.mockRewardService = new(MockBehavior.Strict);
@@ -97,7 +94,6 @@ public class FortServiceTest
             mockInventoryRepository.Object,
             mockLogger.Object,
             mockPlayerIdentityService.Object,
-            mapper,
             mockFortMissionProgressionService.Object,
             mockPaymentService.Object,
             mockRewardService.Object,
@@ -128,9 +124,7 @@ public class FortServiceTest
                         Level = 5,
                         PlantId = FortPlants.Dragontree,
                     },
-                }
-                    .AsQueryable()
-                    .BuildMock()
+                }.BuildMock()
             );
 
         (await fortService.GetBuildList())
@@ -423,9 +417,7 @@ public class FortServiceTest
             .Setup(x => x.GetFortDetail())
             .ReturnsAsync(new DbFortDetail() { ViewerId = 1, CarpenterNum = 1 });
         mockFortRepository.Setup(x => x.GetActiveCarpenters()).ReturnsAsync(1);
-        mockFortRepository
-            .Setup(x => x.Builds)
-            .Returns(Array.Empty<DbFortBuild>().AsQueryable().BuildMock());
+        mockFortRepository.Setup(x => x.Builds).Returns(Array.Empty<DbFortBuild>().BuildMock());
 
         await fortService
             .Invoking(x => x.BuildStart(FortPlants.BlueFlowers, 2, 3))
@@ -502,9 +494,7 @@ public class FortServiceTest
             .ReturnsAsync(new DbFortDetail() { ViewerId = 1, CarpenterNum = 1 });
         mockFortRepository.Setup(x => x.GetActiveCarpenters()).ReturnsAsync(1);
         mockFortRepository.Setup(x => x.GetBuilding(1)).ReturnsAsync(build);
-        mockFortRepository
-            .Setup(x => x.Builds)
-            .Returns(Array.Empty<DbFortBuild>().AsQueryable().BuildMock());
+        mockFortRepository.Setup(x => x.Builds).Returns(Array.Empty<DbFortBuild>().BuildMock());
 
         await fortService
             .Invoking(x => x.LevelupStart(1))

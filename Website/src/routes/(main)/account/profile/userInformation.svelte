@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Info from 'lucide-svelte/icons/info';
+  import Info from '@lucide/svelte/icons/info';
 
   import renderDate from '$main/account/profile/renderDate.ts';
   import * as Card from '$shadcn/components/ui/card';
@@ -22,16 +22,17 @@
     return chunkedId.join(' ');
   };
 
-  export let user: User;
-  export let userProfile: UserProfile;
+  let { user, userProfile }: { user: User; userProfile: UserProfile } = $props();
+
+  const lastLoginTime = $derived(renderDate(userProfile.lastLoginTime));
 </script>
 
 <Card.Root>
   <Card.Header>
-    <Card.Title level={2}>
+    <Card.Title>
       <div class="flex flex-row items-center justify-items-start gap-2">
         <Info aria-hidden={true} size={25} />
-        User information
+        <h2>User information</h2>
       </div>
     </Card.Title>
   </Card.Header>
@@ -47,7 +48,7 @@
       </div>
       <div>
         <p class="font-semibold">Last login time</p>
-        <p>{renderDate(userProfile.lastLoginTime)}</p>
+        <p>{lastLoginTime}</p>
       </div>
     </div>
   </Card.Content>

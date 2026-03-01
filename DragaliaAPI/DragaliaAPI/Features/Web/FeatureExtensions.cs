@@ -1,9 +1,11 @@
 using DragaliaAPI.Features.Web;
 using DragaliaAPI.Features.Web.News;
 using DragaliaAPI.Features.Web.Savefile;
+using DragaliaAPI.Features.Web.Settings;
 using DragaliaAPI.Features.Web.TimeAttack;
 using DragaliaAPI.Features.Web.Users;
 using DragaliaAPI.Shared.PlayerDetails;
+using Microsoft.IdentityModel.Logging;
 using static DragaliaAPI.Infrastructure.Authentication.AuthConstants;
 
 // ReSharper disable once CheckNamespace
@@ -17,7 +19,8 @@ public static partial class FeatureExtensions
             .AddScoped<UserService>()
             .AddScoped<NewsService>()
             .AddScoped<SavefileEditService>()
-            .AddScoped<TimeAttackService>();
+            .AddScoped<TimeAttackService>()
+            .AddScoped<SettingsService>();
 
         serviceCollection
             .AddAuthentication()
@@ -52,7 +55,18 @@ public static partial class FeatureExtensions
                         )
                         .RequireClaim(CustomClaimType.AccountId)
                         .RequireClaim(CustomClaimType.ViewerId)
+            )
+            .AddPolicy(
+                PolicyNames.RequireAdmin,
+                builder =>
+                    builder
+                        .RequireAuthenticatedUser()
+                        .AddAuthenticationSchemes(SchemeNames.WebJwt)
+                        .RequireClaim(CustomClaimType.IsAdmin, "true")
             );
+
+        IdentityModelEventSource.ShowPII = true;
+        IdentityModelEventSource.LogCompleteSecurityArtifact = true;
 
         return serviceCollection;
     }

@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
-
   <PropertyGroup>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -7,12 +6,8 @@
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
-    <PackageReference Include="Microsoft.Extensions.Logging" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
     <PackageReference Include="OpenTelemetry.Instrumentation.StackExchangeRedis" />
@@ -26,16 +21,12 @@
     <PackageReference Include="Serilog.Sinks.Console" />
     <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="Serilog.Sinks.Seq" />
-    <PackageReference Include="Swashbuckle.AspNetCore" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\Aspire\Dawnshard.ServiceDefaults\Dawnshard.ServiceDefaults.csproj" />
     <ProjectReference Include="..\..\Shared\DragaliaAPI.Photon.Shared\DragaliaAPI.Photon.Shared.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <None Remove="..\.dockerignore" />
   </ItemGroup>
-
 </Project>

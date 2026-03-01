@@ -12,15 +12,14 @@ internal static class ClaimsPrincipalExtensions
         this ClaimsPrincipal claimsPrincipal,
         string accountId,
         long viewerId,
-        string? playerName = null
+        string? playerName = null,
+        bool isAdmin = false
     )
     {
-        ClaimsIdentity dawnshardIdentity = new(
-            [
-                new Claim(CustomClaimType.AccountId, accountId),
-                new Claim(CustomClaimType.ViewerId, viewerId.ToString()),
-            ]
-        )
+        ClaimsIdentity dawnshardIdentity = new([
+            new Claim(CustomClaimType.AccountId, accountId),
+            new Claim(CustomClaimType.ViewerId, viewerId.ToString()),
+        ])
         {
             Label = AuthConstants.IdentityLabels.Dawnshard,
         };
@@ -28,6 +27,11 @@ internal static class ClaimsPrincipalExtensions
         if (playerName is not null)
         {
             dawnshardIdentity.AddClaim(new Claim(CustomClaimType.PlayerName, playerName));
+        }
+
+        if (isAdmin)
+        {
+            dawnshardIdentity.AddClaim(new Claim(CustomClaimType.IsAdmin, "true"));
         }
 
         claimsPrincipal.AddIdentity(dawnshardIdentity);

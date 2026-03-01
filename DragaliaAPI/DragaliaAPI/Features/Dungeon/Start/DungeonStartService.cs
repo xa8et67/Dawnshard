@@ -1,4 +1,5 @@
-﻿using DragaliaAPI.Database.Entities;
+﻿using DragaliaAPI.Database;
+using DragaliaAPI.Database.Entities;
 using DragaliaAPI.Database.Entities.Scaffold;
 using DragaliaAPI.Database.Repositories;
 using DragaliaAPI.Features.Dungeon.AutoRepeat;
@@ -27,7 +28,7 @@ internal sealed partial class DungeonStartService(
     IDungeonService dungeonService,
     IPlayerIdentityService playerIdentityService,
     IQuestService questService,
-    IQuestRepository questRepository,
+    ApiContext apiContext,
     IBonusService bonusService,
     IHelperService helperService,
     IUserService userService,
@@ -91,6 +92,10 @@ internal sealed partial class DungeonStartService(
 
         QuestData questInfo = MasterAsset.QuestData.Get(questId);
 
+        List<List<int>> rewardBoostingAbilities = AbilityLogic.GetRewardBoostingAbilitiesByUnit(
+            detailedPartyUnits
+        );
+
         result.PartyInfo.PartyUnitList = await ProcessDetailedUnitList(detailedPartyUnits);
         result.DungeonKey = dungeonService.CreateSession(
             new()
@@ -98,6 +103,7 @@ internal sealed partial class DungeonStartService(
                 QuestData = questInfo,
                 Party = party.Where(x => x.CharaId != 0),
                 SupportViewerId = supportViewerId,
+                RewardBoostingAbilitiesPerUnit = rewardBoostingAbilities,
             }
         );
 
@@ -152,6 +158,10 @@ internal sealed partial class DungeonStartService(
 
         QuestData questInfo = MasterAsset.QuestData.Get(questId);
 
+        List<List<int>> rewardBoostingAbilities = AbilityLogic.GetRewardBoostingAbilitiesByUnit(
+            detailedPartyUnits
+        );
+
         result.PartyInfo.PartyUnitList = await ProcessDetailedUnitList(detailedPartyUnits);
         result.DungeonKey = dungeonService.CreateSession(
             new()
@@ -159,6 +169,7 @@ internal sealed partial class DungeonStartService(
                 QuestData = questInfo,
                 Party = party.Where(x => x.CharaId != 0),
                 SupportViewerId = supportViewerId,
+                RewardBoostingAbilitiesPerUnit = rewardBoostingAbilities,
             }
         );
 
@@ -239,7 +250,7 @@ internal sealed partial class DungeonStartService(
 
     public async Task<IngameQuestData> UpdateDbQuest(int questId)
     {
-        DbQuest? quest = await questRepository.Quests.FirstOrDefaultAsync(x =>
+        DbQuest? quest = await apiContext.PlayerQuests.FirstOrDefaultAsync(x =>
             x.QuestId == questId
         );
 
@@ -264,18 +275,14 @@ internal sealed partial class DungeonStartService(
 
     private async Task<AtgenSupportData> GetSupportData(ulong supportViewerId)
     {
-        QuestGetSupportUserListResponse helperList = await helperService.GetHelpers();
-
-        UserSupportList? helperInfo = helperList.SupportUserList.FirstOrDefault(helper =>
-            helper.ViewerId == supportViewerId
+        AtgenSupportUserDataDetail? helperDetails = await helperService.GetHelperDetail(
+            (long)supportViewerId
         );
 
-        AtgenSupportUserDetailList? helperDetails = helperList.SupportUserDetailList.FirstOrDefault(
-            helper => helper.ViewerId == supportViewerId
-        );
-
-        if (helperInfo is not null && helperDetails is not null)
-            return helperService.BuildHelperData(helperInfo, helperDetails);
+        if (helperDetails is not null)
+        {
+            return BuildHelperData(helperDetails);
+        }
 
         logger.LogDebug("SupportViewerId {id} returned null helper data.", supportViewerId);
         return new();
@@ -399,5 +406,34 @@ internal sealed partial class DungeonStartService(
         ).EventPassiveGrowList;
 
         return result;
+    }
+
+    private static AtgenSupportData BuildHelperData(AtgenSupportUserDataDetail helperDetails)
+    {
+        return new AtgenSupportData()
+        {
+            ViewerId = helperDetails.UserSupportData.ViewerId,
+            Name = helperDetails.UserSupportData.Name,
+            IsFriend = helperDetails.IsFriend,
+            CharaData = helperDetails.UserSupportData.SupportChara.ToCharaList(),
+            DragonData = helperDetails.UserSupportData.SupportDragon?.ToDragonList(),
+            WeaponBodyData = helperDetails.UserSupportData.SupportWeaponBody.ToGameWeaponBody(),
+            CrestSlotType1CrestList = helperDetails
+                .UserSupportData.SupportCrestSlotType1List.Select(
+                    DungeonStartMapper.ToGameAbilityCrest
+                )
+                .ToList(),
+            CrestSlotType2CrestList = helperDetails
+                .UserSupportData.SupportCrestSlotType2List.Select(
+                    DungeonStartMapper.ToGameAbilityCrest
+                )
+                .ToList(),
+            CrestSlotType3CrestList = helperDetails
+                .UserSupportData.SupportCrestSlotType3List.Select(
+                    DungeonStartMapper.ToGameAbilityCrest
+                )
+                .ToList(),
+            TalismanData = helperDetails.UserSupportData.SupportTalisman?.ToTalismanList(),
+        };
     }
 }

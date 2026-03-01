@@ -3,7 +3,6 @@ using System.Reflection;
 using DragaliaAPI;
 using DragaliaAPI.Database;
 using DragaliaAPI.Features.Dragalipatch;
-using DragaliaAPI.Features.GraphQL;
 using DragaliaAPI.Features.Shared.Options;
 using DragaliaAPI.Infrastructure;
 using DragaliaAPI.Infrastructure.Authentication;
@@ -13,7 +12,6 @@ using DragaliaAPI.Infrastructure.OutputCaching;
 using DragaliaAPI.Infrastructure.Serialization.MessagePack;
 using DragaliaAPI.Shared;
 using DragaliaAPI.Shared.MasterAsset;
-using EntityGraphQL.AspNet;
 using Hangfire;
 using LinqToDB.Data;
 using LinqToDB.EntityFrameworkCore;
@@ -71,6 +69,8 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.InstanceName = "RedisInstance";
 });
 
+builder.Services.AddMemoryCache();
+
 if (hangfireOptions is { Enabled: true })
 {
     builder.Services.ConfigureHangfire();
@@ -92,14 +92,12 @@ builder
         );
     })
     .ConfigureHealthchecks()
-    .AddAutoMapper(Assembly.GetExecutingAssembly())
     .AddFeatureManagement();
 
 builder
     .Services.ConfigureGameServices(builder.Configuration)
     .ConfigureGameOptions(builder.Configuration)
-    .ConfigureSharedServices()
-    .ConfigureGraphQLSchema();
+    .ConfigureSharedServices();
 
 WebApplication app = builder.Build();
 
@@ -162,13 +160,6 @@ app.MapWhen(
         applicationBuilder.UseEndpoints(endpoints =>
         {
             endpoints.MapControllers();
-            endpoints.MapGraphQL<ApiContext>(configureEndpoint: endpoint =>
-                endpoint.RequireAuthorization(policy =>
-                    policy
-                        .RequireAuthenticatedUser()
-                        .AddAuthenticationSchemes(AuthConstants.SchemeNames.Developer)
-                )
-            );
         });
     }
 );
